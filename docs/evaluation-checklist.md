@@ -15,6 +15,8 @@
 - [x] Problema real e desafiador.
 - [x] Mais de 5 telas navegáveis.
 - [x] Formulário de nova análise.
+- [x] Botão de pré-análise antes de salvar.
+- [x] Busca pública online opcional com fallback mockado.
 - [x] Tabelas e filtros.
 - [x] Cards de indicadores, times e fontes.
 - [x] Dossiê tático.

@@ -180,6 +180,7 @@ p {
 .intro-panel,
 .team-hero,
 .info-panel,
+.preview-panel,
 .pitch-panel,
 .analysis-stack article,
 .formation-card,
@@ -544,6 +545,7 @@ tr:last-child td {
 
 .analysis-form {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 22px;
 }
 
 .analysis-form label,
@@ -561,6 +563,29 @@ tr:last-child td {
 .inline-message {
   color: var(--green-strong);
   font-weight: 800;
+}
+
+.preview-panel {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+}
+
+.online-search-panel {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7fbf7;
+  padding: 16px;
+}
+
+.online-search-panel h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .team-hero {
@@ -584,6 +609,7 @@ tr:last-child td {
 .pitch-panel,
 .analysis-stack article,
 .info-panel,
+.preview-panel,
 .two-column > article,
 .three-column > article,
 .formation-card,

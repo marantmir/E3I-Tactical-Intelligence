@@ -69,3 +69,18 @@ O usuário propôs evoluir a plataforma com análise via grafos, visão computac
 O agente registrou essa evolução na tela "Como a IA será integrada" e criou o documento `docs/advanced-decision-roadmap.md`.
 
 Essa evolução foi tratada como roadmap futuro, sem implementar IA real, visão computacional real ou otimização real nesta versão do protótipo.
+
+## Sessão 7 - Pré-análise e busca online
+
+O usuário solicitou atualização do fluxo para incluir busca online de informações sobre o time e um botão de análise antes do salvamento.
+
+O agente implementou:
+
+- Endpoint `POST /api/analysis/preview`.
+- Busca pública online opcional em `backend/app/online_search.py`.
+- Fallback mockado quando a busca online falha.
+- Botão `Analisar` na tela de nova análise.
+- Painel de pré-análise antes de salvar.
+- Insights simulados de grafos, visão computacional e pesquisa operacional.
+
+A aplicação continua sem integração com IA real ou LLMs.

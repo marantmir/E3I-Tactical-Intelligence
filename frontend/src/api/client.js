@@ -27,6 +27,11 @@ export const api = {
   players: (teamId) => request(`/api/teams/${teamId}/players`),
   sources: (teamId) => request(`/api/teams/${teamId}/sources`),
   gamePlan: (teamId) => request(`/api/teams/${teamId}/game-plan`),
+  previewAnalysis: (payload) =>
+    request("/api/analysis/preview", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
   createAnalysis: (payload) =>
     request("/api/analysis", {
       method: "POST",

@@ -4,7 +4,7 @@
 
 O E3I Tactical Intelligence é um protótipo de aplicação web para análise tática de times de futebol. O objetivo é apoiar scouts, treinadores, analistas de desempenho e comissões técnicas na organização de informações sobre adversários, jogadores, fontes e planos de jogo.
 
-Nesta versão, a aplicação não utiliza modelos de IA, LLMs ou integrações externas. Todas as análises são simuladas com dados mockados para representar como a solução funcionaria futuramente com IA generativa.
+Nesta versão, a aplicação não utiliza modelos de IA ou LLMs. As análises táticas continuam simuladas com dados mockados, mas o fluxo de nova análise inclui uma busca pública online opcional para enriquecer a pré-análise com informações abertas sobre o time.
 
 ## 2. Problema
 
@@ -22,13 +22,15 @@ A aplicação permite buscar um time e visualizar um dossiê tático simulado co
 - Elenco e jogadores-chave
 - Fontes e vídeos simulados
 - Plano de jogo
+- Pré-análise antes de salvar
+- Busca pública online opcional
 - Relatório final
 - Histórico de análises
 - Tela explicando futura integração com IA
 
 ## 4. Importante: Sem Integração Real com IA
 
-Este projeto é um protótipo acadêmico desenvolvido para a Avaliação Intermediária de IA Generativa. A aplicação não utiliza modelos de IA, LLMs ou integrações externas nesta versão. Todas as análises, fontes, vídeos e recomendações são simuladas com dados mockados para demonstrar a estrutura da solução e o potencial de integração futura com IA generativa.
+Este projeto é um protótipo acadêmico desenvolvido para a Avaliação Intermediária de IA Generativa. A aplicação não utiliza modelos de IA ou LLMs nesta versão. As análises, vídeos e recomendações continuam simulados com dados mockados. A busca online é usada apenas como enriquecimento público opcional na pré-análise e não substitui validação humana.
 
 ## 5. Como a IA será integrada futuramente
 
@@ -61,7 +63,7 @@ Em uma próxima versão, a IA poderá ser usada para:
 
 ## 7. Arquitetura
 
-O frontend em React fornece a interface, navegação, formulários, tabelas e visualizações. O backend em FastAPI fornece endpoints simulados para times, jogadores, análises táticas, fontes, plano de jogo, relatórios e histórico.
+O frontend em React fornece a interface, navegação, formulários, tabelas e visualizações. O backend em FastAPI fornece endpoints para times, jogadores, análises táticas, fontes, plano de jogo, relatórios, histórico, pré-análise e busca pública online opcional.
 
 O SQLite é usado para persistir o histórico de análises criadas pelo usuário. O restante da base é mockado em arquivos JSON dentro de `backend/mock_data`.
 
@@ -79,6 +81,9 @@ Usuário
 - Dashboard inicial com indicadores simulados
 - Busca de times
 - Formulário de nova análise
+- Botão Analisar antes de salvar
+- Pré-análise com insights de grafos, visão computacional e pesquisa operacional
+- Busca pública online opcional sobre o time analisado
 - Dossiê tático
 - Análise de formações
 - Análise de elenco com filtros
@@ -188,9 +193,10 @@ docs/screenshots/
 ## 14. O que Funcionou Bem
 
 - A estrutura FastAPI + React permitiu separar API, telas e dados mockados.
-- Os dados JSON facilitaram demonstrar endpoints sem depender de internet.
+- Os dados JSON mantêm o protótipo funcional mesmo se a busca online estiver indisponível.
 - O SQLite resolveu a necessidade de histórico local.
 - A navegação por telas aumentou a complexidade da entrega sem usar IA real.
+- O fluxo de pré-análise permitiu revisar informações e insights antes de salvar.
 
 ## 15. O que Não Funcionou Bem
 
@@ -200,7 +206,8 @@ docs/screenshots/
 
 ## 16. Intervenções Manuais
 
-- Remoção de qualquer integração real com IA ou APIs externas.
+- Remoção de qualquer integração real com IA.
+- Inclusão de busca pública online opcional com fallback para dados mockados.
 - Definição de uma base mockada estável.
 - Padronização da navegação.
 - Ajuste de telas para rubrica acadêmica.
@@ -208,11 +215,12 @@ docs/screenshots/
 
 ## 17. Limitações do Protótipo
 
-- Não há busca real na internet.
+- A busca online usa fonte pública aberta e pode falhar conforme disponibilidade de rede.
 - Não há integração com YouTube.
 - Não há modelo de IA.
 - Não há análise real de vídeo.
 - Os dados são simulados.
+- A pré-análise combina informações públicas com insights táticos mockados.
 - A exportação PDF é placeholder visual.
 - As recomendações táticas são mockadas.
 

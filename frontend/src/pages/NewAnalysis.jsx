@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { Activity, Globe2, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -25,6 +25,8 @@ export default function NewAnalysis() {
   const [teams, setTeams] = useState([]);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [preview, setPreview] = useState(null);
   const [form, setForm] = useState({
     team_name: "Flamengo",
     competition: "Brasileirão Série A",
@@ -41,20 +43,49 @@ export default function NewAnalysis() {
     return teams.find((team) => team.name.toLowerCase() === form.team_name.toLowerCase());
   }, [teams, form.team_name]);
 
+  function buildPayload() {
+    return {
+      ...form,
+      team_id: selectedTeam?.id
+    };
+  }
+
   function updateField(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+    setPreview(null);
+    setMessage("");
+  }
+
+  async function analyze() {
+    setAnalyzing(true);
+    setMessage("");
+    try {
+      const result = await api.previewAnalysis(buildPayload());
+      setPreview(result);
+      setMessage(
+        result.save_ready
+          ? "Pré-análise gerada. Revise os insights antes de salvar."
+          : "Pré-análise gerada, mas o time precisa de validação antes de salvar."
+      );
+    } catch (err) {
+      setMessage(err.message || "Não foi possível gerar a pré-análise.");
+    } finally {
+      setAnalyzing(false);
+    }
   }
 
   async function submit(event) {
     event.preventDefault();
+    if (!preview?.save_ready) {
+      setMessage("Gere e revise a pré-análise antes de salvar.");
+      return;
+    }
+
     setSaving(true);
     setMessage("");
     try {
-      const record = await api.createAnalysis({
-        ...form,
-        team_id: selectedTeam?.id
-      });
+      const record = await api.createAnalysis(buildPayload());
       setMessage(`Análise salva para ${record.team_name}.`);
       navigate(`/team/${record.team_id}`);
     } catch (err) {
@@ -107,13 +138,113 @@ export default function NewAnalysis() {
           </select>
         </label>
         <div className="form-actions">
-          <button className="button button-primary" type="submit" disabled={saving}>
+          <button className="button button-primary" type="button" onClick={analyze} disabled={analyzing}>
+            <Activity size={16} />
+            {analyzing ? "Analisando..." : "Analisar"}
+          </button>
+          <button className="button button-secondary" type="submit" disabled={saving || !preview?.save_ready}>
             <Save size={16} />
             {saving ? "Salvando..." : "Salvar análise"}
           </button>
           {message ? <span className="inline-message">{message}</span> : null}
         </div>
       </form>
+
+      {preview ? <PreAnalysisPreview preview={preview} /> : null}
+    </section>
+  );
+}
+
+function PreAnalysisPreview({ preview }) {
+  const online = preview.online_search;
+  const analysis = preview.pre_analysis;
+
+  return (
+    <section className="preview-panel">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Pré-análise</p>
+          <h2>{preview.team.name}</h2>
+        </div>
+        <span className={preview.save_ready ? "badge badge-high" : "badge badge-low"}>
+          {preview.save_ready ? "Pronta para salvar" : "Requer validação"}
+        </span>
+      </div>
+
+      <article className="info-panel">
+        <h3>Resumo preliminar</h3>
+        <p>{analysis.summary}</p>
+      </article>
+
+      <div className="online-search-panel">
+        <div>
+          <h3>
+            <Globe2 size={17} />
+            Busca online
+          </h3>
+          <p>{online.summary}</p>
+          <span className="source-origin">{online.note}</span>
+        </div>
+        <span className="badge badge-medium">{online.status}</span>
+      </div>
+
+      {online.sources.length > 0 ? (
+        <div className="card-grid three">
+          {online.sources.map((source) => (
+            <article className="source-card" key={source.url || source.title}>
+              <div className="source-head">
+                <span className="source-type">{source.origin}</span>
+                <span className="relevance">{source.relevance}</span>
+              </div>
+              <h3>{source.title}</h3>
+              <p>{source.summary || "Fonte publica encontrada para revisão do analista."}</p>
+              {source.url ? (
+                <a className="button button-ghost" href={source.url} target="_blank" rel="noreferrer">
+                  Abrir fonte
+                </a>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      <section className="two-column">
+        <article>
+          <h3>Focos recomendados</h3>
+          <ul className="check-list">
+            {analysis.recommended_focus.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </article>
+        <article>
+          <h3>Pesquisa operacional</h3>
+          <ul className="check-list">
+            {analysis.operational_research_insights.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </article>
+      </section>
+
+      <section className="two-column">
+        <article>
+          <h3>Grafos táticos</h3>
+          <ul className="check-list">
+            {analysis.graph_insights.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </article>
+        <article>
+          <h3>Visão computacional</h3>
+          <ul className="check-list">
+            {analysis.computer_vision_insights.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </article>
+      </section>
     </section>
   );
 }

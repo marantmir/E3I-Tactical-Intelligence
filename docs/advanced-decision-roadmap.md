@@ -1,6 +1,6 @@
 # Roadmap avançado de decisão tática
 
-Este documento registra a evolução futura proposta para o E3I Tactical Intelligence, mantendo a regra da versão atual: o protótipo não usa IA real, visão computacional real, APIs externas ou modelos de otimização em produção. As ideias abaixo descrevem como a plataforma poderia evoluir depois da avaliação intermediária.
+Este documento registra a evolução futura proposta para o E3I Tactical Intelligence. A versão atual não usa IA real, visão computacional real ou modelos de otimização em produção. Ela possui apenas uma busca pública online opcional para enriquecer a pré-análise; os insights táticos continuam mockados.
 
 ## 1. Análise via grafos
 

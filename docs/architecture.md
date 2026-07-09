@@ -23,7 +23,8 @@ Arquivos principais:
 - `database.py`: cria e consulta histórico em SQLite.
 - `mock_store.py`: carrega dados mockados em JSON.
 - `routes/teams.py`: endpoints de times e análises por time.
-- `routes/analysis.py`: criação de análise e histórico.
+- `routes/analysis.py`: pré-análise, criação de análise e histórico.
+- `online_search.py`: busca pública online opcional para enriquecer a pré-análise.
 - `routes/reports.py`: relatório final simulado.
 
 ## Frontend
@@ -48,7 +49,7 @@ Principais telas:
 
 Os dados táticos são mockados e ficam em `backend/mock_data`.
 
-O banco SQLite guarda somente o histórico criado na aplicação.
+O banco SQLite guarda somente o histórico criado na aplicação. A pré-análise tenta enriquecer o fluxo com busca pública online; se a rede falhar, o backend retorna fallback mockado e mantém o produto utilizável.
 
 ## Deploy
 
@@ -61,5 +62,6 @@ Em versões futuras, a arquitetura pode receber módulos especializados para:
 - Grafos táticos: análise de redes de passe, conexões entre jogadores e zonas de influência.
 - Visão computacional: detecção de jogadores, bola, linhas, compactação e movimentações em vídeo.
 - Pesquisa operacional: otimização de formação, estratégia, tática, substituições e planos por cenário.
+- Busca online: enriquecimento de fontes públicas antes de salvar a análise.
 
 Esses módulos devem continuar separados da camada de interface e expor resultados por endpoints próprios, sempre com nível de confiança e rastreabilidade das evidências.
