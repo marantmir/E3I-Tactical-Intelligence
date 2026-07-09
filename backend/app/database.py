@@ -4,7 +4,9 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .mock_store import get_team, teams
+from fastapi import HTTPException
+
+from .mock_store import find_team_by_name, get_team
 
 
 DB_PATH = Path(__file__).resolve().parents[1] / "e3i_tactical.db"
@@ -75,16 +77,14 @@ def seed_history(connection: sqlite3.Connection) -> None:
 def create_analysis(payload: dict) -> dict:
     init_db()
     selected_team = None
-    if payload.get("team_id"):
+    if payload.get("team_id") is not None:
         selected_team = get_team(int(payload["team_id"]))
     if selected_team is None:
-        selected_team = next(
-            (
-                team
-                for team in teams()
-                if team["name"].casefold() == payload["team_name"].casefold().strip()
-            ),
-            teams()[0],
+        selected_team = find_team_by_name(payload["team_name"])
+    if selected_team is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Time nao encontrado na base validada. Gere uma pre-analise valida antes de salvar.",
         )
 
     created_at = datetime.now(timezone.utc).isoformat()

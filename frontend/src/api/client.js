@@ -10,11 +10,28 @@ async function request(path, options = {}) {
   });
 
   if (!response.ok) {
-    const message = await response.text();
+    const contentType = response.headers.get("Content-Type") || "";
+    const message = contentType.includes("application/json")
+      ? formatApiError(await response.json())
+      : await response.text();
     throw new Error(message || "Falha na requisicao");
   }
 
   return response.json();
+}
+
+function formatApiError(payload) {
+  if (typeof payload?.detail === "string") {
+    return payload.detail;
+  }
+
+  if (Array.isArray(payload?.detail)) {
+    return payload.detail
+      .map((item) => item?.msg || item?.message || JSON.stringify(item))
+      .join(" ");
+  }
+
+  return payload?.message || "Falha na requisicao";
 }
 
 export const api = {
