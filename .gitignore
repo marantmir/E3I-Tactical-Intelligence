@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.sqlite
+*.db
+.venv/
+venv/
+node_modules/
+dist/
+.env
+.env.local
+.DS_Store
+backend/e3i_tactical.db
