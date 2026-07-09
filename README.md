@@ -136,7 +136,7 @@ INSERIR_LINK_DO_ENDPOINT_AQUI
 ## 11. Repositório GitHub
 
 ```text
-https://github.com/marcoantoniomiranda713/e3i-tactical-intelligence
+https://github.com/marantmir/e3i-tactical-intelligence
 ```
 
 ## 12. Dados Mockados

@@ -7,7 +7,7 @@
 - Remote configurado:
 
 ```text
-https://github.com/marcoantoniomiranda713/e3i-tactical-intelligence.git
+https://github.com/marantmir/e3i-tactical-intelligence.git
 ```
 
 O push ainda depende de reautenticação do GitHub CLI, pois `gh auth status` retornou token inválido.
@@ -23,7 +23,7 @@ gh auth login -h github.com
 2. Criar o repositório remoto:
 
 ```bash
-gh repo create marcoantoniomiranda713/e3i-tactical-intelligence --public
+gh repo create marantmir/e3i-tactical-intelligence --public
 ```
 
 3. Enviar a branch local:
@@ -35,7 +35,7 @@ git push -u origin main
 ## Publicar no Render
 
 1. Entrar no Render com a conta GitHub.
-2. Criar um novo serviço usando o repositório `marcoantoniomiranda713/e3i-tactical-intelligence`.
+2. Criar um novo serviço usando o repositório `marantmir/e3i-tactical-intelligence`.
 3. Usar o `render.yaml` do projeto ou selecionar deploy via Docker.
 4. Conferir se o health check está apontando para:
 
