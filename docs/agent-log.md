@@ -61,3 +61,11 @@ Arquivos gerados:
 - `future-ai.png`
 
 Também foi feita uma correção pontual de responsividade para remover rolagem horizontal em viewport estreito durante a validação visual.
+
+## Sessão 6 - Roadmap avançado
+
+O usuário propôs evoluir a plataforma com análise via grafos, visão computacional e pesquisa operacional para gerar insights de tomada de decisão.
+
+O agente registrou essa evolução na tela "Como a IA será integrada" e criou o documento `docs/advanced-decision-roadmap.md`.
+
+Essa evolução foi tratada como roadmap futuro, sem implementar IA real, visão computacional real ou otimização real nesta versão do protótipo.

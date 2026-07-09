@@ -37,6 +37,9 @@ Em uma próxima versão, a IA poderá ser usada para:
 - Buscar informações em fontes públicas e APIs esportivas
 - Resumir notícias e relatórios
 - Analisar transcrições de vídeos
+- Aplicar visão computacional para detectar movimentações, ocupação de espaço e padrões coletivos
+- Usar grafos para mapear conexões de passe, zonas de influência e relações táticas
+- Usar pesquisa operacional para otimizar formação, estratégia, tática e substituições por cenário
 - Gerar dossiês táticos com base em evidências
 - Sugerir formações prováveis
 - Identificar padrões ofensivos e defensivos
@@ -123,6 +126,12 @@ O passo a passo de publicação está em:
 
 ```text
 docs/deploy.md
+```
+
+O roadmap avançado de grafos, visão computacional e pesquisa operacional está em:
+
+```text
+docs/advanced-decision-roadmap.md
 ```
 
 ## 10. Endpoint Público
@@ -217,5 +226,7 @@ docs/screenshots/
 - Permitir upload de vídeos.
 - Adicionar transcrição automática.
 - Implementar análise visual com visão computacional.
+- Implementar análise via grafos para conexões de passe, zonas de influência e movimentações.
+- Usar pesquisa operacional para apoiar melhor formação, estratégia, tática e substituições.
 - Criar ranking de jogadores para scouting.
 - Exportar PDF real.

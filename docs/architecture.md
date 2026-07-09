@@ -53,3 +53,13 @@ O banco SQLite guarda somente o histórico criado na aplicação.
 ## Deploy
 
 O `Dockerfile` cria o build React e serve os arquivos estáticos pelo FastAPI. Assim, um único endpoint público abre a interface e responde às rotas `/api`.
+
+## Evolução futura
+
+Em versões futuras, a arquitetura pode receber módulos especializados para:
+
+- Grafos táticos: análise de redes de passe, conexões entre jogadores e zonas de influência.
+- Visão computacional: detecção de jogadores, bola, linhas, compactação e movimentações em vídeo.
+- Pesquisa operacional: otimização de formação, estratégia, tática, substituições e planos por cenário.
+
+Esses módulos devem continuar separados da camada de interface e expor resultados por endpoints próprios, sempre com nível de confiança e rastreabilidade das evidências.

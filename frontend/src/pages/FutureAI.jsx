@@ -2,6 +2,9 @@ const rows = [
   ["Busca de dados", "Dados mockados", "Busca em APIs, web e bases esportivas"],
   ["Vídeos", "Lista simulada", "Transcrição, resumo e análise de lances"],
   ["Dossiê tático", "Texto simulado", "Geração com LLM baseada em evidências"],
+  ["Grafos táticos", "Relações simuladas", "Mapeamento de conexões entre jogadores, zonas e padrões de passe"],
+  ["Visão computacional", "Sem análise visual real", "Detecção de jogadores, bola, linhas, ocupação de espaço e movimentações"],
+  ["Pesquisa operacional", "Regras fixas", "Otimização de formação, estratégia e alocação de jogadores por cenário"],
   ["Scouting", "Métricas mockadas", "Ranking inteligente de jogadores"],
   ["Plano de jogo", "Recomendações mockadas", "Recomendações baseadas no adversário"],
   ["Relatório", "Template fixo", "Relatório personalizado por objetivo"]
@@ -58,6 +61,26 @@ export default function FutureAI() {
           <h3>Vídeo</h3>
           <p>
             Transcrição, marcação de eventos e resumo de lances poderiam apoiar scouts e analistas.
+          </p>
+        </article>
+      </section>
+      <section className="three-column">
+        <article>
+          <h3>Grafos</h3>
+          <p>
+            Modelariam passes, coberturas, zonas de influência e conexões entre jogadores para revelar padrões coletivos.
+          </p>
+        </article>
+        <article>
+          <h3>Visão computacional</h3>
+          <p>
+            Identificaria movimentações, ocupação de espaço, pressão, compactação e superioridades numéricas em vídeo.
+          </p>
+        </article>
+        <article>
+          <h3>Pesquisa operacional</h3>
+          <p>
+            Compararia cenários para sugerir formação, estratégia, tática e ajustes com melhor relação entre risco e retorno.
           </p>
         </article>
       </section>
