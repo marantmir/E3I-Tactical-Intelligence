@@ -158,6 +158,7 @@ export default function NewAnalysis() {
 function PreAnalysisPreview({ preview }) {
   const online = preview.online_search;
   const analysis = preview.pre_analysis;
+  const onlineStatus = formatOnlineStatus(online.status);
 
   return (
     <section className="preview-panel">
@@ -185,7 +186,7 @@ function PreAnalysisPreview({ preview }) {
           <p>{online.summary}</p>
           <span className="source-origin">{online.note}</span>
         </div>
-        <span className="badge badge-medium">{online.status}</span>
+        <span className={onlineStatus.className}>{onlineStatus.label}</span>
       </div>
 
       {online.sources.length > 0 ? (
@@ -247,4 +248,14 @@ function PreAnalysisPreview({ preview }) {
       </section>
     </section>
   );
+}
+
+function formatOnlineStatus(status) {
+  const statusMap = {
+    available: { label: "Online", className: "badge badge-high" },
+    empty: { label: "Sem resultado", className: "badge badge-medium" },
+    local_fallback: { label: "Modo local", className: "badge badge-medium" }
+  };
+
+  return statusMap[status] || { label: "Em revisao", className: "badge badge-medium" };
 }
