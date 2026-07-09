@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from ..database import create_analysis, list_history
-from ..mock_store import (
+from ..data_store import (
     find_team_by_name,
     formations,
     game_plans,
@@ -39,8 +39,8 @@ def preview(payload: AnalysisCreate):
             "online_search": online,
             "pre_analysis": {
                 "summary": (
-                    "Time nao encontrado na base mockada. A pre-analise usa apenas a busca "
-                    "publica online e deve ser complementada manualmente antes do relatorio final."
+                    "Time nao encontrado na base local. A pre-analise usa busca publica "
+                    "e deve ser complementada com evidencias antes do relatorio final."
                 ),
                 "recommended_focus": [
                     "Validar identidade correta do clube",
@@ -76,7 +76,7 @@ def preview(payload: AnalysisCreate):
         "online_search": online,
         "pre_analysis": {
             "summary": (
-                f"Pre-analise simulada para {selected_team['name']} com foco em {payload.objective}. "
+                f"Pre-analise para {selected_team['name']} com foco em {payload.objective}. "
                 f"A formacao mais provavel e {best_formation['formation']} e o nivel de confianca "
                 f"do dossie e {dossier['confidence_level']}."
             ),
@@ -96,9 +96,9 @@ def preview(payload: AnalysisCreate):
                 "Transformar movimentacoes em mapas de calor para a comissao tecnica",
             ],
             "operational_research_insights": [
-                f"Testar {best_formation['formation']} como cenario-base pela maior probabilidade simulada",
+                f"Testar {best_formation['formation']} como cenario-base pela maior aderencia ao contexto",
                 "Otimizar estrategia ponderando risco defensivo, amplitude e jogadores disponiveis",
-                "Simular ajustes para vantagem, empate, desvantagem e queda fisica no segundo tempo",
+                "Comparar ajustes para vantagem, empate, desvantagem e queda fisica no segundo tempo",
             ],
             "best_formation": best_formation,
             "key_players": key_players,

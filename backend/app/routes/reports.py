@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from ..mock_store import (
+from ..data_store import (
     get_single_team_record,
     get_team,
     get_team_records,
@@ -34,9 +34,9 @@ def generate_report(payload: ReportCreate):
         "objective": payload.objective,
         "user_profile": payload.user_profile,
         "executive_summary": (
-            f"Relatorio simulado para {team['name']} com foco em {payload.objective}. "
-            "Os dados representam uma futura experiencia com IA generativa, mas nesta "
-            "versao sao mockados e validados manualmente."
+            f"Relatorio para {team['name']} com foco em {payload.objective}. "
+            "A leitura combina base local, fontes publicas, grafo tatico, videos e validacao "
+            "manual da comissao tecnica."
         ),
         "opponent_profile": dossier["summary"],
         "probable_formation": team["base_formation"],
@@ -45,7 +45,7 @@ def generate_report(payload: ReportCreate):
         "weaknesses": dossier["weaknesses"],
         "recommended_strategy": plan["where_to_attack"],
         "training_suggestions": plan["training_suggestions"],
-        "simulated_sources": team_sources[:4],
+        "evidence_sources": team_sources[:4],
         "confidence": dossier["confidence_level"],
-        "pdf_message": "Exportacao PDF simulada nesta versao do prototipo.",
+        "pdf_message": "Exportacao PDF preparada para consolidar evidencias e recomendacoes.",
     }

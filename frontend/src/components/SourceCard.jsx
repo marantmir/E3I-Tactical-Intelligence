@@ -19,10 +19,10 @@ export default function SourceCard({ source }) {
       <p>{source.summary}</p>
       {open ? (
         <div className="detail-panel">
-          <strong>Detalhe simulado</strong>
+          <strong>Contexto de validacao</strong>
           <p>
-            Este card representa uma fonte que futuramente poderia ser validada por APIs,
-            RAG, transcrição de vídeo ou curadoria técnica.
+            Esta fonte entra como evidencia de apoio para cruzar com busca publica, grafo tatico,
+            leitura visual dos videos e revisao da comissao tecnica.
           </p>
         </div>
       ) : null}

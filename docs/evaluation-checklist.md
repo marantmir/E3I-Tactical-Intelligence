@@ -1,68 +1,40 @@
-# Checklist da avaliação intermediária
+# Checklist da Avaliacao
 
-## Endpoint funcional - 8 pontos
+## Endpoint Funcional
 
-- [x] Aplicação preparada para endpoint único.
 - [x] Backend FastAPI responde em `/api/health`.
-- [x] Frontend React pode ser servido pelo build em produção.
-- [x] Rotas de API não dependem de internet.
-- [x] Dockerfile incluído para deploy.
-- [ ] Inserir link público após publicação.
-- [ ] Validar console do navegador no ambiente publicado.
+- [x] Frontend React pode ser servido pelo build de producao.
+- [x] Rotas de API funcionam com modo local quando a rede externa falha.
+- [x] Dockerfile incluido para deploy.
+- [ ] Inserir link publico apos publicacao.
 
-## Complexidade e ambição - 6 pontos
+## Complexidade e Ambicao
 
-- [x] Problema real e desafiador.
-- [x] Mais de 5 telas navegáveis.
-- [x] Formulário de nova análise.
-- [x] Botão de pré-análise antes de salvar.
-- [x] Busca pública online opcional com fallback mockado.
-- [x] Tabelas e filtros.
-- [x] Cards de indicadores, times e fontes.
-- [x] Dossiê tático.
-- [x] Plano de jogo.
-- [x] Relatório final.
-- [x] Histórico.
-- [x] Tela sobre futura IA.
-- [x] Não é chatbot simples.
+- [x] Problema real de analise tatica.
+- [x] Mais de 5 telas navegaveis.
+- [x] Busca local e publica por time.
+- [x] Botao `Analisar` antes de salvar.
+- [x] Pre-analise com fontes, grafo, visao computacional e pesquisa operacional.
+- [x] Grafo visual de conexoes taticas.
+- [x] Mapa visual de videos com calor, trilhas e eventos.
+- [x] Plano de jogo e relatorio final.
+- [x] Historico persistido em SQLite.
+- [x] Nao e chatbot simples.
 
-## GitHub - 4 pontos
+## GitHub
 
 - [x] Estrutura clara de pastas.
 - [x] `.gitignore` adequado.
-- [x] README completo.
+- [x] README atualizado.
 - [x] Pasta `docs`.
-- [x] Arquivos de prompts e log do agente.
-- [x] Repositório Git local inicializado em `main`.
-- [x] Commit inicial criado.
-- [x] Remote `origin` configurado para o repositório esperado.
-- [ ] Criar repositório público ou compartilhado.
-- [ ] Fazer push para o GitHub após reautenticar `gh`.
-- [ ] Fazer commits progressivos após novas iterações.
-- [ ] Inserir link final do repositório na entrega.
+- [x] Repositorio Git local inicializado em `main`.
+- [x] Remote `origin` configurado.
+- [ ] Fazer push para o GitHub.
 
-## README - 8 pontos
+## Validacao Tecnica
 
-- [x] Descrição do problema.
-- [x] Solução proposta.
-- [x] Como a IA seria integrada no futuro.
-- [x] Tecnologias utilizadas.
-- [x] Arquitetura.
-- [x] Funcionalidades.
-- [x] Como rodar localmente.
-- [x] Dados simulados.
-- [x] Prompts usados.
-- [x] O que funcionou.
-- [x] O que não funcionou.
-- [x] Limitações.
-- [x] Próximos passos.
-- [ ] Inserir endpoint público.
-
-## Uso efetivo do agente - 4 pontos
-
-- [x] `docs/prompts.md` com prompts utilizados.
-- [x] `docs/agent-log.md` com relato das interações.
-- [x] README citando o uso do agente.
-- [x] Registro do que funcionou.
-- [x] Registro de limitações e decisões manuais.
-- [x] Prints adicionados em `docs/screenshots` após rodar a aplicação.
+- [x] Endpoints novos: `graph-analysis`, `video-vision`, `public-intelligence`.
+- [x] Frontend consome as novas rotas.
+- [x] Build Vite validado.
+- [x] Fluxo analisado no navegador local.
+- [ ] Validar console no endpoint publicado.

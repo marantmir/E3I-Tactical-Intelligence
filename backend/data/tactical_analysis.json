@@ -1,4 +1,4 @@
-[
+﻿[
   {
     "team_id": 1,
     "summary": "O time apresenta tendencia de construcao apoiada desde a defesa, uso de amplitude pelos laterais e busca por superioridade no corredor central. Em fase defensiva, alterna entre bloco medio e pressao alta apos perda.",
@@ -94,7 +94,7 @@
     "defensive_transition": "Recomposicao pela zona central e protecao da entrada da area.",
     "set_pieces": "Faltas laterais buscando segunda trave.",
     "strengths": ["Transicao vertical", "Talento individual", "Ataque aos intervalos"],
-    "weaknesses": ["Concede largura", "Pode espaçar linhas", "Depende de cobertura dos volantes"],
+    "weaknesses": ["Concede largura", "Pode espaÃ§ar linhas", "Depende de cobertura dos volantes"],
     "confidence_level": "Alto"
   },
   {
@@ -140,3 +140,4 @@
     "confidence_level": "Medio"
   }
 ]
+

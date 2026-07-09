@@ -43,6 +43,9 @@ export const api = {
   formations: (teamId) => request(`/api/teams/${teamId}/formations`),
   players: (teamId) => request(`/api/teams/${teamId}/players`),
   sources: (teamId) => request(`/api/teams/${teamId}/sources`),
+  graphAnalysis: (teamId) => request(`/api/teams/${teamId}/graph-analysis`),
+  videoVision: (teamId) => request(`/api/teams/${teamId}/video-vision`),
+  publicIntelligence: (teamId) => request(`/api/teams/${teamId}/public-intelligence`),
   gamePlan: (teamId) => request(`/api/teams/${teamId}/game-plan`),
   previewAnalysis: (payload) =>
     request("/api/analysis/preview", {

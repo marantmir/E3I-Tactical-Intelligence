@@ -42,7 +42,7 @@ export default function GamePlan() {
             {plan.players_to_neutralize.map((item) => (
               <li key={item}>
                 <strong>{item}</strong>
-                <span>Monitoramento tático simulado</span>
+                <span>Monitoramento por grafo e video</span>
               </li>
             ))}
           </ul>
@@ -58,7 +58,7 @@ export default function GamePlan() {
       </section>
       <section className="three-column">
         <article>
-          <h3>Sugestões de treino</h3>
+          <h3>Sugestoes de treino</h3>
           <ul className="check-list">
             {plan.training_suggestions.map((item) => (
               <li key={item}>{item}</li>

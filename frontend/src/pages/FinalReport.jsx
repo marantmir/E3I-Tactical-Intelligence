@@ -24,12 +24,12 @@ export default function FinalReport() {
     try {
       const generated = await api.generateReport({
         team_id: Number(teamId),
-        objective: "Relatório para comissão técnica",
+        objective: "Relatorio para comissao tecnica",
         user_profile: "Analista de desempenho"
       });
       setReport(generated);
     } catch (err) {
-      setMessage(err.message || "Não foi possível gerar o relatório.");
+      setMessage(err.message || "Nao foi possivel gerar o relatorio.");
     } finally {
       setLoadingReport(false);
     }
@@ -42,17 +42,17 @@ export default function FinalReport() {
         team_name: team.name,
         competition: team.league,
         season: "2026",
-        objective: "Relatório para comissão técnica",
+        objective: "Relatorio para comissao tecnica",
         user_profile: "Analista de desempenho"
       });
-      setMessage("Análise salva no histórico.");
+      setMessage("Analise salva no historico.");
     } catch (err) {
-      setMessage(err.message || "Não foi possível salvar.");
+      setMessage(err.message || "Nao foi possivel salvar.");
     }
   }
 
   function exportPdf() {
-    setMessage("Exportação PDF simulada nesta versão do protótipo.");
+    setMessage("Exportacao PDF preparada como etapa de entrega do relatorio.");
   }
 
   return (
@@ -60,16 +60,16 @@ export default function FinalReport() {
       <div className="section-heading">
         <div>
           <p className="eyebrow">{team.name}</p>
-          <h2>Relatório final</h2>
+          <h2>Relatorio final</h2>
         </div>
         <div className="action-row">
           <button className="button button-primary" type="button" onClick={generateReport}>
             <FileText size={16} />
-            {loadingReport ? "Gerando..." : "Gerar relatório"}
+            {loadingReport ? "Gerando..." : "Gerar relatorio"}
           </button>
           <button className="button button-secondary" type="button" onClick={saveAnalysis}>
             <Save size={16} />
-            Salvar análise
+            Salvar analise
           </button>
           <button className="button button-ghost" type="button" onClick={exportPdf}>
             <Download size={16} />

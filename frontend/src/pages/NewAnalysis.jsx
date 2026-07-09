@@ -1,6 +1,6 @@
 import { Activity, Globe2, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { api } from "../api/client.js";
 
@@ -22,13 +22,14 @@ const profiles = [
 
 export default function NewAnalysis() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [teams, setTeams] = useState([]);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [preview, setPreview] = useState(null);
   const [form, setForm] = useState({
-    team_name: "Flamengo",
+    team_name: params.get("team") || "Flamengo",
     competition: "Brasileirão Série A",
     season: "2026",
     objective: objectives[0],

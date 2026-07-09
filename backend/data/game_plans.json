@@ -1,4 +1,4 @@
-[
+﻿[
   {
     "team_id": 1,
     "how_to_press": "Direcionar a saida para o lateral direito e acionar pressao quando o passe voltar para o zagueiro.",
@@ -65,7 +65,7 @@
     "where_to_attack": "Criar amplitude para explorar espacos concedidos pelos corredores e cruzar rasteiro atras da linha.",
     "players_to_neutralize": ["Meia Madrid 10", "Atacante Madrid 7"],
     "weaknesses_to_exploit": ["Largura concedida", "Espaco entre volantes", "Recomposicao apos conducoes longas"],
-    "training_suggestions": ["Treinar dobra em condutor central", "Ensaiar cruzamento rasteiro", "Controlar transicao com falta tática limpa"],
+    "training_suggestions": ["Treinar dobra em condutor central", "Ensaiar cruzamento rasteiro", "Controlar transicao com falta tÃ¡tica limpa"],
     "plan_risks": ["Permitir campo aberto", "Perder bola com equipe aberta"],
     "in_match_adjustments": ["Baixar lateral do lado da bola", "Usar volante de cobertura", "Atacar lado oposto ao meia livre"]
   },
@@ -100,3 +100,4 @@
     "in_match_adjustments": ["Baixar ponta para dobrar lateral", "Usar atacante veloz na transicao", "Fechar corredor antes do cruzamento"]
   }
 ]
+

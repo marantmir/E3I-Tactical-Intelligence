@@ -1,67 +1,66 @@
 # Arquitetura
 
-## Visão geral
+## Visao Geral
 
-O E3I Tactical Intelligence foi estruturado como uma aplicação web full stack com frontend React, backend FastAPI e persistência local em SQLite.
+O E3I Tactical Intelligence e uma aplicacao full stack com frontend React, backend FastAPI e persistencia local em SQLite.
 
 ```text
-Usuário
+Usuario
   -> Frontend React/Vite
   -> Cliente HTTP
   -> Backend FastAPI
-  -> SQLite para histórico
-  -> JSON mockado para dados táticos
+  -> Busca publica Wikimedia
+  -> Data store JSON local
+  -> Modulo de grafos taticos
+  -> Modulo de leitura visual de videos
+  -> SQLite para historico
 ```
 
 ## Backend
 
-O backend fica em `backend/app` e expõe rotas sob `/api`.
-
-Arquivos principais:
+Arquivos principais em `backend/app`:
 
 - `main.py`: inicializa FastAPI, CORS, rotas e frontend buildado.
-- `database.py`: cria e consulta histórico em SQLite.
-- `mock_store.py`: carrega dados mockados em JSON.
-- `routes/teams.py`: endpoints de times e análises por time.
-- `routes/analysis.py`: pré-análise, criação de análise e histórico.
-- `online_search.py`: busca pública online opcional para enriquecer a pré-análise.
-- `routes/reports.py`: relatório final simulado.
+- `database.py`: cria e consulta historico em SQLite.
+- `data_store.py`: carrega dados locais em JSON.
+- `online_search.py`: busca publica e fallback de modo local.
+- `graph_analysis.py`: monta nos, arestas, metricas e insights de rede.
+- `video_vision.py`: monta mapa de calor, trilhas, frames e eventos de video.
+- `routes/teams.py`: endpoints de times, fontes, grafo, video e inteligencia publica.
+- `routes/analysis.py`: pre-analise, criacao de analise e historico.
+- `routes/reports.py`: relatorio final consolidado.
 
 ## Frontend
-
-O frontend fica em `frontend/src`.
 
 Principais telas:
 
 - Dashboard
-- Nova análise
+- Nova analise
 - Busca de time
-- Dossiê tático
-- Formações
+- Dossie tatico
+- Formacoes com grafo visual
 - Elenco
-- Fontes e vídeos simulados
+- Fontes, videos e leitura visual
 - Plano de jogo
-- Relatório final
-- Histórico
-- Como a IA será integrada
+- Relatorio final
+- Historico
+- Inteligencia avancada
 
-## Dados
+## Dados e Evidencias
 
-Os dados táticos são mockados e ficam em `backend/mock_data`.
+Os dados locais ficam em `backend/data`. Eles sustentam a experiencia quando uma API externa nao esta disponivel e sao combinados com busca publica na pre-analise.
 
-O banco SQLite guarda somente o histórico criado na aplicação. A pré-análise tenta enriquecer o fluxo com busca pública online; se a rede falhar, o backend retorna fallback mockado e mantém o produto utilizável.
+A busca publica retorna fontes quando a rede permite. Quando a consulta externa falha, o backend retorna `local_fallback` com uma fonte publica sugerida e mantem o fluxo de analise ativo.
 
 ## Deploy
 
-O `Dockerfile` cria o build React e serve os arquivos estáticos pelo FastAPI. Assim, um único endpoint público abre a interface e responde às rotas `/api`.
+O `Dockerfile` cria o build React e serve os arquivos estaticos pelo FastAPI. Assim, um unico endpoint publico abre a interface e responde as rotas `/api`.
 
-## Evolução futura
+## Extensoes
 
-Em versões futuras, a arquitetura pode receber módulos especializados para:
+As proximas evolucoes naturais sao:
 
-- Grafos táticos: análise de redes de passe, conexões entre jogadores e zonas de influência.
-- Visão computacional: detecção de jogadores, bola, linhas, compactação e movimentações em vídeo.
-- Pesquisa operacional: otimização de formação, estratégia, tática, substituições e planos por cenário.
-- Busca online: enriquecimento de fontes públicas antes de salvar a análise.
-
-Esses módulos devem continuar separados da camada de interface e expor resultados por endpoints próprios, sempre com nível de confiança e rastreabilidade das evidências.
+- Upload de video e extracao real de tracking.
+- Integracao com APIs esportivas premium.
+- Otimizacao numerica para formacao, estrategia e substituicoes.
+- Relatorios exportados em PDF com evidencias anexadas.

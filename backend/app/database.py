@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-from .mock_store import find_team_by_name, get_team
+from .data_store import find_team_by_name, get_team
 
 
 DB_PATH = Path(__file__).resolve().parents[1] / "e3i_tactical.db"
@@ -84,7 +84,7 @@ def create_analysis(payload: dict) -> dict:
     if selected_team is None:
         raise HTTPException(
             status_code=422,
-            detail="Time nao encontrado na base validada. Gere uma pre-analise valida antes de salvar.",
+            detail="Time nao encontrado na base local. Gere uma pre-analise valida antes de salvar.",
         )
 
     created_at = datetime.now(timezone.utc).isoformat()

@@ -7,13 +7,13 @@ from pathlib import Path
 from fastapi import HTTPException
 
 
-MOCK_DATA_DIR = Path(__file__).resolve().parents[1] / "mock_data"
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 
 @lru_cache
 def load_json(name: str):
-    path = MOCK_DATA_DIR / name
-    with path.open("r", encoding="utf-8") as file:
+    path = DATA_DIR / name
+    with path.open("r", encoding="utf-8-sig") as file:
         return json.load(file)
 
 

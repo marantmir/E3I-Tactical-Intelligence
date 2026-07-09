@@ -23,7 +23,7 @@ const links = [
   { to: "/team/1/game-plan", label: "Plano", icon: ClipboardList },
   { to: "/team/1/report", label: "Relatório", icon: FileText },
   { to: "/history", label: "Histórico", icon: Archive },
-  { to: "/future-ai", label: "IA futura", icon: BrainCircuit }
+  { to: "/future-ai", label: "IA avancada", icon: BrainCircuit }
 ];
 
 export default function Sidebar() {

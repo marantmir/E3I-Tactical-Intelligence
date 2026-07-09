@@ -4,6 +4,10 @@ import { Link } from "react-router-dom";
 import ConfidenceBadge from "./ConfidenceBadge.jsx";
 
 export default function TeamCard({ team }) {
+  const isOnlineProfile = team.id === 0 || Boolean(team.online_search);
+  const target = isOnlineProfile ? `/new-analysis?team=${encodeURIComponent(team.name)}` : `/team/${team.id}`;
+  const actionLabel = isOnlineProfile ? "Gerar pre-analise" : "Abrir dossie";
+
   return (
     <article className="team-card">
       <div className="team-card-head">
@@ -19,11 +23,11 @@ export default function TeamCard({ team }) {
           <dd>{team.league}</dd>
         </div>
         <div>
-          <dt>Formação</dt>
+          <dt>Formacao</dt>
           <dd>{team.base_formation}</dd>
         </div>
         <div>
-          <dt>Técnico</dt>
+          <dt>Tecnico</dt>
           <dd>{team.coach}</dd>
         </div>
         <div>
@@ -35,8 +39,8 @@ export default function TeamCard({ team }) {
         <MapPin size={16} />
         {team.style}
       </p>
-      <Link className="button button-secondary" to={`/team/${team.id}`}>
-        Abrir dossiê
+      <Link className="button button-secondary" to={target}>
+        {actionLabel}
         <ArrowRight size={16} />
       </Link>
     </article>

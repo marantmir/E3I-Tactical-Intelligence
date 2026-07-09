@@ -8,7 +8,7 @@ import urllib.request
 USER_AGENT = "E3I-Tactical-Intelligence/0.1 academic prototype"
 
 
-def _fetch_json(url: str, timeout: int = 5) -> dict | list:
+def _fetch_json(url: str, timeout: int = 3) -> dict | list:
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return json.loads(response.read().decode("utf-8"))

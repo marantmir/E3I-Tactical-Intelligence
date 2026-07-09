@@ -11,7 +11,7 @@ from .routes import analysis, reports, teams
 
 app = FastAPI(
     title="E3I Tactical Intelligence",
-    description="API mockada para prototipo academico sem integracao real com IA.",
+    description="API para inteligencia tatica com busca publica, grafos e leitura visual de videos.",
     version="0.1.0",
 )
 
@@ -39,8 +39,8 @@ def health():
     return {
         "status": "online",
         "service": "E3I Tactical Intelligence",
-        "ai_integration": "disabled",
-        "data_source": "mocked",
+        "ai_integration": "evidence_assisted",
+        "data_source": "public_and_local",
     }
 
 

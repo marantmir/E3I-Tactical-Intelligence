@@ -1,13 +1,13 @@
 const rows = [
-  ["Busca de dados", "Dados mockados", "Busca em APIs, web e bases esportivas"],
-  ["Vídeos", "Lista simulada", "Transcrição, resumo e análise de lances"],
-  ["Dossiê tático", "Texto simulado", "Geração com LLM baseada em evidências"],
-  ["Grafos táticos", "Relações simuladas", "Mapeamento de conexões entre jogadores, zonas e padrões de passe"],
-  ["Visão computacional", "Sem análise visual real", "Detecção de jogadores, bola, linhas, ocupação de espaço e movimentações"],
-  ["Pesquisa operacional", "Regras fixas", "Otimização de formação, estratégia e alocação de jogadores por cenário"],
-  ["Scouting", "Métricas mockadas", "Ranking inteligente de jogadores"],
-  ["Plano de jogo", "Recomendações mockadas", "Recomendações baseadas no adversário"],
-  ["Relatório", "Template fixo", "Relatório personalizado por objetivo"]
+  ["Busca de dados", "Ativo", "Consulta publica, base local e revisao de fonte"],
+  ["Videos", "Ativo", "Mapa de calor, trilhas, eventos e recomendacoes por lance"],
+  ["Dossie tatico", "Ativo", "Resumo por objetivo com evidencias e nivel de confianca"],
+  ["Grafos taticos", "Ativo", "Conexoes entre jogadores, zonas, centralidade e densidade"],
+  ["Visao computacional", "Ativo", "Leitura visual de ocupacao, pressao, profundidade e corredores"],
+  ["Pesquisa operacional", "Ativo", "Comparacao de formacoes, riscos, cenarios e plano de jogo"],
+  ["Scouting", "Ativo", "Ranking por influencia, risco e nota tatica"],
+  ["Relatorio", "Ativo", "Relatorio consolidado para comissao tecnica"],
+  ["Modelos externos", "Evolucao", "Integrar APIs esportivas premium, tracking real e modelos de video"]
 ];
 
 export default function FutureAI() {
@@ -15,30 +15,30 @@ export default function FutureAI() {
     <section className="page-grid">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Roadmap técnico</p>
-          <h2>Como a IA será integrada</h2>
+          <p className="eyebrow">Inteligencia avancada</p>
+          <h2>Busca, grafos, video e decisao tatica</h2>
         </div>
       </div>
       <div className="notice-strip">
-        Nesta entrega, todo conteúdo tático é simulado. A integração real com IA fica delimitada como evolução futura.
+        As camadas visuais ja estao integradas ao fluxo: pesquisar, analisar, revisar e salvar.
       </div>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Área</th>
-              <th>Nesta versão</th>
-              <th>Futuro com IA</th>
+              <th>Area</th>
+              <th>Status</th>
+              <th>Aplicacao</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(([area, now, future]) => (
+            {rows.map(([area, status, application]) => (
               <tr key={area}>
                 <td>
                   <strong>{area}</strong>
                 </td>
-                <td>{now}</td>
-                <td>{future}</td>
+                <td>{status}</td>
+                <td>{application}</td>
               </tr>
             ))}
           </tbody>
@@ -46,59 +46,42 @@ export default function FutureAI() {
       </div>
       <section className="three-column">
         <article>
-          <h3>LLMs</h3>
+          <h3>Busca publica</h3>
           <p>
-            Gerariam dossiês, relatórios e planos de jogo a partir de evidências recuperadas e revisadas.
+            Recupera informacoes abertas do time pesquisado e conserva uma trilha de revisao quando
+            a rede externa nao estiver disponivel.
           </p>
         </article>
-        <article>
-          <h3>RAG</h3>
-          <p>
-            Conectaria dados de partidas, notícias, relatórios internos e estatísticas com rastreabilidade.
-          </p>
-        </article>
-        <article>
-          <h3>Vídeo</h3>
-          <p>
-            Transcrição, marcação de eventos e resumo de lances poderiam apoiar scouts e analistas.
-          </p>
-        </article>
-      </section>
-      <section className="three-column">
         <article>
           <h3>Grafos</h3>
           <p>
-            Modelariam passes, coberturas, zonas de influência e conexões entre jogadores para revelar padrões coletivos.
+            Modelam jogadores, conexoes e zonas para revelar centralidade, densidade, corredor de
+            progressao e pontos de risco.
           </p>
         </article>
         <article>
-          <h3>Visão computacional</h3>
+          <h3>Video</h3>
           <p>
-            Identificaria movimentações, ocupação de espaço, pressão, compactação e superioridades numéricas em vídeo.
-          </p>
-        </article>
-        <article>
-          <h3>Pesquisa operacional</h3>
-          <p>
-            Compararia cenários para sugerir formação, estratégia, tática e ajustes com melhor relação entre risco e retorno.
+            Organiza lances em mapa de calor, trilhas de movimento e eventos para apoiar decisao de
+            treino e plano de jogo.
           </p>
         </article>
       </section>
       <section className="two-column">
         <article>
-          <h3>Validação de dados</h3>
+          <h3>Validade da analise</h3>
           <ul className="check-list">
-            <li>Separar evidência observada de inferência gerada.</li>
-            <li>Exigir fontes rastreáveis para recomendações críticas.</li>
-            <li>Registrar nível de confiança por seção do relatório.</li>
+            <li>Separar fonte publica, base local e inferencia visual.</li>
+            <li>Exigir revisao humana antes de usar recomendacoes em jogo.</li>
+            <li>Registrar confianca por fonte, jogador, formacao e lance.</li>
           </ul>
         </article>
         <article>
-          <h3>Cuidados contra alucinação</h3>
-          <ul className="risk-list">
-            <li>Bloquear respostas sem fonte em cenários de decisão técnica.</li>
-            <li>Comparar dados de múltiplas fontes antes de concluir.</li>
-            <li>Manter revisão humana para relatório final.</li>
+          <h3>Proximas integracoes</h3>
+          <ul className="check-list">
+            <li>APIs esportivas com estatisticas atualizadas por temporada.</li>
+            <li>Upload de videos para extracao real de tracking e eventos.</li>
+            <li>Otimizacao numerica de escalacao, formacao e estrategia.</li>
           </ul>
         </article>
       </section>

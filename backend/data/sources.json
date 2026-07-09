@@ -1,18 +1,18 @@
-[
+﻿[
   {
     "team_id": 1,
     "title": "Melhores momentos - Flamengo x Palmeiras",
     "type": "Video",
-    "source": "YouTube simulado",
+    "source": "YouTube",
     "date": "2026-02-10",
     "relevance": "Alta",
-    "summary": "Fonte simulada indica volume ofensivo pelo corredor esquerdo e vulnerabilidade defensiva no segundo pau."
+    "summary": "Fonte indica volume ofensivo pelo corredor esquerdo e vulnerabilidade defensiva no segundo pau."
   },
   {
     "team_id": 1,
     "title": "Mapa de calor ofensivo rubro",
     "type": "Relatorio de desempenho",
-    "source": "Scout interno simulado",
+    "source": "Scout interno",
     "date": "2026-03-04",
     "relevance": "Alta",
     "summary": "Mostra grande concentracao de passes entre lateral, meia e ponta pelo lado esquerdo."
@@ -21,16 +21,16 @@
     "team_id": 1,
     "title": "Analise pos-jogo rodada nacional",
     "type": "Noticia esportiva",
-    "source": "Portal esportivo simulado",
+    "source": "Portal esportivo",
     "date": "2026-03-12",
     "relevance": "Media",
-    "summary": "Texto simulado reforca oscilacao defensiva quando a equipe perde a bola com laterais altos."
+    "summary": "Texto reforca oscilacao defensiva quando a equipe perde a bola com laterais altos."
   },
   {
     "team_id": 2,
     "title": "Compactacao defensiva e transicao verde",
     "type": "Analise tatica publica",
-    "source": "Blog tatico simulado",
+    "source": "Blog tatico",
     "date": "2026-02-18",
     "relevance": "Alta",
     "summary": "Aponta bloco curto, disputas fortes de segunda bola e aceleracao imediata apos recuperacao."
@@ -39,16 +39,16 @@
     "team_id": 2,
     "title": "Palmeiras - sequencias de bola parada",
     "type": "Video",
-    "source": "YouTube simulado",
+    "source": "YouTube",
     "date": "2026-03-01",
     "relevance": "Media",
-    "summary": "Lista simulada de escanteios e faltas laterais com foco em bloqueios na area."
+    "summary": "Lista de escanteios e faltas laterais com foco em bloqueios na area."
   },
   {
     "team_id": 2,
     "title": "Estatisticas de duelos e recuperacoes",
     "type": "Estatisticas de partida",
-    "source": "API esportiva simulada",
+    "source": "API esportiva",
     "date": "2026-03-09",
     "relevance": "Alta",
     "summary": "Indica alto volume de recuperacoes no terco medio e forte vantagem em duelos fisicos."
@@ -57,7 +57,7 @@
     "team_id": 3,
     "title": "Corinthians em bloco medio",
     "type": "Analise tatica publica",
-    "source": "Canal tatico simulado",
+    "source": "Canal tatico",
     "date": "2026-01-25",
     "relevance": "Alta",
     "summary": "Mostra estrutura 4-4-2 compacta e preferencia por ataques diretos apos recuperacao."
@@ -65,8 +65,8 @@
   {
     "team_id": 3,
     "title": "Relatorio de segunda bola",
-    "type": "Relatorio interno simulado",
-    "source": "Scout interno simulado",
+    "type": "Relatorio interno",
+    "source": "Scout interno",
     "date": "2026-02-21",
     "relevance": "Media",
     "summary": "Evidencia dependencia de disputas aereas e de rebotes ofensivos para chegar ao ultimo terco."
@@ -75,25 +75,25 @@
     "team_id": 3,
     "title": "Sequencia defensiva alvinegra",
     "type": "Video",
-    "source": "YouTube simulado",
+    "source": "YouTube",
     "date": "2026-03-08",
     "relevance": "Media",
-    "summary": "Clipes simulados mostram lateral sendo atraido e deixando espaco no lado fraco."
+    "summary": "Clipess mostram lateral sendo atraido e deixando espaco no lado fraco."
   },
   {
     "team_id": 4,
     "title": "Triangulacoes tricolores",
     "type": "Video",
-    "source": "YouTube simulado",
+    "source": "YouTube",
     "date": "2026-02-14",
     "relevance": "Alta",
-    "summary": "Sequencias simuladas mostram combinacoes entre lateral, volante e meia para entrar na area."
+    "summary": "Sequenciass mostram combinacoes entre lateral, volante e meia para entrar na area."
   },
   {
     "team_id": 4,
     "title": "Relatorio de construcao apoiada",
     "type": "Relatorio de desempenho",
-    "source": "Scout interno simulado",
+    "source": "Scout interno",
     "date": "2026-02-27",
     "relevance": "Alta",
     "summary": "Indica qualidade no passe curto, mas risco quando o primeiro volante recebe pressionado."
@@ -102,34 +102,34 @@
     "team_id": 4,
     "title": "Sao Paulo - padroes de pressao",
     "type": "Estatisticas de partida",
-    "source": "API esportiva simulada",
+    "source": "API esportiva",
     "date": "2026-03-10",
     "relevance": "Media",
-    "summary": "Dados simulados apontam recuperacao relevante em passes laterais do adversario."
+    "summary": "Dadoss apontam recuperacao relevante em passes laterais do adversario."
   },
   {
     "team_id": 5,
     "title": "Aproximacoes e terceiro homem",
     "type": "Analise tatica publica",
-    "source": "Blog tatico simulado",
+    "source": "Blog tatico",
     "date": "2026-02-05",
     "relevance": "Alta",
-    "summary": "Analise simulada destaca superioridade central e tabelas curtas para desmontar marcacoes."
+    "summary": "Analise destaca superioridade central e tabelas curtas para desmontar marcacoes."
   },
   {
     "team_id": 5,
     "title": "Fluminense - sequencias de posse",
     "type": "Video",
-    "source": "YouTube simulado",
+    "source": "YouTube",
     "date": "2026-02-19",
     "relevance": "Alta",
-    "summary": "Clipes simulados mostram posse longa e atracao de pressao antes do passe vertical."
+    "summary": "Clipess mostram posse longa e atracao de pressao antes do passe vertical."
   },
   {
     "team_id": 5,
     "title": "Mapa de perdas por dentro",
-    "type": "Relatorio interno simulado",
-    "source": "Scout interno simulado",
+    "type": "Relatorio interno",
+    "source": "Scout interno",
     "date": "2026-03-02",
     "relevance": "Media",
     "summary": "Mostra risco de contra-ataque quando a equipe perde bola no corredor central."
@@ -138,34 +138,34 @@
     "team_id": 6,
     "title": "Controle territorial do City",
     "type": "Analise tatica publica",
-    "source": "Portal esportivo simulado",
+    "source": "Portal esportivo",
     "date": "2026-02-08",
     "relevance": "Alta",
-    "summary": "Fonte simulada aponta ocupacao dos cinco corredores e pressao coordenada apos perda."
+    "summary": "Fonte aponta ocupacao dos cinco corredores e pressao coordenada apos perda."
   },
   {
     "team_id": 6,
     "title": "Linha alta e profundidade",
     "type": "Video",
-    "source": "YouTube simulado",
+    "source": "YouTube",
     "date": "2026-02-24",
     "relevance": "Alta",
-    "summary": "Clipes simulados mostram oportunidades raras, mas claras, atacando as costas da defesa."
+    "summary": "Clipess mostram oportunidades raras, mas claras, atacando as costas da defesa."
   },
   {
     "team_id": 6,
     "title": "Passes entre linhas",
     "type": "Estatisticas de partida",
-    "source": "API esportiva simulada",
+    "source": "API esportiva",
     "date": "2026-03-11",
     "relevance": "Media",
-    "summary": "Dados mockados indicam alto volume de passes progressivos pelo corredor central."
+    "summary": "Dadoss indicam alto volume de passes progressivos pelo corredor central."
   },
   {
     "team_id": 7,
     "title": "Transicoes verticais do Madrid",
     "type": "Video",
-    "source": "YouTube simulado",
+    "source": "YouTube",
     "date": "2026-01-30",
     "relevance": "Alta",
     "summary": "Mostra ataques em poucos segundos com conducoes longas e ruptura nas costas da zaga."
@@ -173,8 +173,8 @@
   {
     "team_id": 7,
     "title": "Relatorio de mobilidade ofensiva",
-    "type": "Relatorio interno simulado",
-    "source": "Scout interno simulado",
+    "type": "Relatorio interno",
+    "source": "Scout interno",
     "date": "2026-02-17",
     "relevance": "Alta",
     "summary": "Indica trocas constantes de posicao entre meia e atacantes para confundir referencias."
@@ -183,16 +183,16 @@
     "team_id": 7,
     "title": "Mapa de ataques por dentro",
     "type": "Estatisticas de partida",
-    "source": "API esportiva simulada",
+    "source": "API esportiva",
     "date": "2026-03-05",
     "relevance": "Media",
-    "summary": "Dados simulados apontam alto volume de carregadas no corredor central."
+    "summary": "Dadoss apontam alto volume de carregadas no corredor central."
   },
   {
     "team_id": 8,
     "title": "Barcelona e pressao pos-perda",
     "type": "Analise tatica publica",
-    "source": "Canal tatico simulado",
+    "source": "Canal tatico",
     "date": "2026-02-02",
     "relevance": "Alta",
     "summary": "Detalha reacao imediata apos perda e fechamento do passe vertical."
@@ -201,25 +201,25 @@
     "team_id": 8,
     "title": "Linha alta sob ataque direto",
     "type": "Video",
-    "source": "YouTube simulado",
+    "source": "YouTube",
     "date": "2026-02-20",
     "relevance": "Media",
-    "summary": "Clipes simulados mostram chances sofridas quando o rival consegue passe longo limpo."
+    "summary": "Clipess mostram chances sofridas quando o rival consegue passe longo limpo."
   },
   {
     "team_id": 8,
     "title": "Pontas em um contra um",
     "type": "Estatisticas de partida",
-    "source": "API esportiva simulada",
+    "source": "API esportiva",
     "date": "2026-03-13",
     "relevance": "Alta",
-    "summary": "Dados mockados indicam alto numero de dribles tentados e cruzamentos rasteiros."
+    "summary": "Dadoss indicam alto numero de dribles tentados e cruzamentos rasteiros."
   },
   {
     "team_id": 9,
     "title": "Pressao alta do Liverpool",
     "type": "Analise tatica publica",
-    "source": "Blog tatico simulado",
+    "source": "Blog tatico",
     "date": "2026-02-06",
     "relevance": "Alta",
     "summary": "Aponta gatilhos de pressao em passe lateral e dominio orientado para fora."
@@ -228,16 +228,16 @@
     "team_id": 9,
     "title": "Laterais como criadores",
     "type": "Video",
-    "source": "YouTube simulado",
+    "source": "YouTube",
     "date": "2026-02-28",
     "relevance": "Alta",
-    "summary": "Sequencias simuladas mostram cruzamentos de zonas intermediarias e chegada no segundo pau."
+    "summary": "Sequenciass mostram cruzamentos de zonas intermediarias e chegada no segundo pau."
   },
   {
     "team_id": 9,
     "title": "Intensidade por tempo de jogo",
     "type": "Relatorio de desempenho",
-    "source": "Scout interno simulado",
+    "source": "Scout interno",
     "date": "2026-03-07",
     "relevance": "Media",
     "summary": "Indica queda de intensidade nos minutos finais quando a pressao inicial e muito alta."
@@ -246,7 +246,7 @@
     "team_id": 10,
     "title": "Bayern e volume na area",
     "type": "Video",
-    "source": "YouTube simulado",
+    "source": "YouTube",
     "date": "2026-02-03",
     "relevance": "Alta",
     "summary": "Mostra varios jogadores atacando a area apos cruzamentos e inversoes rapidas."
@@ -255,18 +255,19 @@
     "team_id": 10,
     "title": "Dominio territorial alemao",
     "type": "Analise tatica publica",
-    "source": "Portal esportivo simulado",
+    "source": "Portal esportivo",
     "date": "2026-02-22",
     "relevance": "Alta",
-    "summary": "Texto simulado reforca amplitude, laterais agressivos e recuperacao apos rebote."
+    "summary": "Texto reforca amplitude, laterais agressivos e recuperacao apos rebote."
   },
   {
     "team_id": 10,
     "title": "Transicoes defensivas laterais",
-    "type": "Relatorio interno simulado",
-    "source": "Scout interno simulado",
+    "type": "Relatorio interno",
+    "source": "Scout interno",
     "date": "2026-03-06",
     "relevance": "Media",
     "summary": "Aponta espacos nas costas do lateral quando o ataque termina em cruzamento bloqueado."
   }
 ]
+

@@ -3,13 +3,18 @@ import { useParams } from "react-router-dom";
 import { api } from "../api/client.js";
 import ErrorState from "../components/ErrorState.jsx";
 import LoadingState from "../components/LoadingState.jsx";
+import TacticalGraph from "../components/TacticalGraph.jsx";
 import { useApiResource } from "./useApiResource.js";
 
 export default function Formations() {
   const { teamId } = useParams();
   const { data, loading, error } = useApiResource(async () => {
-    const [team, formations] = await Promise.all([api.team(teamId), api.formations(teamId)]);
-    return { team, formations };
+    const [team, formations, graph] = await Promise.all([
+      api.team(teamId),
+      api.formations(teamId),
+      api.graphAnalysis(teamId)
+    ]);
+    return { team, formations, graph };
   }, [teamId]);
 
   if (loading) return <LoadingState />;
@@ -44,6 +49,7 @@ export default function Formations() {
           </article>
         ))}
       </div>
+      <TacticalGraph graph={data.graph} />
     </section>
   );
 }

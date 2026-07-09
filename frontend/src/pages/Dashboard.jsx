@@ -1,4 +1,4 @@
-import { ArrowRight, ClipboardList, FileText, Search, ShieldCheck, Video, UsersRound } from "lucide-react";
+import { ArrowRight, ClipboardList, Network, Search, ShieldCheck, Video, UsersRound } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
@@ -32,11 +32,11 @@ export default function Dashboard() {
     <div className="page-grid">
       <section className="intro-panel">
         <div>
-          <p className="eyebrow">Inteligência tática simulada</p>
-          <h2>Central para dossiês, elenco, fontes e plano de jogo</h2>
+          <p className="eyebrow">Inteligencia tatica integrada</p>
+          <h2>Central para fontes atuais, grafos, videos e plano de jogo</h2>
           <p>
-            Plataforma web para scouts, treinadores e analistas organizarem dados mockados de
-            adversários em uma visão estruturada e acionável.
+            Plataforma para scouts, treinadores e analistas cruzarem busca publica, base local,
+            conexoes taticas e leitura visual de movimentos em uma visao acionavel.
           </p>
         </div>
         <form className="quick-search" onSubmit={submitSearch}>
@@ -51,13 +51,15 @@ export default function Dashboard() {
             <ArrowRight size={18} />
           </button>
         </form>
-        <div className="notice-strip">Protótipo com dados simulados - sem integração real com IA nesta versão.</div>
+        <div className="notice-strip">
+          A nova analise consulta fontes publicas, gera pre-analise e libera o salvamento apos revisao.
+        </div>
       </section>
 
-      <section className="metric-grid" aria-label="Indicadores simulados">
-        <MetricCard icon={ShieldCheck} label="Times cadastrados" value="10" tone="green" />
-        <MetricCard icon={FileText} label="Relatórios simulados" value="24" tone="amber" />
-        <MetricCard icon={Video} label="Vídeos mapeados" value="56" tone="red" />
+      <section className="metric-grid" aria-label="Indicadores taticos">
+        <MetricCard icon={ShieldCheck} label="Times monitorados" value="10" tone="green" />
+        <MetricCard icon={Network} label="Grafos taticos" value="10" tone="amber" />
+        <MetricCard icon={Video} label="Videos lidos" value="56" tone="red" />
         <MetricCard icon={UsersRound} label="Jogadores analisados" value="184" tone="blue" />
         <MetricCard icon={ClipboardList} label="Planos de jogo" value="12" tone="purple" />
       </section>
@@ -66,10 +68,10 @@ export default function Dashboard() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Times em destaque</p>
-            <h2>Análises disponíveis</h2>
+            <h2>Analises disponiveis</h2>
           </div>
           <Link className="button button-primary" to="/new-analysis">
-            Nova análise
+            Nova analise
             <ArrowRight size={16} />
           </Link>
         </div>
@@ -83,11 +85,11 @@ export default function Dashboard() {
       <section>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Histórico</p>
-            <h2>Últimas análises realizadas</h2>
+            <p className="eyebrow">Historico</p>
+            <h2>Ultimas analises realizadas</h2>
           </div>
           <Link className="button button-secondary" to="/history">
-            Ver histórico
+            Ver historico
             <ArrowRight size={16} />
           </Link>
         </div>
@@ -98,8 +100,8 @@ export default function Dashboard() {
                 <th>Time</th>
                 <th>Data</th>
                 <th>Objetivo</th>
-                <th>Formação</th>
-                <th>Confiança</th>
+                <th>Formacao</th>
+                <th>Confianca</th>
                 <th>Status</th>
               </tr>
             </thead>

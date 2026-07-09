@@ -16,6 +16,7 @@ export default function TeamSearch() {
 
   useEffect(() => {
     setLoading(true);
+    setError("");
     api
       .searchTeams(query)
       .then(setResults)
@@ -30,7 +31,7 @@ export default function TeamSearch() {
     <section>
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Busca mockada</p>
+          <p className="eyebrow">Busca local e publica</p>
           <h2>Buscar time</h2>
         </div>
       </div>
@@ -45,13 +46,13 @@ export default function TeamSearch() {
       </div>
       <div className="card-grid three">
         {results.map((team) => (
-          <TeamCard key={team.id} team={team} />
+          <TeamCard key={`${team.id}-${team.name}`} team={team} />
         ))}
       </div>
       {results.length === 0 ? (
         <div className="empty-state">
           <h2>Nenhum time encontrado</h2>
-          <p>A base mockada contém Flamengo, Palmeiras, Corinthians, São Paulo e clubes europeus.</p>
+          <p>Digite um nome para consultar a base local e abrir uma pre-analise com busca publica.</p>
         </div>
       ) : null}
     </section>
