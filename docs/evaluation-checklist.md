@@ -31,8 +31,12 @@
 - [x] README completo.
 - [x] Pasta `docs`.
 - [x] Arquivos de prompts e log do agente.
+- [x] Repositório Git local inicializado em `main`.
+- [x] Commit inicial criado.
+- [x] Remote `origin` configurado para o repositório esperado.
 - [ ] Criar repositório público ou compartilhado.
-- [ ] Fazer commits progressivos.
+- [ ] Fazer push para o GitHub após reautenticar `gh`.
+- [ ] Fazer commits progressivos após novas iterações.
 - [ ] Inserir link final do repositório na entrega.
 
 ## README - 8 pontos

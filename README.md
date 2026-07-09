@@ -119,6 +119,12 @@ npm run dev
 
 Para produção, o `Dockerfile` builda o frontend e serve o build pelo FastAPI. A rota `/` abre a interface e as rotas `/api` respondem pelo backend.
 
+O passo a passo de publicação está em:
+
+```text
+docs/deploy.md
+```
+
 ## 10. Endpoint Público
 
 Endpoint da aplicação:
