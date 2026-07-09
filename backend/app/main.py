@@ -48,6 +48,14 @@ if FRONTEND_DIST.exists():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
 
 
+@app.get("/logo-e3i.png", include_in_schema=False)
+def serve_logo():
+    logo_file = FRONTEND_DIST / "logo-e3i.png"
+    if logo_file.exists():
+        return FileResponse(logo_file)
+    return {"message": "Logo nao encontrado no build do frontend."}
+
+
 @app.get("/{full_path:path}", include_in_schema=False)
 def serve_frontend(full_path: str):
     index_file = FRONTEND_DIST / "index.html"
