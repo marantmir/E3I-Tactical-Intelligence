@@ -13,21 +13,27 @@ export default function FinalReport() {
   const [report, setReport] = useState(null);
   const [message, setMessage] = useState("");
   const [loadingReport, setLoadingReport] = useState(false);
-  const { data: team, loading, error } = useApiResource(() => api.team(teamId), [teamId]);
+  const { data, loading, error } = useApiResource(() => api.teamWorkspace(teamId), [teamId]);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
+
+  const { team } = data;
 
   async function generateReport() {
     setLoadingReport(true);
     setMessage("");
     try {
-      const generated = await api.generateReport({
-        team_id: Number(teamId),
-        objective: "Relatorio para comissao tecnica",
-        user_profile: "Analista de desempenho"
-      });
-      setReport(generated);
+      if (team.local_id) {
+        const generated = await api.generateReport({
+          team_id: Number(team.local_id),
+          objective: "Relatorio para comissao tecnica",
+          user_profile: "Analista de desempenho"
+        });
+        setReport(generated);
+      } else {
+        setReport(buildWorkspaceReport(data));
+      }
     } catch (err) {
       setMessage(err.message || "Nao foi possivel gerar o relatorio.");
     } finally {
@@ -38,7 +44,7 @@ export default function FinalReport() {
   async function saveAnalysis() {
     try {
       await api.createAnalysis({
-        team_id: Number(teamId),
+        team_id: team.local_id || undefined,
         team_name: team.name,
         competition: team.league,
         season: "2026",
@@ -81,4 +87,33 @@ export default function FinalReport() {
       <ReportPreview report={report} />
     </section>
   );
+}
+
+function buildWorkspaceReport(workspace) {
+  const keyPlayers = workspace.players.length
+    ? workspace.players.slice(0, 3)
+    : [
+        {
+          name: "A identificar por tracking",
+          position: "CV",
+          tactical_score: workspace.collection.saved_source_count || 0
+        }
+      ];
+
+  return {
+    team: workspace.team,
+    objective: "Relatorio para comissao tecnica",
+    user_profile: "Analista de desempenho",
+    executive_summary: `${workspace.team.name}: relatorio preliminar montado com fontes taticas salvas, grafo de fontes e plano de coleta visual.`,
+    opponent_profile: workspace.dossier.summary,
+    probable_formation: workspace.team.base_formation,
+    key_players: keyPlayers,
+    strengths: workspace.dossier.strengths,
+    weaknesses: workspace.dossier.weaknesses,
+    recommended_strategy: workspace.plan.where_to_attack,
+    training_suggestions: workspace.plan.training_suggestions,
+    evidence_sources: workspace.sources.combined.slice(0, 4),
+    confidence: workspace.dossier.confidence_level,
+    pdf_message: "Exportacao PDF preparada para consolidar evidencias e recomendacoes."
+  };
 }

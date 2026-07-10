@@ -49,7 +49,10 @@ export default function History() {
                 </td>
                 <td>{item.status}</td>
                 <td>
-                  <Link className="table-action" to={`/team/${item.team_id}`}>
+                  <Link
+                    className="table-action"
+                    to={item.team_id ? `/team/${item.team_id}` : `/new-analysis?team=${encodeURIComponent(item.team_name)}`}
+                  >
                     <RotateCcw size={15} />
                     Reabrir
                   </Link>

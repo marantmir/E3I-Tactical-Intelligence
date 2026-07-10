@@ -15,10 +15,7 @@ export default function SquadAnalysis() {
     risk: "Todos",
     status: "Todos"
   });
-  const { data, loading, error } = useApiResource(async () => {
-    const [team, players] = await Promise.all([api.team(teamId), api.players(teamId)]);
-    return { team, players };
-  }, [teamId]);
+  const { data, loading, error } = useApiResource(() => api.teamWorkspace(teamId), [teamId]);
 
   const filteredPlayers = useMemo(() => {
     if (!data?.players) return [];
@@ -52,55 +49,80 @@ export default function SquadAnalysis() {
       <div className="section-heading">
         <div>
           <p className="eyebrow">{data.team.name}</p>
-          <h2>Análise de elenco</h2>
+          <h2>Elenco e funcoes observaveis</h2>
         </div>
       </div>
-      <div className="highlight-grid">
-        {data.players.slice(0, 5).map((player) => (
-          <article className="highlight-card" key={player.name}>
-            <span>{player.highlight}</span>
-            <strong>{player.name}</strong>
+
+      {data.players.length ? (
+        <>
+          <div className="highlight-grid">
+            {data.players.slice(0, 5).map((player) => (
+              <article className="highlight-card" key={player.name}>
+                <span>{player.highlight}</span>
+                <strong>{player.name}</strong>
+                <p>
+                  {player.position} - influencia {player.influence} - risco {player.risk_level}
+                </p>
+              </article>
+            ))}
+          </div>
+          <div className="filter-bar">
+            <label>
+              Posicao
+              <select name="position" value={filters.position} onChange={updateFilter}>
+                {options.position.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Influencia
+              <select name="influence" value={filters.influence} onChange={updateFilter}>
+                {options.influence.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Risco
+              <select name="risk" value={filters.risk} onChange={updateFilter}>
+                {options.risk.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Status
+              <select name="status" value={filters.status} onChange={updateFilter}>
+                {options.status.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <PlayerTable players={filteredPlayers} />
+        </>
+      ) : (
+        <section className="two-column">
+          <article>
+            <h3>Elenco ainda nao coletado</h3>
             <p>
-              {player.position} · influência {player.influence} · risco {player.risk_level}
+              Este time vem de fonte tatica salva. Para preencher jogadores e funcoes, use videos com boa visibilidade
+              e salve as evidencias geradas pela visao computacional.
             </p>
           </article>
-        ))}
-      </div>
-      <div className="filter-bar">
-        <label>
-          Posição
-          <select name="position" value={filters.position} onChange={updateFilter}>
-            {options.position.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Influência
-          <select name="influence" value={filters.influence} onChange={updateFilter}>
-            {options.influence.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Risco
-          <select name="risk" value={filters.risk} onChange={updateFilter}>
-            {options.risk.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Status
-          <select name="status" value={filters.status} onChange={updateFilter}>
-            {options.status.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <PlayerTable players={filteredPlayers} />
+          <article>
+            <h3>Proximos passos</h3>
+            <ul className="check-list">
+              {data.collection.to_collect.map((item) => (
+                <li key={item.stage}>
+                  <strong>{item.stage}:</strong> {item.action}
+                </li>
+              ))}
+            </ul>
+          </article>
+        </section>
+      )}
     </section>
   );
 }

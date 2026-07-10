@@ -88,7 +88,7 @@ export default function NewAnalysis() {
     try {
       const record = await api.createAnalysis(buildPayload());
       setMessage(`Análise salva para ${record.team_name}.`);
-      navigate(`/team/${record.team_id}`);
+      navigate(record.team_id ? `/team/${record.team_id}` : "/history");
     } catch (err) {
       setMessage(err.message || "Não foi possível salvar a análise.");
     } finally {
@@ -159,6 +159,7 @@ export default function NewAnalysis() {
 function PreAnalysisPreview({ preview }) {
   const online = preview.online_search;
   const analysis = preview.pre_analysis;
+  const llmPreAnalysis = preview.llm_pre_analysis;
   const onlineStatus = formatOnlineStatus(online.status);
 
   return (
@@ -177,6 +178,27 @@ function PreAnalysisPreview({ preview }) {
         <h3>Resumo preliminar</h3>
         <p>{analysis.summary}</p>
       </article>
+
+      {llmPreAnalysis ? (
+        <article className="info-panel ai-insight-panel">
+          <h3>Apoio LLM para a pre-analise</h3>
+          <p>{llmPreAnalysis.summary}</p>
+          {llmPreAnalysis.questions?.length > 0 ? (
+            <ul className="check-list">
+              {llmPreAnalysis.questions.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : null}
+          {llmPreAnalysis.next_actions?.length > 0 ? (
+            <ul className="check-list">
+              {llmPreAnalysis.next_actions.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : null}
+        </article>
+      ) : null}
 
       <div className="online-search-panel">
         <div>
@@ -254,6 +276,9 @@ function PreAnalysisPreview({ preview }) {
 function formatOnlineStatus(status) {
   const statusMap = {
     available: { label: "Online", className: "badge badge-high" },
+    partial: { label: "Parcial", className: "badge badge-medium" },
+    guided_fallback: { label: "Busca guiada", className: "badge badge-medium" },
+    llm_enriched: { label: "LLM", className: "badge badge-high" },
     empty: { label: "Sem resultado", className: "badge badge-medium" },
     local_fallback: { label: "Modo local", className: "badge badge-medium" }
   };

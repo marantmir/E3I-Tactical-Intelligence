@@ -3,4 +3,13 @@ services:
     name: e3i-tactical-intelligence
     env: docker
     plan: free
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
     healthCheckPath: /api/health
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+      - key: E3I_LLM_TIMEOUT_SECONDS
+        value: "18"

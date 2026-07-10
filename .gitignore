@@ -10,4 +10,6 @@ dist/
 .env.local
 .DS_Store
 backend/e3i_tactical.db
+backend/media/
+backend/data/llm_config.json
 work/

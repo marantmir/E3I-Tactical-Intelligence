@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .database import init_db
-from .routes import analysis, reports, teams
+from .routes import analysis, llm, reports, teams
 
 
 app = FastAPI(
@@ -25,8 +25,12 @@ app.add_middleware(
 app.include_router(teams.router)
 app.include_router(analysis.router)
 app.include_router(reports.router)
+app.include_router(llm.router)
 
 FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+MEDIA_DIR = Path(__file__).resolve().parents[1] / "media"
+MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 
 
 @app.on_event("startup")

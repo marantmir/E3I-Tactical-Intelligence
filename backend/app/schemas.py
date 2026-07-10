@@ -10,6 +10,18 @@ class AnalysisCreate(BaseModel):
     user_profile: str = Field(min_length=1)
 
 
+class OnlineTeamProfileSave(BaseModel):
+    team_name: str = Field(min_length=1)
+    country: str | None = None
+    league: str | None = None
+    coach: str | None = None
+    base_formation: str | None = None
+    style: str | None = None
+    confidence: str | None = None
+    status: str | None = None
+    online_search: dict = Field(default_factory=dict)
+
+
 class ReportCreate(BaseModel):
     team_id: int
     objective: str = Field(default="Relatorio para comissao tecnica")

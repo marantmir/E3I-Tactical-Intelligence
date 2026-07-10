@@ -1,6 +1,20 @@
 import { ShieldCheck } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+
+import { useTeamSelection } from "../context/TeamSelectionContext.jsx";
 
 export default function Header() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { loading, options, selectedRef, setSelectedRef } = useTeamSelection();
+
+  function changeTeam(event) {
+    const nextRef = event.target.value;
+    setSelectedRef(nextRef);
+    const match = location.pathname.match(/^\/team\/[^/]+(\/.*)?$/);
+    navigate(match ? `/team/${nextRef}${match[1] || ""}` : `/team/${nextRef}/sources`);
+  }
+
   return (
     <header className="topbar">
       <div className="topbar-brand">
@@ -14,7 +28,16 @@ export default function Header() {
       </div>
       <div className="simulation-banner">
         <ShieldCheck size={18} />
-        <span>Busca publica, grafos e leitura visual integrados</span>
+        <label className="team-context-select">
+          <span>Time ativo</span>
+          <select value={selectedRef} onChange={changeTeam} disabled={loading || options.length === 0}>
+            {options.map((option) => (
+              <option key={option.ref} value={option.ref}>
+                {option.name} - {option.kind === "local" ? "base local" : "fonte salva"}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
     </header>
   );

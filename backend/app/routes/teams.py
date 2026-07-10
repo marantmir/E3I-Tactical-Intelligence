@@ -1,5 +1,15 @@
-from fastapi import APIRouter, Query
+import uuid
+from pathlib import Path
 
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+
+from ..database import (
+    get_online_profile_by_id,
+    get_online_profile_by_name,
+    list_history,
+    list_online_profiles,
+    save_online_profile,
+)
 from ..graph_analysis import build_tactical_graph
 from ..data_store import (
     formations,
@@ -13,11 +23,18 @@ from ..data_store import (
     tactical_analysis,
     teams,
 )
+from ..llm_assistant import analyze_video_tactics, identify_players_from_tracks
 from ..online_search import search_public_team_info
-from ..video_vision import build_video_vision
+from ..schemas import OnlineTeamProfileSave
+from ..video_vision import process_video
 
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
+
+MEDIA_DIR = Path(__file__).resolve().parents[2] / "media"
+MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_VIDEO_TYPES = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
+MAX_UPLOAD_BYTES = 300 * 1024 * 1024  # 300MB
 
 
 @router.get("")
@@ -29,23 +46,117 @@ def list_teams():
 @router.get("/search")
 def search(query: str = Query(default="")):
     local_results = search_teams(query)
+    saved_profiles = list_online_profiles(query) if query.strip() else []
     if query.strip() and not local_results:
         online = search_public_team_info(query)
-        return [
-            {
-                "id": 0,
-                "name": query.strip(),
-                "country": "A confirmar",
-                "league": "Fonte publica",
-                "coach": "A confirmar em fonte publica",
-                "base_formation": "A definir",
-                "style": online["summary"],
-                "confidence": "Medio",
-                "status": "Perfil online para pre-analise",
-                "online_search": online,
-            }
-        ]
-    return local_results
+        profile = _online_profile_from_search(query, online)
+        saved = get_online_profile_by_name(query)
+        if saved:
+            profile = saved
+        return [profile]
+
+    local_names = {team["name"].casefold() for team in local_results}
+    saved_without_duplicates = [
+        profile for profile in saved_profiles if profile["name"].casefold() not in local_names
+    ]
+    return local_results + saved_without_duplicates
+
+
+@router.get("/online-search")
+def search_online_by_name(name: str = Query(min_length=1)):
+    online = search_public_team_info(name)
+    saved = get_online_profile_by_name(name)
+    profile = saved or _online_profile_from_search(name, online)
+    return {
+        "query": name.strip(),
+        "saved": saved is not None,
+        "profile": profile,
+        "online_search": online,
+    }
+
+
+@router.get("/online-profiles")
+def saved_online_profiles(query: str = Query(default="")):
+    return list_online_profiles(query)
+
+
+@router.post("/online-profiles", status_code=201)
+def save_online_team_profile(payload: OnlineTeamProfileSave):
+    online = payload.online_search or search_public_team_info(payload.team_name)
+    return save_online_profile(
+        {
+            "team_name": payload.team_name,
+            "country": payload.country,
+            "league": payload.league,
+            "coach": payload.coach,
+            "base_formation": payload.base_formation,
+            "style": payload.style,
+            "confidence": payload.confidence,
+            "status": payload.status,
+            "online_search": online,
+        }
+    )
+
+
+@router.get("/options")
+def team_options():
+    local_options = [
+        {
+            "ref": str(team["id"]),
+            "id": team["id"],
+            "name": team["name"],
+            "league": team["league"],
+            "kind": "local",
+            "status": team["status"],
+            "confidence": team["confidence"],
+            "source_count": len(get_team_records(sources(), team["id"])),
+        }
+        for team in teams()
+    ]
+    saved_options = [
+        {
+            "ref": f"online-{profile['online_profile_id']}",
+            "id": profile["id"],
+            "name": profile["name"],
+            "league": profile["league"],
+            "kind": "saved",
+            "status": profile["status"],
+            "confidence": profile["confidence"],
+            "source_count": profile["source_count"],
+        }
+        for profile in list_online_profiles()
+    ]
+    return {
+        "default_ref": local_options[0]["ref"] if local_options else None,
+        "options": local_options + saved_options,
+    }
+
+
+@router.get("/workspace/{team_ref}")
+def team_workspace(team_ref: str):
+    resolved = _resolve_team_reference(team_ref)
+    if resolved["kind"] == "local":
+        return _local_team_workspace(resolved["team"])
+    return _online_team_workspace(resolved["profile"])
+
+
+@router.post("/video-vision/upload")
+async def team_video_vision_upload_by_name(
+    file: UploadFile = File(...),
+    jersey_refs: list[UploadFile] | None = File(default=None),
+    team_name: str = Query(min_length=1),
+    max_frames: int = Query(default=600, ge=60, le=3000),
+    sample_every: int = Query(default=2, ge=1, le=30),
+    team_filter: str = Query(default="auto"),
+):
+    return await _process_uploaded_video(
+        file=file,
+        team_name=team_name,
+        max_frames=max_frames,
+        sample_every=sample_every,
+        team_filter=team_filter,
+        jersey_refs=jersey_refs,
+    )
 
 
 @router.get("/{team_id}")
@@ -79,10 +190,93 @@ def team_graph_analysis(team_id: int):
     return build_tactical_graph(team, get_team_records(players(), team_id), get_team_records(formations(), team_id))
 
 
-@router.get("/{team_id}/video-vision")
-def team_video_vision(team_id: int):
+@router.post("/{team_id}/video-vision/upload")
+async def team_video_vision_upload(
+    team_id: int,
+    file: UploadFile = File(...),
+    jersey_refs: list[UploadFile] | None = File(default=None),
+    max_frames: int = Query(default=600, ge=60, le=3000),
+    sample_every: int = Query(default=2, ge=1, le=30),
+    team_filter: str = Query(default="auto"),
+):
+    """Recebe um video real do jogo, processa com visao computacional
+    (OpenCV: deteccao de movimento + tracking) e devolve trilhas, heatmap,
+    grafo de proximidade real e a URL do video anotado para reproducao."""
     team = get_team(team_id)
-    return build_video_vision(team, get_team_records(sources(), team_id))
+    return await _process_uploaded_video(
+        file=file,
+        team_name=team["name"],
+        max_frames=max_frames,
+        sample_every=sample_every,
+        team_filter=team_filter,
+        jersey_refs=jersey_refs,
+    )
+
+
+async def _process_uploaded_video(
+    *,
+    file: UploadFile,
+    team_name: str,
+    max_frames: int,
+    sample_every: int,
+    team_filter: str,
+    jersey_refs: list[UploadFile] | None,
+):
+    extension = Path(file.filename or "").suffix.lower()
+    if extension not in ALLOWED_VIDEO_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Formato nao suportado ({extension}). Use: {', '.join(sorted(ALLOWED_VIDEO_TYPES))}.",
+        )
+
+    upload_name = f"upload_{uuid.uuid4().hex}{extension}"
+    upload_path = MEDIA_DIR / upload_name
+
+    size = 0
+    with upload_path.open("wb") as buffer:
+        while chunk := await file.read(1024 * 1024):
+            size += len(chunk)
+            if size > MAX_UPLOAD_BYTES:
+                buffer.close()
+                upload_path.unlink(missing_ok=True)
+                raise HTTPException(status_code=413, detail="Video excede o limite de 300MB.")
+            buffer.write(chunk)
+
+    try:
+        jersey_references = await _read_jersey_references(jersey_refs or [])
+        result = process_video(
+            str(upload_path),
+            max_frames=max_frames,
+            sample_every=sample_every,
+            team_filter=team_filter,
+            jersey_references=jersey_references,
+        )
+    except ValueError as error:
+        upload_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    finally:
+        upload_path.unlink(missing_ok=True)
+
+    result["team"] = team_name
+    result["annotated_video_url"] = f"/media/{result['annotated_video_file']}"
+    result["llm_analysis"] = analyze_video_tactics(team_name, result)
+    result["llm_identity"] = identify_players_from_tracks(team_name, result)
+    return result
+
+
+async def _read_jersey_references(jersey_refs: list[UploadFile]) -> list[dict]:
+    references = []
+    for upload in jersey_refs[:6]:
+        content_type = upload.content_type or ""
+        suffix = Path(upload.filename or "").suffix.lower()
+        if content_type and not content_type.startswith("image/"):
+            continue
+        if suffix and suffix not in {".png", ".jpg", ".jpeg", ".webp", ".bmp"}:
+            continue
+        content = await upload.read()
+        if content:
+            references.append({"filename": upload.filename or "camisa", "content": content})
+    return references
 
 
 @router.get("/{team_id}/public-intelligence")
@@ -94,3 +288,266 @@ def team_public_intelligence(team_id: int):
 @router.get("/{team_id}/game-plan")
 def team_game_plan(team_id: int):
     return get_single_team_record(game_plans(), team_id, "Plano de jogo")
+
+
+def _online_profile_from_search(team_name: str, online: dict) -> dict:
+    confidence = "Medio" if online.get("status") == "available" else "Baixo"
+    return {
+        "id": 0,
+        "profile_type": "online",
+        "name": team_name.strip(),
+        "country": "Nao aplicado ao escopo visual",
+        "league": "Fontes taticas e videos",
+        "coach": "Nao coletado",
+        "base_formation": "Detectar pelo video",
+        "style": online.get("summary") or "Fontes taticas encontradas para revisao visual.",
+        "confidence": confidence,
+        "status": "Perfil tatico para pre-analise visual",
+        "source_count": len(online.get("sources") or []),
+        "online_search": online,
+    }
+
+
+def _resolve_team_reference(team_ref: str) -> dict:
+    cleaned = str(team_ref).strip()
+    if cleaned.isdigit():
+        return {"kind": "local", "team": get_team(int(cleaned))}
+    if cleaned.startswith("online-"):
+        profile_id = cleaned.removeprefix("online-")
+        if profile_id.isdigit():
+            profile = get_online_profile_by_id(int(profile_id))
+            if profile:
+                return {"kind": "online", "profile": profile}
+    profile = get_online_profile_by_name(cleaned)
+    if profile:
+        return {"kind": "online", "profile": profile}
+    raise HTTPException(status_code=404, detail="Time ou fonte tatica salva nao encontrado.")
+
+
+def _local_team_workspace(team: dict) -> dict:
+    team_id = team["id"]
+    saved_profile = get_online_profile_by_name(team["name"])
+    online = saved_profile["online_search"] if saved_profile else _pending_tactical_collection(team["name"])
+    local_sources = get_team_records(sources(), team_id)
+    saved_sources = _online_sources_as_cards(online)
+    dossier = get_single_team_record(tactical_analysis(), team_id, "Dossie tatico")
+    team_formations = get_team_records(formations(), team_id)
+    team_players = get_team_records(players(), team_id)
+    plan = get_single_team_record(game_plans(), team_id, "Plano de jogo")
+    history = [
+        record
+        for record in list_history()
+        if record.get("team_id") == team_id or record.get("team_name", "").casefold() == team["name"].casefold()
+    ]
+
+    return {
+        "ref": str(team_id),
+        "kind": "local",
+        "team": {**team, "ref": str(team_id), "local_id": team_id},
+        "saved_profile": saved_profile,
+        "dossier": dossier,
+        "formations": team_formations,
+        "players": team_players,
+        "sources": {
+            "local": local_sources,
+            "saved": saved_sources,
+            "combined": local_sources + saved_sources,
+        },
+        "public_intelligence": online,
+        "graph": build_tactical_graph(team, team_players, team_formations),
+        "plan": plan,
+        "history": history,
+        "collection": _collection_status(local_sources, saved_sources, online, history),
+    }
+
+
+def _online_team_workspace(profile: dict) -> dict:
+    online = profile.get("online_search") or _pending_tactical_collection(profile["name"])
+    saved_sources = _online_sources_as_cards(online)
+    collection_plan = online.get("collection_plan") or _collection_plan(profile["name"])
+    history = [
+        record
+        for record in list_history()
+        if record.get("team_name", "").casefold() == profile["name"].casefold()
+    ]
+    team = {
+        "id": profile["id"],
+        "ref": f"online-{profile['online_profile_id']}",
+        "local_id": None,
+        "profile_type": "online",
+        "name": profile["name"],
+        "country": profile["country"],
+        "league": profile["league"],
+        "coach": profile["coach"],
+        "base_formation": profile["base_formation"],
+        "style": profile["style"],
+        "confidence": profile["confidence"],
+        "status": profile["status"],
+    }
+    dossier = _fallback_dossier(profile, online)
+    plan = _fallback_plan(collection_plan)
+
+    return {
+        "ref": team["ref"],
+        "kind": "saved",
+        "team": team,
+        "saved_profile": profile,
+        "dossier": dossier,
+        "formations": _fallback_formations(profile),
+        "players": [],
+        "sources": {
+            "local": [],
+            "saved": saved_sources,
+            "combined": saved_sources,
+        },
+        "public_intelligence": online,
+        "graph": _source_graph(profile, online),
+        "plan": plan,
+        "history": history,
+        "collection": _collection_status([], saved_sources, online, history),
+    }
+
+
+def _online_sources_as_cards(online: dict) -> list[dict]:
+    retrieved_at = online.get("retrieved_at") or "2026-01-01T00:00:00+00:00"
+    cards = []
+    for source in online.get("sources") or []:
+        cards.append(
+            {
+                "title": source.get("title") or "Fonte tatica",
+                "type": source.get("origin") or "Fonte tatica",
+                "source": source.get("url") or source.get("origin") or "Fonte salva",
+                "date": retrieved_at,
+                "relevance": source.get("relevance") or "Media",
+                "summary": source.get("summary") or "Fonte salva para validacao visual.",
+                "category": source.get("category") or "team_form",
+            }
+        )
+    return cards
+
+
+def _collection_status(local_sources: list[dict], saved_sources: list[dict], online: dict, history: list[dict]) -> dict:
+    coverage = online.get("coverage") or {}
+    return {
+        "local_source_count": len(local_sources),
+        "saved_source_count": len(saved_sources),
+        "history_count": len(history),
+        "video_reference_count": coverage.get("match_videos", 0) + coverage.get("analysis_videos", 0),
+        "pattern_reference_count": coverage.get("team_form", 0),
+        "status": "com_coleta_salva" if saved_sources else "pendente_de_coleta",
+        "to_collect": online.get("collection_plan") or [],
+        "focus": online.get("analysis_focus") or [],
+    }
+
+
+def _pending_tactical_collection(team_name: str) -> dict:
+    return {
+        "status": "not_collected",
+        "query": f"{team_name} futebol analise tatica videos",
+        "summary": (
+            f"Ainda nao ha fontes taticas salvas para {team_name}. Use a busca online ou envie videos "
+            "para iniciar a coleta visual."
+        ),
+        "sources": [],
+        "source_groups": {"match_videos": [], "analysis_videos": [], "team_form": []},
+        "coverage": {"match_videos": 0, "analysis_videos": 0, "team_form": 0},
+        "analysis_focus": [
+            "Coletar videos com camera aberta para rastrear linhas, bola e movimentacao coletiva.",
+            "Separar trechos por fase: posse, pressao, transicao, ultimo terco e bola parada.",
+            "Salvar fontes taticas para que todas as telas usem o mesmo material de apoio.",
+        ],
+        "collection_plan": _collection_plan(team_name),
+        "retrieved_at": "2026-01-01T00:00:00+00:00",
+        "errors": [],
+        "note": "Sem fonte tatica salva para este time.",
+    }
+
+
+def _collection_plan(team_name: str) -> list[dict]:
+    return [
+        {"stage": "Videos", "action": f"Buscar jogos completos e melhores momentos recentes de {team_name}."},
+        {"stage": "Recortes", "action": "Separar lances de pressao, construcao, transicao e finalizacao."},
+        {"stage": "Visao computacional", "action": "Enviar videos para gerar tracking, heatmap, grafo e eventos."},
+        {"stage": "Revisao", "action": "Salvar fontes e comparar os achados nas telas de dossie, fontes e relatorio."},
+    ]
+
+
+def _fallback_dossier(profile: dict, online: dict) -> dict:
+    focus = online.get("analysis_focus") or []
+    return {
+        "confidence_level": profile.get("confidence") or "Baixo",
+        "summary": profile.get("style") or online.get("summary") or "Dossie visual ainda em coleta.",
+        "offensive_model": focus[0] if focus else "Modelo ofensivo deve ser extraido dos videos salvos/enviados.",
+        "defensive_model": "Mapear bloco, distancia entre linhas e gatilhos de pressao por visao computacional.",
+        "offensive_transition": "Identificar progressao apos recuperacao pela trilha da bola e dos rastros.",
+        "defensive_transition": "Detectar recomposicao, contrapressao e compactacao apos perda.",
+        "set_pieces": "Coletar recortes de bola parada para analise separada.",
+        "formation_variations": [profile.get("base_formation") or "Detectar pelo video"],
+        "strengths": focus[:3] or ["Fontes taticas salvas para orientar a revisao visual."],
+        "weaknesses": [
+            "Ainda faltam eventos extraidos de video para confirmar padroes.",
+            "Formacao e funcoes dependem de tracking e homografia por partida.",
+        ],
+    }
+
+
+def _fallback_formations(profile: dict) -> list[dict]:
+    formation = profile.get("base_formation") or "Detectar pelo video"
+    return [
+        {
+            "team_id": 0,
+            "formation": formation,
+            "probability": 40 if formation != "Detectar pelo video" else 20,
+            "context": "Hipotese inicial ate haver videos processados.",
+            "advantages": "Permite organizar a revisao, mas nao substitui a leitura visual.",
+            "risks": "Baixa confianca sem tracking, bola e homografia do video.",
+        }
+    ]
+
+
+def _fallback_plan(collection_plan: list[dict]) -> dict:
+    actions = [item["action"] for item in collection_plan]
+    return {
+        "how_to_press": "Definir apos observar gatilhos reais de pressao nos videos.",
+        "where_to_attack": "Definir apos mapa de ocupacao, bola e rede de conexoes.",
+        "players_to_neutralize": ["A identificar por centralidade visual"],
+        "weaknesses_to_exploit": ["A confirmar por recorrencia de padroes nos videos"],
+        "training_suggestions": actions[:3],
+        "plan_risks": ["Plano ainda depende de evidencias visuais suficientes."],
+        "in_match_adjustments": ["Revisar grafo, heatmap e eventos antes da decisao final."],
+    }
+
+
+def _source_graph(profile: dict, online: dict) -> dict:
+    sources_by_category = online.get("source_groups") or {}
+    nodes = [
+        {"id": "team", "label": profile["name"], "type": "team", "x": 50, "y": 50, "score": 70},
+    ]
+    categories = [
+        ("match_videos", "Videos de jogos", 22, 30),
+        ("analysis_videos", "Analises taticas", 78, 30),
+        ("team_form", "Padroes de jogo", 50, 78),
+    ]
+    edges = []
+    for key, label, x, y in categories:
+        count = len(sources_by_category.get(key) or [])
+        nodes.append({"id": key, "label": label, "type": "source", "x": x, "y": y, "score": count})
+        if count:
+            edges.append({"source": "team", "target": key, "weight": max(12, count * 12), "label": "fonte salva"})
+
+    return {
+        "formation": {"formation": profile.get("base_formation") or "Detectar pelo video"},
+        "nodes": nodes,
+        "edges": edges,
+        "metrics": {
+            "centrality_leader": profile["name"],
+            "network_density": round(len(edges) / 3 * 100, 1),
+            "progression_lane": "A detectar por video",
+            "risk_lane": "A confirmar",
+        },
+        "insights": [
+            "O grafo atual mostra fontes coletadas por categoria.",
+            "Envie videos para substituir esta rede de fontes por conexoes reais de movimento.",
+            "Use as fontes salvas como fila de coleta e validacao visual.",
+        ],
+    }

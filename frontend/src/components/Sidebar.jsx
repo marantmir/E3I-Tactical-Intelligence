@@ -12,21 +12,29 @@ import {
   Video
 } from "lucide-react";
 
-const links = [
+import { useTeamSelection } from "../context/TeamSelectionContext.jsx";
+
+const staticLinks = [
   { to: "/", label: "Dashboard", icon: Home },
   { to: "/new-analysis", label: "Nova analise", icon: ClipboardList },
   { to: "/search", label: "Buscar time", icon: Search },
-  { to: "/team/1", label: "Dossie", icon: ShieldCheck },
-  { to: "/team/1/formations", label: "Formacoes", icon: LineChart },
-  { to: "/team/1/squad", label: "Elenco", icon: UsersRound },
-  { to: "/team/1/sources", label: "Fontes", icon: Video },
-  { to: "/team/1/game-plan", label: "Plano", icon: ClipboardList },
-  { to: "/team/1/report", label: "Relatorio", icon: FileText },
   { to: "/history", label: "Historico", icon: Archive },
   { to: "/future-ai", label: "IA avancada", icon: BrainCircuit }
 ];
 
 export default function Sidebar() {
+  const { selectedRef } = useTeamSelection();
+  const activeRef = selectedRef || "1";
+  const teamLinks = [
+    { to: `/team/${activeRef}`, label: "Dossie", icon: ShieldCheck },
+    { to: `/team/${activeRef}/formations`, label: "Formacoes", icon: LineChart },
+    { to: `/team/${activeRef}/squad`, label: "Elenco", icon: UsersRound },
+    { to: `/team/${activeRef}/sources`, label: "Fontes", icon: Video },
+    { to: `/team/${activeRef}/game-plan`, label: "Plano", icon: ClipboardList },
+    { to: `/team/${activeRef}/report`, label: "Relatorio", icon: FileText }
+  ];
+  const links = [...staticLinks.slice(0, 3), ...teamLinks, ...staticLinks.slice(3)];
+
   return (
     <aside className="sidebar">
       <div className="brand">

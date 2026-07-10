@@ -4,9 +4,15 @@ import { Link } from "react-router-dom";
 import ConfidenceBadge from "./ConfidenceBadge.jsx";
 
 export default function TeamCard({ team }) {
-  const isOnlineProfile = team.id === 0 || Boolean(team.online_search);
-  const target = isOnlineProfile ? `/new-analysis?team=${encodeURIComponent(team.name)}` : `/team/${team.id}`;
-  const actionLabel = isOnlineProfile ? "Gerar pre-analise" : "Abrir dossie";
+  const isOnlineProfile = team.profile_type === "online" || team.id === 0 || Boolean(team.online_search);
+  const target =
+    isOnlineProfile && team.online_profile_id
+      ? `/team/online-${team.online_profile_id}/sources`
+      : isOnlineProfile
+        ? `/new-analysis?team=${encodeURIComponent(team.name)}`
+        : `/team/${team.id}`;
+  const actionLabel =
+    isOnlineProfile && team.online_profile_id ? "Abrir coleta salva" : isOnlineProfile ? "Gerar pre-analise" : "Abrir dossie";
 
   return (
     <article className="team-card">

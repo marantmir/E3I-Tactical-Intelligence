@@ -7,22 +7,19 @@ import { useApiResource } from "./useApiResource.js";
 
 export default function GamePlan() {
   const { teamId } = useParams();
-  const { data, loading, error } = useApiResource(async () => {
-    const [team, plan] = await Promise.all([api.team(teamId), api.gamePlan(teamId)]);
-    return { team, plan };
-  }, [teamId]);
+  const { data, loading, error } = useApiResource(() => api.teamWorkspace(teamId), [teamId]);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
 
-  const { team, plan } = data;
+  const { team, plan, collection } = data;
 
   return (
     <section className="page-grid">
       <div className="section-heading">
         <div>
           <p className="eyebrow">{team.name}</p>
-          <h2>Plano de jogo</h2>
+          <h2>Plano de jogo e coleta pendente</h2>
         </div>
       </div>
       <div className="card-grid two">
@@ -37,7 +34,7 @@ export default function GamePlan() {
       </div>
       <section className="two-column">
         <article>
-          <h3>Jogadores a neutralizar</h3>
+          <h3>Alvos ou referencias</h3>
           <ul className="clean-list">
             {plan.players_to_neutralize.map((item) => (
               <li key={item}>
@@ -48,7 +45,7 @@ export default function GamePlan() {
           </ul>
         </article>
         <article>
-          <h3>Fragilidades a explorar</h3>
+          <h3>Fragilidades a confirmar</h3>
           <ul className="risk-list">
             {plan.weaknesses_to_exploit.map((item) => (
               <li key={item}>{item}</li>
@@ -58,7 +55,7 @@ export default function GamePlan() {
       </section>
       <section className="three-column">
         <article>
-          <h3>Sugestoes de treino</h3>
+          <h3>Sugestoes de treino/coleta</h3>
           <ul className="check-list">
             {plan.training_suggestions.map((item) => (
               <li key={item}>{item}</li>
@@ -74,10 +71,12 @@ export default function GamePlan() {
           </ul>
         </article>
         <article>
-          <h3>Ajustes durante a partida</h3>
+          <h3>A coletar</h3>
           <ul className="check-list">
-            {plan.in_match_adjustments.map((item) => (
-              <li key={item}>{item}</li>
+            {collection.to_collect.map((item) => (
+              <li key={item.stage}>
+                <strong>{item.stage}:</strong> {item.action}
+              </li>
             ))}
           </ul>
         </article>

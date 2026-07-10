@@ -8,14 +8,7 @@ import { useApiResource } from "./useApiResource.js";
 
 export default function Formations() {
   const { teamId } = useParams();
-  const { data, loading, error } = useApiResource(async () => {
-    const [team, formations, graph] = await Promise.all([
-      api.team(teamId),
-      api.formations(teamId),
-      api.graphAnalysis(teamId)
-    ]);
-    return { team, formations, graph };
-  }, [teamId]);
+  const { data, loading, error } = useApiResource(() => api.teamWorkspace(teamId), [teamId]);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -25,7 +18,7 @@ export default function Formations() {
       <div className="section-heading">
         <div>
           <p className="eyebrow">{data.team.name}</p>
-          <h2>Formações prováveis</h2>
+          <h2>Formacoes e grafo do time ativo</h2>
         </div>
       </div>
       <div className="formation-grid">

@@ -23,15 +23,12 @@ const playerDots = [
 
 export default function TacticalDossier() {
   const { teamId } = useParams();
-  const { data, loading, error } = useApiResource(async () => {
-    const [team, dossier] = await Promise.all([api.team(teamId), api.tacticalAnalysis(teamId)]);
-    return { team, dossier };
-  }, [teamId]);
+  const { data, loading, error } = useApiResource(() => api.teamWorkspace(teamId), [teamId]);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
 
-  const { team, dossier } = data;
+  const { team, dossier, collection } = data;
 
   return (
     <section className="page-grid">
@@ -43,8 +40,8 @@ export default function TacticalDossier() {
         </div>
         <div className="hero-actions">
           <ConfidenceBadge level={dossier.confidence_level} />
-          <Link className="button button-primary" to={`/team/${team.id}/report`}>
-            Relatório
+          <Link className="button button-primary" to={`/team/${team.ref}/report`}>
+            Relatorio
             <ArrowRight size={16} />
           </Link>
         </div>
@@ -52,7 +49,7 @@ export default function TacticalDossier() {
 
       <div className="dossier-layout">
         <section className="pitch-panel">
-          <div className="tactical-pitch" aria-label={`Formação base ${team.base_formation}`}>
+          <div className="tactical-pitch" aria-label={`Formacao base ${team.base_formation}`}>
             {playerDots.map(([label, x, y]) => (
               <span key={`${label}-${x}-${y}`} style={{ left: x, top: y }}>
                 {label}
@@ -61,34 +58,42 @@ export default function TacticalDossier() {
           </div>
           <div className="pitch-caption">
             <CircleDot size={16} />
-            Formação base: {team.base_formation}
+            Formacao base: {team.base_formation}
           </div>
         </section>
 
         <section className="analysis-stack">
           <article>
-            <h3>Perfil do clube</h3>
+            <h3>Perfil visual</h3>
             <dl className="meta-grid">
               <div>
-                <dt>País</dt>
+                <dt>Pais</dt>
                 <dd>{team.country}</dd>
               </div>
               <div>
-                <dt>Técnico</dt>
-                <dd>{team.coach}</dd>
+                <dt>Origem</dt>
+                <dd>{data.kind === "local" ? "Base local" : "Fonte tatica salva"}</dd>
               </div>
               <div>
                 <dt>Status</dt>
                 <dd>{team.status}</dd>
               </div>
               <div>
-                <dt>Confiança</dt>
+                <dt>Confianca</dt>
                 <dd>{dossier.confidence_level}</dd>
+              </div>
+              <div>
+                <dt>Fontes salvas</dt>
+                <dd>{collection.saved_source_count}</dd>
+              </div>
+              <div>
+                <dt>A coletar</dt>
+                <dd>{collection.to_collect.length}</dd>
               </div>
             </dl>
           </article>
           <article>
-            <h3>Resumo tático</h3>
+            <h3>Resumo tatico</h3>
             <p>{dossier.summary}</p>
           </article>
         </section>
@@ -104,11 +109,11 @@ export default function TacticalDossier() {
           <p>{dossier.defensive_model}</p>
         </article>
         <article className="info-panel">
-          <h3>Transição ofensiva</h3>
+          <h3>Transicao ofensiva</h3>
           <p>{dossier.offensive_transition}</p>
         </article>
         <article className="info-panel">
-          <h3>Transição defensiva</h3>
+          <h3>Transicao defensiva</h3>
           <p>{dossier.defensive_transition}</p>
         </article>
         <article className="info-panel">
@@ -116,14 +121,14 @@ export default function TacticalDossier() {
           <p>{dossier.set_pieces}</p>
         </article>
         <article className="info-panel">
-          <h3>Variações</h3>
-          <p>{dossier.formation_variations.join(" · ")}</p>
+          <h3>Variacoes</h3>
+          <p>{dossier.formation_variations.join(" / ")}</p>
         </article>
       </section>
 
       <section className="two-column">
         <article>
-          <h3>Pontos fortes</h3>
+          <h3>Pontos fortes ou hipoteses</h3>
           <ul className="check-list">
             {dossier.strengths.map((item) => (
               <li key={item}>{item}</li>
@@ -131,7 +136,7 @@ export default function TacticalDossier() {
           </ul>
         </article>
         <article>
-          <h3>Fragilidades</h3>
+          <h3>Fragilidades ou pendencias</h3>
           <ul className="risk-list">
             {dossier.weaknesses.map((item) => (
               <li key={item}>{item}</li>
