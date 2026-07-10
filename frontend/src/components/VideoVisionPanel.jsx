@@ -38,8 +38,8 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
   const [fileName, setFileName] = useState("");
   const [viewMode, setViewMode] = useState("connections");
   const [selectedTrackId, setSelectedTrackId] = useState("all");
-  const [maxFrames, setMaxFrames] = useState(600);
-  const [sampleEvery, setSampleEvery] = useState(2);
+  const [maxFrames, setMaxFrames] = useState(240);
+  const [sampleEvery, setSampleEvery] = useState(3);
   const [teamFilter, setTeamFilter] = useState("auto");
   const [jerseyFiles, setJerseyFiles] = useState([]);
   const [layers, setLayers] = useState({
@@ -107,8 +107,8 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
         <label>
           <span>Frames analisados</span>
           <input
-            max="1800"
-            min="120"
+            max="1200"
+            min="60"
             onChange={(event) => setMaxFrames(Number(event.target.value))}
             step="60"
             type="range"
@@ -192,6 +192,19 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
           {vision.jersey_reference?.enabled ? (
             <div className="notice-strip">
               {vision.jersey_reference.count} camisa(s) usada(s) como referencia visual para identificar {teamName}.
+            </div>
+          ) : null}
+          {vision.upload_profile?.safe_mode_applied ? (
+            <div className="notice-strip">
+              Perfil seguro aplicado ao video ({vision.upload_profile.size_mb}MB):{" "}
+              {vision.upload_profile.effective_max_frames} frames, intervalo{" "}
+              {vision.upload_profile.effective_sample_every}. Isso evita timeout em arquivos grandes/MKV.
+            </div>
+          ) : null}
+          {vision.processing_config?.stopped_by_timeout ? (
+            <div className="notice-strip">
+              Analise parcial gerada antes do limite de {vision.processing_config.max_processing_seconds}s. Para leitura
+              mais profunda, envie um recorte menor do lance.
             </div>
           ) : null}
 

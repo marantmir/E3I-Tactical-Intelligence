@@ -10,11 +10,7 @@ async function request(path, options = {}) {
   });
 
   if (!response.ok) {
-    const contentType = response.headers.get("Content-Type") || "";
-    const message = contentType.includes("application/json")
-      ? formatApiError(await response.json())
-      : await response.text();
-    throw new Error(message || "Falha na requisicao");
+    throw new Error(await readErrorMessage(response, "Falha na requisicao"));
   }
 
   return response.json();
@@ -32,6 +28,43 @@ function formatApiError(payload) {
   }
 
   return payload?.message || "Falha na requisicao";
+}
+
+async function readErrorMessage(response, fallback) {
+  const contentType = response.headers.get("Content-Type") || "";
+  if (contentType.includes("application/json")) {
+    try {
+      return formatApiError(await response.json());
+    } catch {
+      return fallback;
+    }
+  }
+
+  let text = "";
+  try {
+    text = await response.text();
+  } catch {
+    text = "";
+  }
+
+  if (response.status === 502 || response.status === 504 || /<title>\s*50[24]\s*<\/title>/i.test(text)) {
+    return (
+      "O servidor interrompeu o processamento do video antes de concluir. " +
+      "Tente enviar um recorte menor, reduzir os frames analisados ou aumentar o intervalo entre frames."
+    );
+  }
+
+  const cleaned = stripHtml(text).trim();
+  if (!cleaned) return fallback;
+  return cleaned.length > 320 ? `${cleaned.slice(0, 320)}...` : cleaned;
+}
+
+function stripHtml(value) {
+  return String(value || "")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ");
 }
 
 export const api = {
@@ -54,6 +87,10 @@ export const api = {
   sources: (teamId) => request(`/api/teams/${teamId}/sources`),
   graphAnalysis: (teamId) => request(`/api/teams/${teamId}/graph-analysis`),
   uploadVideoVision: async (teamRef, file, options = {}) => {
+    const maxUploadBytes = 300 * 1024 * 1024;
+    if (file.size > maxUploadBytes) {
+      throw new Error("Video excede o limite de 300MB. Envie um recorte menor para a analise visual.");
+    }
     const formData = new FormData();
     formData.append("file", file);
     (options.jerseyFiles || []).forEach((jerseyFile) => {
@@ -75,11 +112,7 @@ export const api = {
       body: formData
     });
     if (!response.ok) {
-      const contentType = response.headers.get("Content-Type") || "";
-      const message = contentType.includes("application/json")
-        ? formatApiError(await response.json())
-        : await response.text();
-      throw new Error(message || "Falha ao processar o video");
+      throw new Error(await readErrorMessage(response, "Falha ao processar o video"));
     }
     return response.json();
   },

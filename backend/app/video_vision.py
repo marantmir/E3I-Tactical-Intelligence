@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from collections import Counter
 import math
+import time
 import uuid
 from pathlib import Path
 
@@ -37,6 +38,7 @@ MIN_TRACK_DISTANCE = 35
 MAX_MOVEMENT_TRACKS = 18
 PROXIMITY_THRESHOLD = 90
 PITCH_W, PITCH_H = 105, 68
+DEFAULT_PROCESSING_TIMEOUT_SECONDS = 35
 MAX_PLAYER_BOX_WIDTH_RATIO = 0.18
 MAX_PLAYER_BOX_HEIGHT_RATIO = 0.62
 MIN_PLAYER_BOX_HEIGHT_RATIO = 0.025
@@ -132,7 +134,10 @@ def process_video(
     sample_every: int = 2,
     team_filter: str = "auto",
     jersey_references: list[dict] | None = None,
+    max_processing_seconds: int | None = DEFAULT_PROCESSING_TIMEOUT_SECONDS,
 ) -> dict:
+    started_at = time.monotonic()
+    stopped_by_timeout = False
     requested_team_filter = _normalize_team_filter(team_filter)
     jersey_reference_profiles = _build_jersey_reference_profiles(jersey_references or [])
     if jersey_reference_profiles and requested_team_filter == "auto":
@@ -170,6 +175,10 @@ def process_video(
     colors: dict[int, tuple[int, int, int]] = {}
 
     while processed < max_frames:
+        if max_processing_seconds and time.monotonic() - started_at >= max_processing_seconds:
+            stopped_by_timeout = True
+            break
+
         ok, frame = capture.read()
         if not ok:
             break
@@ -408,6 +417,7 @@ def process_video(
         valid_tracks,
         candidate_rejections,
     )
+    processing_time_seconds = round(time.monotonic() - started_at, 2)
 
     return {
         "status": "processed",
@@ -419,6 +429,9 @@ def process_video(
             "selected_team_key": final_target_key,
             "min_contour_area": MIN_CONTOUR_AREA,
             "event_targets": [target["key"] for target in EVENT_TARGETS],
+            "max_processing_seconds": max_processing_seconds,
+            "processing_time_seconds": processing_time_seconds,
+            "stopped_by_timeout": stopped_by_timeout,
         },
         "team_focus_options": TEAM_FILTER_OPTIONS,
         "team_focus": team_focus,
@@ -491,6 +504,7 @@ def process_video(
         "summary": (
             f"Video processado com deteccao real de movimento (MOG2 + tracking por centroide): "
             f"{len(valid_tracks)} rastros da equipe acompanhada em {processed} frames analisados."
+            + (" Analise parcial: limite seguro de processamento atingido." if stopped_by_timeout else "")
         ),
     }
 

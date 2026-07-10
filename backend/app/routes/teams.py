@@ -35,6 +35,10 @@ MEDIA_DIR = Path(__file__).resolve().parents[2] / "media"
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_VIDEO_TYPES = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 MAX_UPLOAD_BYTES = 300 * 1024 * 1024  # 300MB
+DEFAULT_VIDEO_MAX_FRAMES = 240
+DEFAULT_VIDEO_SAMPLE_EVERY = 3
+MAX_VIDEO_FRAMES = 1200
+VIDEO_PROCESSING_TIMEOUT_SECONDS = 35
 
 
 @router.get("")
@@ -145,8 +149,8 @@ async def team_video_vision_upload_by_name(
     file: UploadFile = File(...),
     jersey_refs: list[UploadFile] | None = File(default=None),
     team_name: str = Query(min_length=1),
-    max_frames: int = Query(default=600, ge=60, le=3000),
-    sample_every: int = Query(default=2, ge=1, le=30),
+    max_frames: int = Query(default=DEFAULT_VIDEO_MAX_FRAMES, ge=60, le=MAX_VIDEO_FRAMES),
+    sample_every: int = Query(default=DEFAULT_VIDEO_SAMPLE_EVERY, ge=1, le=30),
     team_filter: str = Query(default="auto"),
 ):
     return await _process_uploaded_video(
@@ -195,8 +199,8 @@ async def team_video_vision_upload(
     team_id: int,
     file: UploadFile = File(...),
     jersey_refs: list[UploadFile] | None = File(default=None),
-    max_frames: int = Query(default=600, ge=60, le=3000),
-    sample_every: int = Query(default=2, ge=1, le=30),
+    max_frames: int = Query(default=DEFAULT_VIDEO_MAX_FRAMES, ge=60, le=MAX_VIDEO_FRAMES),
+    sample_every: int = Query(default=DEFAULT_VIDEO_SAMPLE_EVERY, ge=1, le=30),
     team_filter: str = Query(default="auto"),
 ):
     """Recebe um video real do jogo, processa com visao computacional
@@ -242,26 +246,86 @@ async def _process_uploaded_video(
                 raise HTTPException(status_code=413, detail="Video excede o limite de 300MB.")
             buffer.write(chunk)
 
+    effective_max_frames, effective_sample_every, upload_profile = _video_processing_profile(
+        extension,
+        size,
+        max_frames,
+        sample_every,
+    )
+
     try:
         jersey_references = await _read_jersey_references(jersey_refs or [])
         result = process_video(
             str(upload_path),
-            max_frames=max_frames,
-            sample_every=sample_every,
+            max_frames=effective_max_frames,
+            sample_every=effective_sample_every,
             team_filter=team_filter,
             jersey_references=jersey_references,
+            max_processing_seconds=VIDEO_PROCESSING_TIMEOUT_SECONDS,
         )
     except ValueError as error:
         upload_path.unlink(missing_ok=True)
         raise HTTPException(status_code=422, detail=str(error)) from error
+    except Exception as error:
+        upload_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Falha ao processar o video no pipeline de visao computacional. "
+                "Tente reduzir frames, aumentar o intervalo entre frames ou enviar um recorte menor."
+            ),
+        ) from error
     finally:
         upload_path.unlink(missing_ok=True)
 
     result["team"] = team_name
+    result["upload_profile"] = upload_profile
     result["annotated_video_url"] = f"/media/{result['annotated_video_file']}"
     result["llm_analysis"] = analyze_video_tactics(team_name, result)
     result["llm_identity"] = identify_players_from_tracks(team_name, result)
     return result
+
+
+def _video_processing_profile(
+    extension: str,
+    size_bytes: int,
+    requested_max_frames: int,
+    requested_sample_every: int,
+) -> tuple[int, int, dict]:
+    size_mb = round(size_bytes / (1024 * 1024), 1)
+    max_frames = requested_max_frames
+    sample_every = requested_sample_every
+    reasons = []
+
+    if extension == ".mkv":
+        max_frames = min(max_frames, 360)
+        sample_every = max(sample_every, 3)
+        reasons.append("MKV pode exigir mais decodificacao; perfil seguro aplicado.")
+
+    if size_bytes >= 180 * 1024 * 1024:
+        max_frames = min(max_frames, 240)
+        sample_every = max(sample_every, 4)
+        reasons.append("Video acima de 180MB; processamento reduzido para evitar timeout.")
+    elif size_bytes >= 100 * 1024 * 1024:
+        max_frames = min(max_frames, 360)
+        sample_every = max(sample_every, 3)
+        reasons.append("Video acima de 100MB; amostragem ajustada para resposta mais estavel.")
+
+    return (
+        max_frames,
+        sample_every,
+        {
+            "filename_profile": extension.removeprefix(".") or "video",
+            "size_mb": size_mb,
+            "requested_max_frames": requested_max_frames,
+            "requested_sample_every": requested_sample_every,
+            "effective_max_frames": max_frames,
+            "effective_sample_every": sample_every,
+            "timeout_seconds": VIDEO_PROCESSING_TIMEOUT_SECONDS,
+            "safe_mode_applied": bool(reasons),
+            "reasons": reasons,
+        },
+    )
 
 
 async def _read_jersey_references(jersey_refs: list[UploadFile]) -> list[dict]:
