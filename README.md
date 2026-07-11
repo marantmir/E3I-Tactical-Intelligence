@@ -52,6 +52,14 @@ cd ..
 python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
+Testes automatizados do backend:
+
+```powershell
+cd backend
+pip install -r requirements-dev.txt
+pytest
+```
+
 ## Deploy Web
 
 O projeto esta preparado para deploy Docker usando `Dockerfile` e `render.yaml`.

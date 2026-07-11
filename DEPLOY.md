@@ -55,9 +55,12 @@ No painel do Render, configure em `Environment`:
 OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-4.1-mini
 E3I_LLM_TIMEOUT_SECONDS=18
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
 `OPENAI_API_KEY` deve ser criada como secret no painel do provedor. Nao coloque a chave no Git.
+
+`ALLOWED_ORIGINS` restringe o CORS do FastAPI (lista separada por virgula). Em producao, o frontend e servido pelo proprio FastAPI (mesma origem), entao nao e necessario adicionar o dominio publico; a variavel so precisa ser ajustada se o frontend for hospedado separadamente do backend.
 
 Se preferir parametrizar pela tela do app, acesse:
 
