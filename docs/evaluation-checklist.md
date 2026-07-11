@@ -36,5 +36,8 @@
 - [x] Endpoints novos: `graph-analysis`, `video-vision`, `public-intelligence`.
 - [x] Frontend consome as novas rotas.
 - [x] Build Vite validado.
+- [x] Code-splitting por rota (`React.lazy`/`Suspense`) no frontend.
+- [x] CORS do FastAPI restrito por `ALLOWED_ORIGINS` (nao mais `*`).
+- [x] Suite `pytest` cobrindo `graph_analysis`, `video_vision` e rotas de `teams`/`analysis`.
 - [x] Fluxo analisado no navegador local.
 - [ ] Validar console no endpoint publicado.
