@@ -17,9 +17,12 @@ export default function TeamCard({ team }) {
   return (
     <article className="team-card">
       <div className="team-card-head">
-        <div>
-          <p className="eyebrow">{team.country}</p>
-          <h3>{team.name}</h3>
+        <div className="team-card-identity">
+          {team.crest_url ? <img className="team-crest" src={team.crest_url} alt={`Escudo de ${team.name}`} /> : null}
+          <div>
+            <p className="eyebrow">{team.country}</p>
+            <h3>{team.name}</h3>
+          </div>
         </div>
         <ConfidenceBadge level={team.confidence} />
       </div>

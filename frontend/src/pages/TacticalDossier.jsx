@@ -36,10 +36,13 @@ export default function TacticalDossier() {
   return (
     <section className="page-grid">
       <div className="team-hero">
-        <div>
-          <p className="eyebrow">{team.league}</p>
-          <h2>{team.name}</h2>
-          <p>{team.style}</p>
+        <div className="team-card-identity">
+          {team.crest_url ? <img className="team-crest-large" src={team.crest_url} alt={`Escudo de ${team.name}`} /> : null}
+          <div>
+            <p className="eyebrow">{team.league}</p>
+            <h2>{team.name}</h2>
+            <p>{team.style}</p>
+          </div>
         </div>
         <div className="hero-actions">
           <ConfidenceBadge level={dossier.confidence_level} />

@@ -33,6 +33,7 @@ const TEAM_FILTERS = [
 export default function VideoVisionPanel({ teamRef, teamName }) {
   const [vision, setVision] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(null);
   const [error, setError] = useState(null);
   const [videoError, setVideoError] = useState(null);
   const [fileName, setFileName] = useState("");
@@ -72,23 +73,24 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
     if (!file) return;
     setFileName(file.name);
     setLoading(true);
+    setProgress(null);
     setError(null);
     setVideoError(null);
     setSelectedTrackId("all");
     setVision(null);
     try {
-      const result = await api.uploadVideoVision(teamRef, file, {
-        maxFrames,
-        sampleEvery,
-        teamName,
-        teamFilter,
-        jerseyFiles
-      });
+      const result = await api.uploadVideoVisionWithProgress(
+        teamRef,
+        file,
+        { maxFrames, sampleEvery, teamName, teamFilter, jerseyFiles },
+        (update) => setProgress(update)
+      );
       setVision(result);
     } catch (uploadError) {
       setError(uploadError.message || "Falha ao processar o video.");
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   }
 
@@ -174,7 +176,7 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
         <input type="file" accept="video/*" onChange={handleFileChange} hidden />
       </label>
 
-      {loading && <p>Processando video em batch local com OpenCV, tracking e leitura tatica...</p>}
+      {loading ? <VideoProcessingProgress progress={progress} /> : null}
       {error && <p className="error-text">{error}</p>}
 
       {vision && (
@@ -711,4 +713,23 @@ function rejectionSummary(rejections = {}) {
   if (!total) return "Nenhum candidato descartado nesta amostra";
   const main = Object.entries(rejections).sort((a, b) => Number(b[1]) - Number(a[1]))[0];
   return `${total} candidato(s) descartado(s); principal motivo: ${main[0].replaceAll("_", " ")}`;
+}
+
+function VideoProcessingProgress({ progress }) {
+  const processed = progress?.processed || 0;
+  const maxFrames = progress?.max_frames || 0;
+  const percent = maxFrames > 0 ? Math.min(100, Math.round((processed / maxFrames) * 100)) : 0;
+
+  return (
+    <div className="video-progress" role="status" aria-live="polite">
+      <div className="video-progress-track">
+        <div className="video-progress-fill" style={{ width: `${percent}%` }} />
+      </div>
+      <p>
+        {maxFrames > 0
+          ? `Analisando ao vivo: ${processed} de ${maxFrames} amostras processadas (${percent}%).`
+          : "Iniciando processamento com OpenCV, tracking e leitura tatica..."}
+      </p>
+    </div>
+  );
 }

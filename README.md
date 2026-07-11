@@ -8,10 +8,11 @@ Aplicacao web para inteligencia tatica de futebol. O fluxo prioriza videos de pa
 - "Meu time": define qual time e o seu para habilitar o Confronto e evitar compara-lo contra si mesmo.
 - Cadastro-ou-selecao automatico ao iniciar uma analise: se o time ja existe, e so selecionado; se nao existe, cadastrar passa a ser a acao principal.
 - Confronto: comparacao lado a lado entre o seu time ativo e o time analisado (formacao, pontos fortes/fracos, elenco).
-- Busca publica restrita a materiais taticos e videos analisaveis.
+- Busca publica restrita a materiais taticos e videos analisaveis, enriquecida com dados reais da Wikipedia (descricao e escudo do time, sem chave de API).
+- Escudos dos times exibidos nos cards, no dossie e no confronto para uma leitura mais visual.
 - Pre-analise antes do salvamento.
 - Analise por grafos com conexoes entre rastros, zonas, centralidade e densidade.
-- Leitura visual de videos com mapa de calor, trilhas de movimento, bola provavel, homografia aproximada, eventos e recomendacoes.
+- Leitura visual de videos com mapa de calor, trilhas de movimento, bola provavel, homografia aproximada, eventos e recomendacoes, com barra de progresso ao vivo (SSE) durante o processamento.
 - Pesquisa operacional para comparar formacao, risco, estrategia e ajustes por cenario.
 - Relatorio final consolidado para comissao tecnica.
 - Historico persistido em SQLite.
@@ -89,7 +90,8 @@ Resumo para Render:
 - `GET /api/teams/search?query=...`
 - `GET /api/teams/{team_id}/public-intelligence`
 - `GET /api/teams/{team_id}/graph-analysis`
-- `POST /api/teams/{team_id}/video-vision/upload`
+- `POST /api/teams/{team_id}/video-vision/upload` (sincrono)
+- `POST /api/teams/{team_id}/video-vision/jobs` + `GET /api/teams/video-vision/jobs/{job_id}/events` (assincrono com progresso ao vivo via SSE)
 - `POST /api/analysis/preview`
 - `POST /api/analysis`
 - `GET /api/history`

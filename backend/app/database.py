@@ -347,6 +347,7 @@ def _online_profile_from_row(row: sqlite3.Row) -> dict:
         "status": row["status"],
         "search_status": row["search_status"],
         "source_count": row["source_count"],
+        "crest_url": payload.get("crest_url"),
         "online_search": payload,
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
