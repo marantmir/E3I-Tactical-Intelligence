@@ -1,5 +1,16 @@
 # Registro do Agente
 
+## Entrega - Base de dados online real (Wikipedia) + progresso ao vivo na visao computacional (11/07/2026)
+
+Dois pedidos combinados: (1) uma base online de verdade alimentando a ferramenta, restrita a fontes gratuitas/publicas; (2) sensacao de "tempo real" no processamento de video, mantendo o modelo de upload em lote (nao streaming de camera ao vivo).
+
+- **Wikipedia como base online real** (`backend/app/wikipedia_lookup.py`): sem chave de API, usa a REST API publica do Wikipedia (pt, com fallback en) para trazer descricao, resumo e principalmente o **escudo/imagem do time**. Wireado em `online_search.py` (campo `crest_url`/`wikipedia` no resultado de busca) e em `routes/teams.py` (`_team_crest_url`, cache via `lru_cache`) para times locais, perfis salvos e perfis de busca online.
+- **Escudos visiveis na interface**: `TeamCard`, o hero do Dossie e os cards do Confronto agora mostram o escudo do time quando disponivel (`.team-crest`/`.team-crest-large` em `styles.css`) - reforca o pedido de "ferramenta mais visual".
+- **Progresso ao vivo no processamento de video** (`backend/app/video_jobs.py` + rotas `POST .../video-vision/jobs` e `GET .../video-vision/jobs/{id}/events`): o upload roda em thread de segundo plano (`process_video` ganhou um callback `on_progress`) e o frontend acompanha via Server-Sent Events, atualizando uma barra de progresso real (`VideoProcessingProgress` em `VideoVisionPanel.jsx`) com frames processados e percentual, em vez de so esperar o resultado final. O endpoint sincrono anterior continua existindo (compatibilidade).
+- Corrigido de brinde um bug de sobreposicao visual nos controles de frames/intervalo/equipe (`.vision-processing-controls`) percebido durante o teste do progresso ao vivo.
+- Testes novos: `test_wikipedia_lookup.py`, `test_online_search.py` e casos de job/SSE em `test_routes_teams.py`.
+- Nao testavel neste ambiente de desenvolvimento: a rede de sandbox bloqueia `wikipedia.org`/`duckduckgo.com` (politica de egress), entao a integracao foi validada com testes unitarios mockados; a chamada real de rede deve ser validada apos o deploy (Render tem acesso normal a internet).
+
 ## Entrega - Meu time, cadastro-ou-selecao e Confronto (11/07/2026)
 
 Nova funcionalidade, inspirada no conceito de "own team" de uma versao paralela do projeto (zip enviado), mas reimplementada com o design system atual (sem os estilos inline daquela versao) e sem os campos que ja existem via `online-profiles`/`teams`:

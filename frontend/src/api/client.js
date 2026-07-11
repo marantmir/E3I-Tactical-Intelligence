@@ -122,6 +122,62 @@ export const api = {
     }
     return response.json();
   },
+  uploadVideoVisionWithProgress: async (teamRef, file, options = {}, onProgress) => {
+    const maxUploadBytes = 300 * 1024 * 1024;
+    if (file.size > maxUploadBytes) {
+      throw new Error("Video excede o limite de 300MB. Envie um recorte menor para a analise visual.");
+    }
+    const formData = new FormData();
+    formData.append("file", file);
+    (options.jerseyFiles || []).forEach((jerseyFile) => {
+      formData.append("jersey_refs", jerseyFile);
+    });
+    const params = new URLSearchParams();
+    if (options.maxFrames) params.set("max_frames", options.maxFrames);
+    if (options.sampleEvery) params.set("sample_every", options.sampleEvery);
+    if (options.teamFilter) params.set("team_filter", options.teamFilter);
+    if (!/^\d+$/.test(String(teamRef)) && options.teamName) {
+      params.set("team_name", options.teamName);
+    }
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const startPath = /^\d+$/.test(String(teamRef))
+      ? `/api/teams/${teamRef}/video-vision/jobs${query}`
+      : `/api/teams/video-vision/jobs${query}`;
+
+    const startResponse = await fetch(`${API_BASE}${startPath}`, {
+      method: "POST",
+      body: formData
+    });
+    if (!startResponse.ok) {
+      throw new Error(await readErrorMessage(startResponse, "Falha ao iniciar o processamento do video"));
+    }
+    const { job_id: jobId } = await startResponse.json();
+
+    return new Promise((resolve, reject) => {
+      const source = new EventSource(`${API_BASE}/api/teams/video-vision/jobs/${jobId}/events`);
+      source.onmessage = (event) => {
+        let payload;
+        try {
+          payload = JSON.parse(event.data);
+        } catch {
+          return;
+        }
+        if (payload.status === "processing") {
+          onProgress?.(payload);
+        } else if (payload.status === "done") {
+          source.close();
+          resolve(payload.result);
+        } else {
+          source.close();
+          reject(new Error(payload.message || "Falha ao processar o video."));
+        }
+      };
+      source.onerror = () => {
+        source.close();
+        reject(new Error("Conexao de progresso do processamento foi perdida. Tente novamente."));
+      };
+    });
+  },
   publicIntelligence: (teamId) => request(`/api/teams/${teamId}/public-intelligence`),
   gamePlan: (teamId) => request(`/api/teams/${teamId}/game-plan`),
   previewAnalysis: (payload) =>

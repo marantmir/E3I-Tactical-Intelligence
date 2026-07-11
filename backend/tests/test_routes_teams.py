@@ -1,4 +1,6 @@
 import io
+import json
+import time
 
 import cv2
 import numpy as np
@@ -167,3 +169,51 @@ def test_responses_carry_a_request_id_header():
 
     assert response.status_code == 200
     assert response.headers["x-request-id"]
+
+
+def _parse_sse_events(body: str) -> list[dict]:
+    return [json.loads(line[len("data: "):]) for line in body.splitlines() if line.startswith("data: ")]
+
+
+def test_video_vision_job_reports_progress_via_sse_and_completes():
+    video_bytes = _synthetic_video_bytes()
+
+    start = client.post(
+        "/api/teams/1/video-vision/jobs",
+        params={"max_frames": 60, "sample_every": 1, "team_filter": "all"},
+        files={"file": ("clip.mp4", io.BytesIO(video_bytes), "video/mp4")},
+    )
+    assert start.status_code == 200
+    job_id = start.json()["job_id"]
+    assert job_id
+
+    deadline = time.monotonic() + 10
+    events: list[dict] = []
+    while time.monotonic() < deadline:
+        response = client.get(f"/api/teams/video-vision/jobs/{job_id}/events")
+        assert response.status_code == 200
+        events = _parse_sse_events(response.text)
+        if events and events[-1]["status"] != "processing":
+            break
+
+    assert events, "expected at least one SSE event"
+    assert events[-1]["status"] == "done"
+    assert events[-1]["result"]["status"] == "processed"
+    assert events[-1]["result"]["team"] == "Flamengo"
+
+
+def test_video_vision_job_start_rejects_unsupported_extension():
+    response = client.post(
+        "/api/teams/1/video-vision/jobs",
+        files={"file": ("clip.txt", b"not a video", "text/plain")},
+    )
+
+    assert response.status_code == 400
+
+
+def test_video_vision_job_events_for_unknown_job_reports_error():
+    response = client.get("/api/teams/video-vision/jobs/does-not-exist/events")
+
+    assert response.status_code == 200
+    events = _parse_sse_events(response.text)
+    assert events[-1]["status"] == "error"

@@ -24,6 +24,7 @@ sem depender de modelo pre-treinado baixado da internet.
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
 import math
 import time
 import uuid
@@ -192,6 +193,7 @@ def process_video(
     team_filter: str = "auto",
     jersey_references: list[dict] | None = None,
     max_processing_seconds: int | None = DEFAULT_PROCESSING_TIMEOUT_SECONDS,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> dict:
     started_at = time.monotonic()
     stopped_by_timeout = False
@@ -428,6 +430,8 @@ def process_video(
         writer.write(frame)
         processed += 1
         frame_idx += sample_every if full_video_coverage else 1
+        if on_progress:
+            on_progress(processed, max_frames)
 
     capture.release()
     writer.release()

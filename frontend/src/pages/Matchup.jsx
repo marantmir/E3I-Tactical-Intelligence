@@ -150,9 +150,12 @@ function TeamSummaryCard({ label, team, dossier, accent }) {
   return (
     <article className="info-panel">
       <div className="team-card-head">
-        <div>
-          <p className="eyebrow">{label}</p>
-          <h3>{team?.name || "A definir"}</h3>
+        <div className="team-card-identity">
+          {team?.crest_url ? <img className="team-crest" src={team.crest_url} alt={`Escudo de ${team.name}`} /> : null}
+          <div>
+            <p className="eyebrow">{label}</p>
+            <h3>{team?.name || "A definir"}</h3>
+          </div>
         </div>
         <span className={`badge ${accent}`}>{team?.base_formation || "A definir"}</span>
       </div>

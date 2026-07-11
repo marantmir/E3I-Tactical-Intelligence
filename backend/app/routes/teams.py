@@ -1,7 +1,11 @@
+import asyncio
+import json
+import threading
 import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import StreamingResponse
 
 from ..database import (
     get_online_profile_by_id,
@@ -29,7 +33,9 @@ from ..llm_assistant import analyze_video_tactics, identify_players_from_tracks
 from ..online_search import search_public_team_info
 from ..rate_limit import enforce_video_upload_rate_limit
 from ..schemas import OnlineTeamProfileSave, OwnTeamSet
+from ..video_jobs import video_jobs
 from ..video_vision import process_video
+from ..wikipedia_lookup import fetch_team_wikipedia_profile
 
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
@@ -177,6 +183,30 @@ async def team_video_vision_upload_by_name(
     )
 
 
+@router.post("/video-vision/jobs", dependencies=[Depends(enforce_video_upload_rate_limit)])
+async def team_video_vision_start_job_by_name(
+    file: UploadFile = File(...),
+    jersey_refs: list[UploadFile] | None = File(default=None),
+    team_name: str = Query(min_length=1),
+    max_frames: int = Query(default=DEFAULT_VIDEO_MAX_FRAMES, ge=60, le=MAX_VIDEO_FRAMES),
+    sample_every: int = Query(default=DEFAULT_VIDEO_SAMPLE_EVERY, ge=1, le=30),
+    team_filter: str = Query(default="auto"),
+):
+    return await _start_video_vision_job(
+        file=file,
+        team_name=team_name,
+        max_frames=max_frames,
+        sample_every=sample_every,
+        team_filter=team_filter,
+        jersey_refs=jersey_refs,
+    )
+
+
+@router.get("/video-vision/jobs/{job_id}/events")
+async def team_video_vision_job_events(job_id: str):
+    return StreamingResponse(_video_job_event_stream(job_id), media_type="text/event-stream")
+
+
 @router.get("/{team_id}")
 def detail(team_id: int):
     return get_team(team_id)
@@ -231,15 +261,29 @@ async def team_video_vision_upload(
     )
 
 
-async def _process_uploaded_video(
-    *,
-    file: UploadFile,
-    team_name: str,
-    max_frames: int,
-    sample_every: int,
-    team_filter: str,
-    jersey_refs: list[UploadFile] | None,
+@router.post("/{team_id}/video-vision/jobs", dependencies=[Depends(enforce_video_upload_rate_limit)])
+async def team_video_vision_start_job(
+    team_id: int,
+    file: UploadFile = File(...),
+    jersey_refs: list[UploadFile] | None = File(default=None),
+    max_frames: int = Query(default=DEFAULT_VIDEO_MAX_FRAMES, ge=60, le=MAX_VIDEO_FRAMES),
+    sample_every: int = Query(default=DEFAULT_VIDEO_SAMPLE_EVERY, ge=1, le=30),
+    team_filter: str = Query(default="auto"),
 ):
+    """Inicia o processamento em segundo plano e devolve um job_id imediatamente.
+    O progresso e acompanhado via GET /video-vision/jobs/{job_id}/events (SSE)."""
+    team = get_team(team_id)
+    return await _start_video_vision_job(
+        file=file,
+        team_name=team["name"],
+        max_frames=max_frames,
+        sample_every=sample_every,
+        team_filter=team_filter,
+        jersey_refs=jersey_refs,
+    )
+
+
+async def _save_uploaded_video(file: UploadFile) -> tuple[Path, int, str]:
     extension = Path(file.filename or "").suffix.lower()
     if extension not in ALLOWED_VIDEO_TYPES:
         raise HTTPException(
@@ -259,6 +303,28 @@ async def _process_uploaded_video(
                 upload_path.unlink(missing_ok=True)
                 raise HTTPException(status_code=413, detail="Video excede o limite de 300MB.")
             buffer.write(chunk)
+
+    return upload_path, size, extension
+
+
+def _build_video_result(result: dict, team_name: str) -> dict:
+    result["team"] = team_name
+    result["annotated_video_url"] = f"/media/{result['annotated_video_file']}"
+    result["llm_analysis"] = analyze_video_tactics(team_name, result)
+    result["llm_identity"] = identify_players_from_tracks(team_name, result)
+    return result
+
+
+async def _process_uploaded_video(
+    *,
+    file: UploadFile,
+    team_name: str,
+    max_frames: int,
+    sample_every: int,
+    team_filter: str,
+    jersey_refs: list[UploadFile] | None,
+):
+    upload_path, size, extension = await _save_uploaded_video(file)
 
     effective_max_frames, effective_sample_every, upload_profile = _video_processing_profile(
         extension,
@@ -292,12 +358,89 @@ async def _process_uploaded_video(
     finally:
         upload_path.unlink(missing_ok=True)
 
-    result["team"] = team_name
     result["upload_profile"] = upload_profile
-    result["annotated_video_url"] = f"/media/{result['annotated_video_file']}"
-    result["llm_analysis"] = analyze_video_tactics(team_name, result)
-    result["llm_identity"] = identify_players_from_tracks(team_name, result)
-    return result
+    return _build_video_result(result, team_name)
+
+
+async def _start_video_vision_job(
+    *,
+    file: UploadFile,
+    team_name: str,
+    max_frames: int,
+    sample_every: int,
+    team_filter: str,
+    jersey_refs: list[UploadFile] | None,
+) -> dict:
+    upload_path, size, extension = await _save_uploaded_video(file)
+
+    effective_max_frames, effective_sample_every, upload_profile = _video_processing_profile(
+        extension,
+        size,
+        max_frames,
+        sample_every,
+    )
+    jersey_references = await _read_jersey_references(jersey_refs or [])
+    job = video_jobs.create(max_frames=effective_max_frames)
+
+    def run_job() -> None:
+        try:
+            result = process_video(
+                str(upload_path),
+                max_frames=effective_max_frames,
+                sample_every=effective_sample_every,
+                team_filter=team_filter,
+                jersey_references=jersey_references,
+                max_processing_seconds=VIDEO_PROCESSING_TIMEOUT_SECONDS,
+                on_progress=lambda processed, _total: video_jobs.update_progress(job.id, processed),
+            )
+            result["upload_profile"] = upload_profile
+            video_jobs.complete(job.id, _build_video_result(result, team_name))
+        except ValueError as error:
+            video_jobs.fail(job.id, str(error))
+        except Exception:
+            video_jobs.fail(
+                job.id,
+                "Falha ao processar o video no pipeline de visao computacional. "
+                "Tente reduzir frames, aumentar o intervalo entre frames ou enviar um recorte menor.",
+            )
+        finally:
+            upload_path.unlink(missing_ok=True)
+
+    threading.Thread(target=run_job, daemon=True).start()
+    return {"job_id": job.id, "upload_profile": upload_profile}
+
+
+async def _video_job_event_stream(job_id: str):
+    last_processed = -1
+    while True:
+        job = video_jobs.get(job_id)
+        if job is None:
+            yield _sse_event({"status": "error", "message": "Job de processamento nao encontrado ou ja finalizado."})
+            return
+
+        if job.status == "processing":
+            if job.processed != last_processed:
+                last_processed = job.processed
+                yield _sse_event(
+                    {
+                        "status": "processing",
+                        "processed": job.processed,
+                        "max_frames": job.max_frames,
+                    }
+                )
+            await asyncio.sleep(0.4)
+            continue
+
+        if job.status == "done":
+            yield _sse_event({"status": "done", "result": job.result})
+        else:
+            yield _sse_event({"status": "error", "message": job.error})
+        video_jobs.discard(job_id)
+        return
+
+
+def _sse_event(payload: dict) -> str:
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
 def _video_processing_profile(
@@ -368,6 +511,13 @@ def team_game_plan(team_id: int):
     return get_single_team_record(game_plans(), team_id, "Plano de jogo")
 
 
+def _team_crest_url(team_name: str, saved_profile: dict | None) -> str | None:
+    if saved_profile and saved_profile.get("crest_url"):
+        return saved_profile["crest_url"]
+    wikipedia = fetch_team_wikipedia_profile(team_name)
+    return wikipedia.get("crest_url") if wikipedia else None
+
+
 def _online_profile_from_search(team_name: str, online: dict) -> dict:
     confidence = "Medio" if online.get("status") == "available" else "Baixo"
     return {
@@ -382,6 +532,7 @@ def _online_profile_from_search(team_name: str, online: dict) -> dict:
         "confidence": confidence,
         "status": "Perfil tatico para pre-analise visual",
         "source_count": len(online.get("sources") or []),
+        "crest_url": online.get("crest_url"),
         "online_search": online,
     }
 
@@ -417,11 +568,12 @@ def _local_team_workspace(team: dict) -> dict:
         for record in list_history()
         if record.get("team_id") == team_id or record.get("team_name", "").casefold() == team["name"].casefold()
     ]
+    crest_url = _team_crest_url(team["name"], saved_profile)
 
     return {
         "ref": str(team_id),
         "kind": "local",
-        "team": {**team, "ref": str(team_id), "local_id": team_id},
+        "team": {**team, "ref": str(team_id), "local_id": team_id, "crest_url": crest_url},
         "saved_profile": saved_profile,
         "dossier": dossier,
         "formations": team_formations,
@@ -461,6 +613,7 @@ def _online_team_workspace(profile: dict) -> dict:
         "style": profile["style"],
         "confidence": profile["confidence"],
         "status": profile["status"],
+        "crest_url": profile.get("crest_url"),
     }
     dossier = _fallback_dossier(profile, online)
     plan = _fallback_plan(collection_plan)

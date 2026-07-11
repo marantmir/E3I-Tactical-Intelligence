@@ -488,6 +488,30 @@ p {
   gap: 12px;
 }
 
+.team-card-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.team-crest {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: var(--surface-soft, #f4f6fb);
+  flex-shrink: 0;
+}
+
+.team-crest-large {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--surface-soft, #f4f6fb);
+  flex-shrink: 0;
+}
+
 .team-card h3 {
   font-size: 1.2rem;
   margin-bottom: 0;
@@ -1097,6 +1121,33 @@ tr:last-child td {
   border-color: rgba(216, 162, 58, 0.75);
 }
 
+.video-progress {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.video-progress-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-soft, #eef3fb);
+  overflow: hidden;
+}
+
+.video-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--amber, #d8a23a), var(--green, #10b981));
+  transition: width 0.3s ease;
+}
+
+.video-progress p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .video-caption {
   font-size: 0.85rem;
   opacity: 0.75;
@@ -1121,12 +1172,26 @@ tr:last-child td {
 
 .vision-processing-controls label {
   display: grid;
-  grid-template-columns: max-content minmax(120px, 1fr) 54px;
+  grid-template-columns: 1fr 54px;
+  grid-template-areas: "label label" "control value";
   align-items: center;
-  gap: 10px;
+  gap: 4px 10px;
   color: #23364f;
   font-size: 0.86rem;
   font-weight: 900;
+}
+
+.vision-processing-controls label span {
+  grid-area: label;
+}
+
+.vision-processing-controls label input,
+.vision-processing-controls label select {
+  grid-area: control;
+}
+
+.vision-processing-controls label strong {
+  grid-area: value;
 }
 
 .vision-processing-controls input[type="range"] {

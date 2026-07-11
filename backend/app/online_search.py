@@ -8,6 +8,7 @@ import urllib.parse
 import urllib.request
 
 from .llm_assistant import enrich_team_search, tactical_search_queries
+from .wikipedia_lookup import fetch_team_wikipedia_profile
 
 
 USER_AGENT = "E3I-Tactical-Intelligence/0.3 tactical-video-intelligence"
@@ -54,6 +55,19 @@ def search_public_team_info(team_name: str) -> dict:
         )
     sources.extend(_guided_video_sources(cleaned_name))
 
+    wikipedia = _try_collect_one("Wikipedia", lambda: fetch_team_wikipedia_profile(cleaned_name), errors)
+    if wikipedia:
+        sources.append(
+            _source(
+                title=wikipedia["title"],
+                origin="Wikipedia",
+                url=wikipedia.get("page_url") or "",
+                summary=wikipedia["summary"],
+                category="team_form",
+                relevance="Alta",
+            )
+        )
+
     sources = _dedupe_sources(sources)[:MAX_SOURCES]
     source_groups = _group_sources(sources)
     coverage = {key: len(value) for key, value in source_groups.items()}
@@ -73,6 +87,8 @@ def search_public_team_info(team_name: str) -> dict:
         "retrieved_at": datetime.now(timezone.utc).isoformat(),
         "errors": errors[:6],
         "note": _build_note(status, live_count, errors),
+        "wikipedia": wikipedia,
+        "crest_url": wikipedia.get("crest_url") if wikipedia else None,
     }
     result["llm_search"] = enrich_team_search(cleaned_name, result)
     return result
@@ -84,6 +100,14 @@ def _try_collect(label: str, collect, errors: list[dict]) -> list[dict]:
     except Exception as error:
         errors.append({"source": label, "error": error.__class__.__name__})
         return []
+
+
+def _try_collect_one(label: str, collect, errors: list[dict]):
+    try:
+        return collect()
+    except Exception as error:
+        errors.append({"source": label, "error": error.__class__.__name__})
+        return None
 
 
 def _duckduckgo_lookup(query: str, category: str) -> list[dict]:
