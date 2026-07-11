@@ -106,7 +106,6 @@ def seed_history(connection: sqlite3.Connection) -> None:
 
 
 def create_analysis(payload: dict) -> dict:
-    init_db()
     selected_team = None
     online_profile = None
     if payload.get("team_id") is not None:
@@ -171,7 +170,6 @@ def create_analysis(payload: dict) -> dict:
 
 
 def list_history() -> list[dict]:
-    init_db()
     with get_connection() as connection:
         rows = connection.execute(
             """
@@ -188,7 +186,6 @@ def normalize_team_name(name: str) -> str:
 
 
 def get_online_profile_by_name(team_name: str) -> dict | None:
-    init_db()
     normalized = normalize_team_name(team_name)
     with get_connection() as connection:
         row = connection.execute(
@@ -203,7 +200,6 @@ def get_online_profile_by_name(team_name: str) -> dict | None:
 
 
 def get_online_profile_by_id(profile_id: int) -> dict | None:
-    init_db()
     with get_connection() as connection:
         row = connection.execute(
             """
@@ -217,7 +213,6 @@ def get_online_profile_by_id(profile_id: int) -> dict | None:
 
 
 def list_online_profiles(query: str = "") -> list[dict]:
-    init_db()
     normalized = normalize_team_name(query)
     with get_connection() as connection:
         if normalized:
@@ -242,7 +237,6 @@ def list_online_profiles(query: str = "") -> list[dict]:
 
 
 def save_online_profile(payload: dict) -> dict:
-    init_db()
     now = datetime.now(timezone.utc).isoformat()
     team_name = payload["team_name"].strip()
     normalized = normalize_team_name(team_name)
@@ -355,14 +349,12 @@ def _online_profile_from_row(row: sqlite3.Row) -> dict:
 
 
 def get_own_team_ref() -> str | None:
-    init_db()
     with get_connection() as connection:
         row = connection.execute("SELECT ref FROM own_team_setting WHERE id = 1").fetchone()
     return row["ref"] if row else None
 
 
 def set_own_team_ref(ref: str) -> str:
-    init_db()
     now = datetime.now(timezone.utc).isoformat()
     with get_connection() as connection:
         connection.execute(
