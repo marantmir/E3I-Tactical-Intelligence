@@ -3,8 +3,11 @@ Visao computacional real sobre video enviado pelo usuario.
 
 Pipeline:
 1. Le o video com OpenCV, amostrando frames distribuidos do inicio ao fim
-   (via seek), para que a analise represente o video completo enviado e
-   nao apenas os primeiros segundos.
+   (via seek). A duracao real e obtida por sondagem direta no decodificador
+   (busca exponencial + binaria), nao apenas pelos metadados do container
+   (CAP_PROP_FRAME_COUNT), que podem ser 0/errados em gravacoes de celular
+   ou webm nao finalizado - assim a analise representa o video completo
+   enviado e nao apenas os primeiros segundos.
 2. Detecta objetos em movimento por Background Subtraction (MOG2).
 3. Faz tracking simples por centroide (nearest-neighbor entre frames).
 4. Acumula heatmap real de ocupacao (grid normalizado 0-100).
@@ -130,6 +133,58 @@ class _Track:
         return self.points[-1][1], self.points[-1][2]
 
 
+def _probe_total_frames(capture, reported_total_frames: int) -> int:
+    """Find the real number of readable frames via direct seek+read probing.
+
+    Container/codec frame-count metadata (CAP_PROP_FRAME_COUNT) is frequently
+    wrong or absent for phone recordings and browser-captured video (VFR,
+    unfinalized moov atom, etc.). Trusting it caused long uploads to only be
+    analyzed up to whatever (possibly too-short) frame count the metadata
+    claimed. This does an exponential-then-binary search directly against the
+    decoder instead, so coverage is correct regardless of metadata quality.
+    Returns -1 if the capture does not support seeking at all (rare), which
+    signals the caller to fall back to plain sequential reading.
+    """
+
+    def can_read_at(index: int) -> bool:
+        if index < 0:
+            return False
+        if not capture.set(cv2.CAP_PROP_POS_FRAMES, float(index)):
+            return False
+        ok, _ = capture.read()
+        return ok
+
+    if not can_read_at(0):
+        return -1
+
+    hi = max(reported_total_frames, 1)
+    if not can_read_at(hi - 1):
+        # Metadata overestimated (or was 0/unknown): binary search downward
+        # for the last readable frame within [0, hi).
+        lo, bound = 0, hi
+        while lo < bound:
+            mid = (lo + bound) // 2
+            if can_read_at(mid):
+                lo = mid + 1
+            else:
+                bound = mid
+        return max(lo, 1)
+
+    # Metadata frame is readable - probe further in case it underestimated
+    # the real length (exponential search for the true end).
+    probe = hi
+    while probe < 5_000_000 and can_read_at(probe * 2 - 1):
+        probe *= 2
+    lo, bound = probe, probe * 2
+    while lo < bound:
+        mid = (lo + bound + 1) // 2
+        if can_read_at(mid - 1):
+            lo = mid
+        else:
+            bound = mid - 1
+    return lo
+
+
 def process_video(
     video_path: str,
     max_frames: int = 600,
@@ -153,8 +208,11 @@ def process_video(
     height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 360
 
     requested_sample_every = sample_every
-    source_total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-    full_video_coverage = source_total_frames > 0
+    reported_total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    probed_total_frames = _probe_total_frames(capture, reported_total_frames)
+    capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    full_video_coverage = probed_total_frames > 0
+    source_total_frames = probed_total_frames if full_video_coverage else 0
     if full_video_coverage and source_total_frames > max_frames:
         # Spread the sampled frames across the whole video (seek-based) instead of
         # only reading sequentially from the start, so long matches are analyzed

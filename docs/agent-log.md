@@ -1,5 +1,9 @@
 # Registro do Agente
 
+## Entrega - Sondagem robusta de duracao do video (11/07/2026)
+
+Reforco da correcao anterior de cobertura total de video: `CAP_PROP_FRAME_COUNT` (metadado do container) pode ser 0, ausente ou errado para gravacoes de celular/webm nao finalizado, o que fazia o pipeline cair no fallback sequencial (voltando a analisar so o inicio do video) mesmo com a correcao de amostragem ja aplicada. Agora `video_vision.py` sonda a duracao real diretamente no decodificador via busca exponencial + binaria (`_probe_total_frames`, seek com `CAP_PROP_POS_FRAMES` + `read()`), corrigindo tanto metadados subestimados quanto ausentes, e so cai no fallback sequencial quando o arquivo realmente nao suporta seek (caso raro). Testes cobrem: metadado zerado, metadado subestimado e capture sem suporte a seek.
+
 ## Entrega - Amostragem de video completo na visao computacional (11/07/2026)
 
 Correcao no pipeline de visao computacional (`backend/app/video_vision.py`): antes, `process_video` lia o video sequencialmente a partir do inicio e parava ao atingir `max_frames`, entao um video longo (ex.: 30s+) so tinha analisados os primeiros segundos. Agora:
