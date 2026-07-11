@@ -2,7 +2,9 @@
 Visao computacional real sobre video enviado pelo usuario.
 
 Pipeline:
-1. Le o video com OpenCV.
+1. Le o video com OpenCV, amostrando frames distribuidos do inicio ao fim
+   (via seek), para que a analise represente o video completo enviado e
+   nao apenas os primeiros segundos.
 2. Detecta objetos em movimento por Background Subtraction (MOG2).
 3. Faz tracking simples por centroide (nearest-neighbor entre frames).
 4. Acumula heatmap real de ocupacao (grid normalizado 0-100).
@@ -150,6 +152,15 @@ def process_video(
     width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
     height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 360
 
+    requested_sample_every = sample_every
+    source_total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    full_video_coverage = source_total_frames > 0
+    if full_video_coverage and source_total_frames > max_frames:
+        # Spread the sampled frames across the whole video (seek-based) instead of
+        # only reading sequentially from the start, so long matches are analyzed
+        # end to end rather than just their first few seconds.
+        sample_every = max(sample_every, -(-source_total_frames // max_frames))
+
     bg_subtractor = cv2.createBackgroundSubtractorMOG2(history=200, varThreshold=32, detectShadows=False)
 
     output_fps = max(1.0, fps / sample_every)
@@ -179,10 +190,15 @@ def process_video(
             stopped_by_timeout = True
             break
 
+        if full_video_coverage:
+            if frame_idx >= source_total_frames:
+                break
+            capture.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+
         ok, frame = capture.read()
         if not ok:
             break
-        if frame_idx % sample_every != 0:
+        if not full_video_coverage and frame_idx % sample_every != 0:
             frame_idx += 1
             continue
 
@@ -353,7 +369,7 @@ def process_video(
 
         writer.write(frame)
         processed += 1
-        frame_idx += 1
+        frame_idx += sample_every if full_video_coverage else 1
 
     capture.release()
     writer.release()
@@ -425,6 +441,10 @@ def process_video(
         "processing_config": {
             "max_frames": max_frames,
             "sample_every": sample_every,
+            "requested_sample_every": requested_sample_every,
+            "source_total_frames": source_total_frames,
+            "full_video_coverage": full_video_coverage,
+            "coverage_mode": "uniforme_video_completo" if full_video_coverage else "sequencial_desde_inicio",
             "team_filter": requested_team_filter,
             "selected_team_key": final_target_key,
             "min_contour_area": MIN_CONTOUR_AREA,
@@ -504,6 +524,11 @@ def process_video(
         "summary": (
             f"Video processado com deteccao real de movimento (MOG2 + tracking por centroide): "
             f"{len(valid_tracks)} rastros da equipe acompanhada em {processed} frames analisados."
+            + (
+                " Amostragem distribuida do inicio ao fim do video enviado."
+                if full_video_coverage
+                else " Duracao do video nao pode ser determinada; leitura sequencial a partir do inicio."
+            )
             + (" Analise parcial: limite seguro de processamento atingido." if stopped_by_timeout else "")
         ),
     }

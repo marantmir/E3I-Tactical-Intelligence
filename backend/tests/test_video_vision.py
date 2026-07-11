@@ -63,6 +63,51 @@ def test_process_video_respects_max_frames(synthetic_video: Path):
     assert result["frames_analyzed"] <= 10
 
 
+def test_process_video_samples_the_full_duration_of_long_clips(tmp_path: Path):
+    """A video much longer than max_frames must still be analyzed end to end
+    (samples spread across the whole clip), not just its first few seconds."""
+    video_path = tmp_path / "long_synthetic_match.mp4"
+    _write_synthetic_match_clip(video_path, frames=300, fps=25.0)
+
+    result = process_video(str(video_path), max_frames=10, sample_every=1, team_filter="all")
+
+    config = result["processing_config"]
+    assert config["full_video_coverage"] is True
+    assert config["source_total_frames"] == 300
+    assert config["requested_sample_every"] == 1
+    # 300 source frames spread across only 10 samples means each sample must be
+    # ~30 frames apart - i.e. the last sample lands near the end of the clip,
+    # not clustered in the first 10 frames like the old sequential behavior.
+    assert config["sample_every"] >= 30
+    assert result["frames_analyzed"] <= 10
+
+
+def test_process_video_falls_back_to_sequential_when_duration_is_unknown(tmp_path: Path, monkeypatch):
+    """If the container/codec does not report a reliable frame count, keep the
+    old sequential-from-start behavior instead of guessing a seek target."""
+    import cv2 as cv2_module
+
+    video_path = tmp_path / "synthetic_match.mp4"
+    _write_synthetic_match_clip(video_path, frames=60, fps=25.0)
+
+    real_video_capture = cv2_module.VideoCapture
+
+    class _UnknownDurationCapture(real_video_capture):
+        def get(self, prop_id):
+            if prop_id == cv2_module.CAP_PROP_FRAME_COUNT:
+                return 0
+            return super().get(prop_id)
+
+    monkeypatch.setattr("app.video_vision.cv2.VideoCapture", _UnknownDurationCapture)
+
+    result = process_video(str(video_path), max_frames=10, sample_every=2, team_filter="all")
+
+    config = result["processing_config"]
+    assert config["full_video_coverage"] is False
+    assert config["source_total_frames"] == 0
+    assert config["sample_every"] == 2
+
+
 def test_process_video_rejects_unreadable_file(tmp_path: Path):
     bogus_path = tmp_path / "not_a_video.mp4"
     bogus_path.write_bytes(b"this is not a real video file")

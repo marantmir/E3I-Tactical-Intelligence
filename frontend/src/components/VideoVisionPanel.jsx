@@ -201,6 +201,13 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
               {vision.upload_profile.effective_sample_every}. Isso evita timeout em arquivos grandes/MKV.
             </div>
           ) : null}
+          {vision.processing_config?.full_video_coverage ? (
+            <div className="notice-strip">
+              Amostragem distribuida do inicio ao fim do video enviado ({vision.processing_config.source_total_frames}{" "}
+              frames de origem, 1 amostra a cada {vision.processing_config.sample_every} frames) para representar a
+              partida completa, nao apenas os primeiros segundos.
+            </div>
+          ) : null}
           {vision.processing_config?.stopped_by_timeout ? (
             <div className="notice-strip">
               Analise parcial gerada antes do limite de {vision.processing_config.max_processing_seconds}s. Para leitura

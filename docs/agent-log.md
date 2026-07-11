@@ -1,5 +1,15 @@
 # Registro do Agente
 
+## Entrega - Amostragem de video completo na visao computacional (11/07/2026)
+
+Correcao no pipeline de visao computacional (`backend/app/video_vision.py`): antes, `process_video` lia o video sequencialmente a partir do inicio e parava ao atingir `max_frames`, entao um video longo (ex.: 30s+) so tinha analisados os primeiros segundos. Agora:
+
+- Ao abrir o video, le `CAP_PROP_FRAME_COUNT` para descobrir a duracao total em frames.
+- Quando a duracao e conhecida, calcula um `sample_every` que distribui as amostras (via seek com `CAP_PROP_POS_FRAMES`, sem decodificar os frames pulados) do primeiro ao ultimo frame do arquivo, entao o heatmap, o grafo, os rastros e o video anotado passam a representar a partida inteira, nao so o inicio.
+- Quando a duracao nao pode ser determinada (codec/container sem contagem confiavel), mantem o comportamento antigo (sequencial a partir do inicio) como fallback seguro.
+- `processing_config` agora expoe `source_total_frames`, `requested_sample_every`, `sample_every` (efetivo) e `full_video_coverage`; o frontend (`VideoVisionPanel.jsx`) exibe um aviso confirmando a amostragem distribuida no video completo.
+- Testes novos cobrindo cobertura total (video sintetico longo com `max_frames` pequeno) e o fallback sequencial.
+
 ## Entrega - Fase 2 do roadmap: resiliencia sem login (11/07/2026)
 
 Continuacao do roadmap de auditoria, restrita aos itens que nao dependem da decisao de produto sobre login/admin de usuarios:
