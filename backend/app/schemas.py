@@ -26,3 +26,7 @@ class ReportCreate(BaseModel):
     team_id: int
     objective: str = Field(default="Relatorio para comissao tecnica")
     user_profile: str = Field(default="Analista de desempenho")
+
+
+class OwnTeamSet(BaseModel):
+    ref: str = Field(min_length=1)

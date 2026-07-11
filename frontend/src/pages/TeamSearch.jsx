@@ -7,10 +7,12 @@ import ErrorState from "../components/ErrorState.jsx";
 import LoadingState from "../components/LoadingState.jsx";
 import SourceCard from "../components/SourceCard.jsx";
 import TeamCard from "../components/TeamCard.jsx";
+import { useTeamSelection } from "../context/TeamSelectionContext.jsx";
 
 export default function TeamSearch() {
   const [params] = useSearchParams();
-  const [query, setQuery] = useState(params.get("query") || "");
+  const { lastSearchedName } = useTeamSelection();
+  const [query, setQuery] = useState(params.get("query") || lastSearchedName || "");
   const [mode, setMode] = useState("local");
   const [results, setResults] = useState([]);
   const [savedProfiles, setSavedProfiles] = useState([]);

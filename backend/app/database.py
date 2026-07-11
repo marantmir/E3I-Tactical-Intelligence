@@ -59,6 +59,15 @@ def init_db() -> None:
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS own_team_setting (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                ref TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
         count = connection.execute("SELECT COUNT(*) FROM analysis_history").fetchone()[0]
         if count == 0:
             seed_history(connection)
@@ -342,3 +351,25 @@ def _online_profile_from_row(row: sqlite3.Row) -> dict:
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
+
+
+def get_own_team_ref() -> str | None:
+    init_db()
+    with get_connection() as connection:
+        row = connection.execute("SELECT ref FROM own_team_setting WHERE id = 1").fetchone()
+    return row["ref"] if row else None
+
+
+def set_own_team_ref(ref: str) -> str:
+    init_db()
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO own_team_setting (id, ref, updated_at)
+            VALUES (1, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET ref = excluded.ref, updated_at = excluded.updated_at
+            """,
+            (ref, now),
+        )
+    return ref

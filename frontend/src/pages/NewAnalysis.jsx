@@ -1,8 +1,10 @@
-import { Activity, Globe2, Save } from "lucide-react";
+import { Activity, Globe2, Save, UserPlus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { api } from "../api/client.js";
+import { findExistingTeamByName, registerTeamFromOnlineSearch } from "../api/teamRegistration.js";
+import { useTeamSelection } from "../context/TeamSelectionContext.jsx";
 
 const objectives = [
   "Análise de adversário",
@@ -23,11 +25,15 @@ const profiles = [
 export default function NewAnalysis() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const { setLastSearchedName, refreshOptions } = useTeamSelection();
   const [teams, setTeams] = useState([]);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [existence, setExistence] = useState(null);
+  const [checkingExistence, setCheckingExistence] = useState(false);
+  const [registering, setRegistering] = useState(false);
   const [form, setForm] = useState({
     team_name: params.get("team") || "Flamengo",
     competition: "Brasileirão Série A",
@@ -56,6 +62,43 @@ export default function NewAnalysis() {
     setForm((current) => ({ ...current, [name]: value }));
     setPreview(null);
     setMessage("");
+    if (name === "team_name") {
+      setExistence(null);
+    }
+  }
+
+  async function checkTeamExistence() {
+    const cleaned = form.team_name.trim();
+    if (!cleaned) return;
+    setCheckingExistence(true);
+    try {
+      const result = await findExistingTeamByName(cleaned);
+      setExistence(result);
+      if (result.found) {
+        setLastSearchedName(result.name);
+      }
+    } catch (err) {
+      setMessage(err.message || "Nao foi possivel verificar o time.");
+    } finally {
+      setCheckingExistence(false);
+    }
+  }
+
+  async function registerTeam() {
+    if (!existence || existence.found) return;
+    setRegistering(true);
+    setMessage("");
+    try {
+      const { ref, name } = await registerTeamFromOnlineSearch(existence.name, existence.online);
+      await refreshOptions();
+      setLastSearchedName(name);
+      setExistence({ found: true, ref, name });
+      setMessage(`${name} cadastrado com sucesso. Voce ja pode analisar.`);
+    } catch (err) {
+      setMessage(err.message || "Nao foi possivel cadastrar o time.");
+    } finally {
+      setRegistering(false);
+    }
   }
 
   async function analyze() {
@@ -107,13 +150,38 @@ export default function NewAnalysis() {
       <form className="analysis-form" onSubmit={submit}>
         <label>
           Nome do time
-          <input list="team-options" name="team_name" value={form.team_name} onChange={updateField} />
+          <input
+            list="team-options"
+            name="team_name"
+            value={form.team_name}
+            onChange={updateField}
+            onBlur={checkTeamExistence}
+          />
           <datalist id="team-options">
             {teams.map((team) => (
               <option key={team.id} value={team.name} />
             ))}
           </datalist>
         </label>
+        {checkingExistence ? <span className="inline-message">Verificando time...</span> : null}
+        {existence?.found ? (
+          <span className="inline-message">{existence.name} selecionado (ja esta na base).</span>
+        ) : null}
+        {existence && !existence.found ? (
+          <div className="notice-strip">
+            "{existence.name}" ainda nao esta cadastrado.
+            <button
+              className="button button-primary"
+              type="button"
+              onClick={registerTeam}
+              disabled={registering}
+              style={{ marginLeft: "12px" }}
+            >
+              <UserPlus size={16} />
+              {registering ? "Cadastrando..." : "Cadastrar time"}
+            </button>
+          </div>
+        ) : null}
         <label>
           Competição
           <input name="competition" value={form.competition} onChange={updateField} />

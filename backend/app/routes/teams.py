@@ -1,14 +1,16 @@
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from ..database import (
     get_online_profile_by_id,
     get_online_profile_by_name,
+    get_own_team_ref,
     list_history,
     list_online_profiles,
     save_online_profile,
+    set_own_team_ref,
 )
 from ..graph_analysis import build_tactical_graph
 from ..data_store import (
@@ -25,7 +27,8 @@ from ..data_store import (
 )
 from ..llm_assistant import analyze_video_tactics, identify_players_from_tracks
 from ..online_search import search_public_team_info
-from ..schemas import OnlineTeamProfileSave
+from ..rate_limit import enforce_video_upload_rate_limit
+from ..schemas import OnlineTeamProfileSave, OwnTeamSet
 from ..video_vision import process_video
 
 
@@ -144,7 +147,18 @@ def team_workspace(team_ref: str):
     return _online_team_workspace(resolved["profile"])
 
 
-@router.post("/video-vision/upload")
+@router.get("/own-team")
+def get_own_team():
+    return {"ref": get_own_team_ref()}
+
+
+@router.put("/own-team")
+def set_own_team(payload: OwnTeamSet):
+    _resolve_team_reference(payload.ref)
+    return {"ref": set_own_team_ref(payload.ref)}
+
+
+@router.post("/video-vision/upload", dependencies=[Depends(enforce_video_upload_rate_limit)])
 async def team_video_vision_upload_by_name(
     file: UploadFile = File(...),
     jersey_refs: list[UploadFile] | None = File(default=None),
@@ -194,7 +208,7 @@ def team_graph_analysis(team_id: int):
     return build_tactical_graph(team, get_team_records(players(), team_id), get_team_records(formations(), team_id))
 
 
-@router.post("/{team_id}/video-vision/upload")
+@router.post("/{team_id}/video-vision/upload", dependencies=[Depends(enforce_video_upload_rate_limit)])
 async def team_video_vision_upload(
     team_id: int,
     file: UploadFile = File(...),

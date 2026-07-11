@@ -1,5 +1,40 @@
 # Registro do Agente
 
+## Entrega - Meu time, cadastro-ou-selecao e Confronto (11/07/2026)
+
+Nova funcionalidade, inspirada no conceito de "own team" de uma versao paralela do projeto (zip enviado), mas reimplementada com o design system atual (sem os estilos inline daquela versao) e sem os campos que ja existem via `online-profiles`/`teams`:
+
+- Backend: tabela `own_team_setting` (uma linha global) + `GET/PUT /api/teams/own-team`, guardando so a `ref` (reaproveita o mesmo universo de times local/online ja exposto por `team_options`/`workspace`).
+- Frontend: tela nova `Meu time` (`/meu-time`) para selecionar entre times ja conhecidos ou cadastrar um novo e marca-lo como seu time ativo.
+- `NewAnalysis.jsx`: ao sair do campo de nome do time, o app verifica se ele existe (base local ou perfil salvo); se existir, so seleciona; se nao existir, a acao principal passa a ser "Cadastrar time" (salva o perfil online) antes de liberar a analise.
+- O nome verificado/cadastrado fica salvo (`localStorage`) e alimenta automaticamente o campo de busca em `Buscar time`.
+- Tela nova `Confronto` (`/team/:teamId/matchup`) comparando o seu time ativo com o time analisado (formacao, pontos fortes/fracos, elenco). O link some e a pagina mostra aviso quando o time analisado e o proprio time ativo, ja que um time nao joga contra si mesmo.
+- Testes novos para os endpoints `own-team` (default vazio, definir um ref valido, rejeitar ref invalido).
+
+## Entrega - Sondagem robusta de duracao do video (11/07/2026)
+
+Reforco da correcao anterior de cobertura total de video: `CAP_PROP_FRAME_COUNT` (metadado do container) pode ser 0, ausente ou errado para gravacoes de celular/webm nao finalizado, o que fazia o pipeline cair no fallback sequencial (voltando a analisar so o inicio do video) mesmo com a correcao de amostragem ja aplicada. Agora `video_vision.py` sonda a duracao real diretamente no decodificador via busca exponencial + binaria (`_probe_total_frames`, seek com `CAP_PROP_POS_FRAMES` + `read()`), corrigindo tanto metadados subestimados quanto ausentes, e so cai no fallback sequencial quando o arquivo realmente nao suporta seek (caso raro). Testes cobrem: metadado zerado, metadado subestimado e capture sem suporte a seek.
+
+## Entrega - Amostragem de video completo na visao computacional (11/07/2026)
+
+Correcao no pipeline de visao computacional (`backend/app/video_vision.py`): antes, `process_video` lia o video sequencialmente a partir do inicio e parava ao atingir `max_frames`, entao um video longo (ex.: 30s+) so tinha analisados os primeiros segundos. Agora:
+
+- Ao abrir o video, le `CAP_PROP_FRAME_COUNT` para descobrir a duracao total em frames.
+- Quando a duracao e conhecida, calcula um `sample_every` que distribui as amostras (via seek com `CAP_PROP_POS_FRAMES`, sem decodificar os frames pulados) do primeiro ao ultimo frame do arquivo, entao o heatmap, o grafo, os rastros e o video anotado passam a representar a partida inteira, nao so o inicio.
+- Quando a duracao nao pode ser determinada (codec/container sem contagem confiavel), mantem o comportamento antigo (sequencial a partir do inicio) como fallback seguro.
+- `processing_config` agora expoe `source_total_frames`, `requested_sample_every`, `sample_every` (efetivo) e `full_video_coverage`; o frontend (`VideoVisionPanel.jsx`) exibe um aviso confirmando a amostragem distribuida no video completo.
+- Testes novos cobrindo cobertura total (video sintetico longo com `max_frames` pequeno) e o fallback sequencial.
+
+## Entrega - Fase 2 do roadmap: resiliencia sem login (11/07/2026)
+
+Continuacao do roadmap de auditoria, restrita aos itens que nao dependem da decisao de produto sobre login/admin de usuarios:
+
+- Rate limiting em memoria (`backend/app/rate_limit.py`, sem dependencia nova) aplicado as rotas de upload de video (`/api/teams/{team_id}/video-vision/upload` e `/api/teams/video-vision/upload`), configuravel via `VIDEO_UPLOAD_RATE_LIMIT`/`VIDEO_UPLOAD_RATE_WINDOW_SECONDS`. Retorna 429 com `Retry-After` quando excedido.
+- Logging estruturado em JSON (`backend/app/logging_config.py`) com correlacao por `request_id` (middleware em `main.py`, cabecalho `X-Request-ID` na resposta), substituindo a ausencia de logs por linhas JSON parseaveis por qualquer agregador.
+- Testes novos: `test_rate_limit.py`, `test_logging_config.py`, e casos adicionais em `test_routes_teams.py` (429 no upload, presenca do `X-Request-ID`).
+
+Login/admin de usuarios e a consolidacao com um segundo backend continuam fora de escopo (decisao de produto pendente).
+
 ## Entrega - Ajustes de auditoria (11/07/2026)
 
 Aplicados os itens de um plano de auditoria tecnica que tem correspondencia direta neste repositorio (FastAPI + React, sem `server.ts`/autenticacao, que existem apenas numa versao paralela do projeto):

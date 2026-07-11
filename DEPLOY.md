@@ -56,11 +56,15 @@ OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-4.1-mini
 E3I_LLM_TIMEOUT_SECONDS=18
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+VIDEO_UPLOAD_RATE_LIMIT=6
+VIDEO_UPLOAD_RATE_WINDOW_SECONDS=300
 ```
 
 `OPENAI_API_KEY` deve ser criada como secret no painel do provedor. Nao coloque a chave no Git.
 
 `ALLOWED_ORIGINS` restringe o CORS do FastAPI (lista separada por virgula). Em producao, o frontend e servido pelo proprio FastAPI (mesma origem), entao nao e necessario adicionar o dominio publico; a variavel so precisa ser ajustada se o frontend for hospedado separadamente do backend.
+
+`VIDEO_UPLOAD_RATE_LIMIT`/`VIDEO_UPLOAD_RATE_WINDOW_SECONDS` limitam quantos uploads de video cada IP pode enviar por janela de tempo (padrao: 6 a cada 300s), mitigando abuso do custo de CPU do pipeline de visao computacional.
 
 Se preferir parametrizar pela tela do app, acesse:
 

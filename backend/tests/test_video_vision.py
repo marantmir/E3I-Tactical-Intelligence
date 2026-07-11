@@ -63,6 +63,120 @@ def test_process_video_respects_max_frames(synthetic_video: Path):
     assert result["frames_analyzed"] <= 10
 
 
+def test_process_video_samples_the_full_duration_of_long_clips(tmp_path: Path):
+    """A video much longer than max_frames must still be analyzed end to end
+    (samples spread across the whole clip), not just its first few seconds."""
+    video_path = tmp_path / "long_synthetic_match.mp4"
+    _write_synthetic_match_clip(video_path, frames=300, fps=25.0)
+
+    result = process_video(str(video_path), max_frames=10, sample_every=1, team_filter="all")
+
+    config = result["processing_config"]
+    assert config["full_video_coverage"] is True
+    assert config["source_total_frames"] == 300
+    assert config["requested_sample_every"] == 1
+    # 300 source frames spread across only 10 samples means each sample must be
+    # ~30 frames apart - i.e. the last sample lands near the end of the clip,
+    # not clustered in the first 10 frames like the old sequential behavior.
+    assert config["sample_every"] >= 30
+    assert result["frames_analyzed"] <= 10
+
+
+_REAL_VIDEO_CAPTURE = cv2.VideoCapture
+
+
+class _FakeCaptureBase:
+    """Wraps a real cv2.VideoCapture by composition (not subclassing - the
+    OpenCV binding is a C extension type, and subclassing/overriding it in
+    Python has caused segfaults when combined with `super()` calls)."""
+
+    def __init__(self, path):
+        self._real = _REAL_VIDEO_CAPTURE(path)
+
+    def isOpened(self):
+        return self._real.isOpened()
+
+    def get(self, prop_id):
+        return self._real.get(prop_id)
+
+    def set(self, prop_id, value):
+        return self._real.set(prop_id, value)
+
+    def read(self):
+        return self._real.read()
+
+    def release(self):
+        return self._real.release()
+
+
+def test_process_video_recovers_full_coverage_when_metadata_reports_zero_frames(tmp_path: Path, monkeypatch):
+    """Some codecs/containers (phone recordings, unfinalized webm) report
+    CAP_PROP_FRAME_COUNT as 0/unreliable even though the file is fully
+    seekable. Probing must recover the real length directly instead of
+    silently falling back to analyzing only the first few frames."""
+    video_path = tmp_path / "long_synthetic_match.mp4"
+    _write_synthetic_match_clip(video_path, frames=300, fps=25.0)
+
+    class _UnreliableMetadataCapture(_FakeCaptureBase):
+        def get(self, prop_id):
+            if prop_id == cv2.CAP_PROP_FRAME_COUNT:
+                return 0
+            return super().get(prop_id)
+
+    monkeypatch.setattr("app.video_vision.cv2.VideoCapture", _UnreliableMetadataCapture)
+
+    result = process_video(str(video_path), max_frames=10, sample_every=1, team_filter="all")
+
+    config = result["processing_config"]
+    assert config["full_video_coverage"] is True
+    assert config["source_total_frames"] == 300
+    assert config["sample_every"] >= 30
+
+
+def test_process_video_recovers_full_coverage_when_metadata_underestimates(tmp_path: Path, monkeypatch):
+    """Some containers report a frame count lower than the real content
+    (e.g. truncated index). Probing must detect and correct for this too."""
+    video_path = tmp_path / "long_synthetic_match.mp4"
+    _write_synthetic_match_clip(video_path, frames=300, fps=25.0)
+
+    class _UnderestimatingCapture(_FakeCaptureBase):
+        def get(self, prop_id):
+            if prop_id == cv2.CAP_PROP_FRAME_COUNT:
+                return 50  # real file has 300 frames
+            return super().get(prop_id)
+
+    monkeypatch.setattr("app.video_vision.cv2.VideoCapture", _UnderestimatingCapture)
+
+    result = process_video(str(video_path), max_frames=10, sample_every=1, team_filter="all")
+
+    config = result["processing_config"]
+    assert config["full_video_coverage"] is True
+    assert config["source_total_frames"] == 300
+
+
+def test_process_video_falls_back_to_sequential_when_seeking_is_unsupported(tmp_path: Path, monkeypatch):
+    """If the capture cannot seek at all (rare, e.g. some live/network
+    streams), keep the old sequential-from-start behavior instead of
+    crashing or looping forever trying to probe the length."""
+    video_path = tmp_path / "synthetic_match.mp4"
+    _write_synthetic_match_clip(video_path, frames=60, fps=25.0)
+
+    class _NoSeekCapture(_FakeCaptureBase):
+        def set(self, prop_id, value):
+            if prop_id == cv2.CAP_PROP_POS_FRAMES:
+                return False
+            return super().set(prop_id, value)
+
+    monkeypatch.setattr("app.video_vision.cv2.VideoCapture", _NoSeekCapture)
+
+    result = process_video(str(video_path), max_frames=10, sample_every=2, team_filter="all")
+
+    config = result["processing_config"]
+    assert config["full_video_coverage"] is False
+    assert config["source_total_frames"] == 0
+    assert config["sample_every"] == 2
+
+
 def test_process_video_rejects_unreadable_file(tmp_path: Path):
     bogus_path = tmp_path / "not_a_video.mp4"
     bogus_path.write_bytes(b"this is not a real video file")
