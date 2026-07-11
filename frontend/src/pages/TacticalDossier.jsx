@@ -1,10 +1,11 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowRight, CircleDot } from "lucide-react";
+import { ArrowRight, CircleDot, Swords } from "lucide-react";
 
 import { api } from "../api/client.js";
 import ConfidenceBadge from "../components/ConfidenceBadge.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import LoadingState from "../components/LoadingState.jsx";
+import { useTeamSelection } from "../context/TeamSelectionContext.jsx";
 import { useApiResource } from "./useApiResource.js";
 
 const playerDots = [
@@ -23,12 +24,14 @@ const playerDots = [
 
 export default function TacticalDossier() {
   const { teamId } = useParams();
+  const { ownTeam } = useTeamSelection();
   const { data, loading, error } = useApiResource(() => api.teamWorkspace(teamId), [teamId]);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
 
   const { team, dossier, collection } = data;
+  const isOwnTeam = ownTeam && String(ownTeam.ref) === String(team.ref);
 
   return (
     <section className="page-grid">
@@ -40,6 +43,12 @@ export default function TacticalDossier() {
         </div>
         <div className="hero-actions">
           <ConfidenceBadge level={dossier.confidence_level} />
+          {isOwnTeam ? null : (
+            <Link className="button button-secondary" to={`/team/${team.ref}/matchup`}>
+              <Swords size={16} />
+              Confronto
+            </Link>
+          )}
           <Link className="button button-primary" to={`/team/${team.ref}/report`}>
             Relatorio
             <ArrowRight size={16} />

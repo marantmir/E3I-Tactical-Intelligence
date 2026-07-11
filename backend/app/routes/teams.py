@@ -6,9 +6,11 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from ..database import (
     get_online_profile_by_id,
     get_online_profile_by_name,
+    get_own_team_ref,
     list_history,
     list_online_profiles,
     save_online_profile,
+    set_own_team_ref,
 )
 from ..graph_analysis import build_tactical_graph
 from ..data_store import (
@@ -26,7 +28,7 @@ from ..data_store import (
 from ..llm_assistant import analyze_video_tactics, identify_players_from_tracks
 from ..online_search import search_public_team_info
 from ..rate_limit import enforce_video_upload_rate_limit
-from ..schemas import OnlineTeamProfileSave
+from ..schemas import OnlineTeamProfileSave, OwnTeamSet
 from ..video_vision import process_video
 
 
@@ -143,6 +145,17 @@ def team_workspace(team_ref: str):
     if resolved["kind"] == "local":
         return _local_team_workspace(resolved["team"])
     return _online_team_workspace(resolved["profile"])
+
+
+@router.get("/own-team")
+def get_own_team():
+    return {"ref": get_own_team_ref()}
+
+
+@router.put("/own-team")
+def set_own_team(payload: OwnTeamSet):
+    _resolve_team_reference(payload.ref)
+    return {"ref": set_own_team_ref(payload.ref)}
 
 
 @router.post("/video-vision/upload", dependencies=[Depends(enforce_video_upload_rate_limit)])

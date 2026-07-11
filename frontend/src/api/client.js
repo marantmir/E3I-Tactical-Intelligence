@@ -80,6 +80,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload)
     }),
+  ownTeam: () => request("/api/teams/own-team"),
+  setOwnTeam: (ref) =>
+    request("/api/teams/own-team", {
+      method: "PUT",
+      body: JSON.stringify({ ref })
+    }),
   team: (teamId) => request(`/api/teams/${teamId}`),
   tacticalAnalysis: (teamId) => request(`/api/teams/${teamId}/tactical-analysis`),
   formations: (teamId) => request(`/api/teams/${teamId}/formations`),

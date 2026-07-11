@@ -5,6 +5,9 @@ Aplicacao web para inteligencia tatica de futebol. O fluxo prioriza videos de pa
 ## Funcionalidades
 
 - Selecao global de time ativo para consumir dados locais, fontes salvas e pendencias de coleta nas telas.
+- "Meu time": define qual time e o seu para habilitar o Confronto e evitar compara-lo contra si mesmo.
+- Cadastro-ou-selecao automatico ao iniciar uma analise: se o time ja existe, e so selecionado; se nao existe, cadastrar passa a ser a acao principal.
+- Confronto: comparacao lado a lado entre o seu time ativo e o time analisado (formacao, pontos fortes/fracos, elenco).
 - Busca publica restrita a materiais taticos e videos analisaveis.
 - Pre-analise antes do salvamento.
 - Analise por grafos com conexoes entre rastros, zonas, centralidade e densidade.
@@ -82,6 +85,7 @@ Resumo para Render:
 - `GET /api/teams`
 - `GET /api/teams/options`
 - `GET /api/teams/workspace/{team_ref}`
+- `GET /api/teams/own-team` / `PUT /api/teams/own-team`
 - `GET /api/teams/search?query=...`
 - `GET /api/teams/{team_id}/public-intelligence`
 - `GET /api/teams/{team_id}/graph-analysis`

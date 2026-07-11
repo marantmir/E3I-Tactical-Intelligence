@@ -42,6 +42,27 @@ def test_list_teams_returns_seed_data():
     assert {"id", "name", "league"}.issubset(teams[0].keys())
 
 
+def test_own_team_defaults_to_unset():
+    response = client.get("/api/teams/own-team")
+
+    assert response.status_code == 200
+    assert response.json() == {"ref": None}
+
+
+def test_own_team_can_be_set_to_a_local_team():
+    response = client.put("/api/teams/own-team", json={"ref": "1"})
+
+    assert response.status_code == 200
+    assert response.json() == {"ref": "1"}
+    assert client.get("/api/teams/own-team").json() == {"ref": "1"}
+
+
+def test_own_team_rejects_unknown_ref():
+    response = client.put("/api/teams/own-team", json={"ref": "999999"})
+
+    assert response.status_code == 404
+
+
 def test_team_detail_found():
     response = client.get("/api/teams/1")
 
