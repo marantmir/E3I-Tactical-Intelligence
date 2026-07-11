@@ -38,6 +38,8 @@
 - [x] Build Vite validado.
 - [x] Code-splitting por rota (`React.lazy`/`Suspense`) no frontend.
 - [x] CORS do FastAPI restrito por `ALLOWED_ORIGINS` (nao mais `*`).
-- [x] Suite `pytest` cobrindo `graph_analysis`, `video_vision` e rotas de `teams`/`analysis`.
+- [x] Rate limiting nas rotas de upload de video (429 + `Retry-After`).
+- [x] Logging estruturado em JSON com `request_id`/`X-Request-ID`.
+- [x] Suite `pytest` cobrindo `graph_analysis`, `video_vision`, rate limiting, logging e rotas de `teams`/`analysis`.
 - [x] Fluxo analisado no navegador local.
 - [ ] Validar console no endpoint publicado.

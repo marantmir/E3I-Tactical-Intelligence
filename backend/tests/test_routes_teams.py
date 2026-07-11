@@ -117,3 +117,32 @@ def test_video_vision_upload_processes_synthetic_clip():
     assert payload["status"] == "processed"
     assert payload["team"] == "Flamengo"
     assert payload["annotated_video_url"].startswith("/media/")
+
+
+def test_video_vision_upload_is_rate_limited_per_client(monkeypatch):
+    from app.rate_limit import video_upload_rate_limiter
+
+    monkeypatch.setattr(video_upload_rate_limiter, "max_requests", 2)
+    video_upload_rate_limiter.reset()
+
+    for _ in range(2):
+        response = client.post(
+            "/api/teams/1/video-vision/upload",
+            files={"file": ("clip.txt", b"not a video", "text/plain")},
+        )
+        assert response.status_code == 400
+
+    blocked = client.post(
+        "/api/teams/1/video-vision/upload",
+        files={"file": ("clip.txt", b"not a video", "text/plain")},
+    )
+
+    assert blocked.status_code == 429
+    assert "Retry-After" in blocked.headers
+
+
+def test_responses_carry_a_request_id_header():
+    response = client.get("/api/teams")
+
+    assert response.status_code == 200
+    assert response.headers["x-request-id"]

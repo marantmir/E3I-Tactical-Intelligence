@@ -1,5 +1,15 @@
 # Registro do Agente
 
+## Entrega - Fase 2 do roadmap: resiliencia sem login (11/07/2026)
+
+Continuacao do roadmap de auditoria, restrita aos itens que nao dependem da decisao de produto sobre login/admin de usuarios:
+
+- Rate limiting em memoria (`backend/app/rate_limit.py`, sem dependencia nova) aplicado as rotas de upload de video (`/api/teams/{team_id}/video-vision/upload` e `/api/teams/video-vision/upload`), configuravel via `VIDEO_UPLOAD_RATE_LIMIT`/`VIDEO_UPLOAD_RATE_WINDOW_SECONDS`. Retorna 429 com `Retry-After` quando excedido.
+- Logging estruturado em JSON (`backend/app/logging_config.py`) com correlacao por `request_id` (middleware em `main.py`, cabecalho `X-Request-ID` na resposta), substituindo a ausencia de logs por linhas JSON parseaveis por qualquer agregador.
+- Testes novos: `test_rate_limit.py`, `test_logging_config.py`, e casos adicionais em `test_routes_teams.py` (429 no upload, presenca do `X-Request-ID`).
+
+Login/admin de usuarios e a consolidacao com um segundo backend continuam fora de escopo (decisao de produto pendente).
+
 ## Entrega - Ajustes de auditoria (11/07/2026)
 
 Aplicados os itens de um plano de auditoria tecnica que tem correspondencia direta neste repositorio (FastAPI + React, sem `server.ts`/autenticacao, que existem apenas numa versao paralela do projeto):

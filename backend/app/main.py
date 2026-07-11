@@ -1,12 +1,15 @@
 import os
+import time
+import uuid
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .database import init_db
+from .logging_config import configure_logging, log_event
 from .routes import analysis, llm, reports, teams
 
 
@@ -15,6 +18,8 @@ app = FastAPI(
     description="API para inteligencia tatica com busca publica, grafos e leitura visual de videos.",
     version="0.1.0",
 )
+
+logger = configure_logging()
 
 DEFAULT_ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 ALLOWED_ORIGINS = [
@@ -29,6 +34,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex
+    started_at = time.monotonic()
+    response = await call_next(request)
+    duration_ms = round((time.monotonic() - started_at) * 1000, 1)
+    response.headers["X-Request-ID"] = request_id
+    log_event(
+        logger,
+        "http_request",
+        request_id=request_id,
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+        duration_ms=duration_ms,
+        client_ip=request.client.host if request.client else None,
+    )
+    return response
 
 app.include_router(teams.router)
 app.include_router(analysis.router)

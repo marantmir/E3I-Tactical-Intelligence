@@ -22,3 +22,13 @@ def no_network_llm(monkeypatch):
     from app import llm_assistant
 
     monkeypatch.setattr(llm_assistant, "_api_key", lambda: "")
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiters():
+    """Rate limiters are process-wide singletons; keep tests independent."""
+    from app.rate_limit import video_upload_rate_limiter
+
+    video_upload_rate_limiter.reset()
+    yield
+    video_upload_rate_limiter.reset()
