@@ -88,11 +88,15 @@ def test_looks_like_football_rejects_other_sports():
 
 
 def test_duckduckgo_lookup_filters_out_non_football_results(monkeypatch):
-    html_page = """
-    <a class="result__a" href="https://example.com/futebol">Flamengo vence jogo de futebol</a>
-    <a class="result__a" href="https://example.com/basquete">Flamengo perde jogo de basquete da NBA</a>
-    """
-    monkeypatch.setattr(online_search, "_fetch_text", lambda url, timeout=5: html_page)
+    web_results = {
+        "results": [
+            {"title": "Flamengo vence jogo de futebol", "url": "https://example.com/futebol", "snippet": ""},
+            {"title": "Flamengo perde jogo de basquete da NBA", "url": "https://example.com/basquete", "snippet": ""},
+        ],
+        "engine": "DuckDuckGo",
+        "errors": [],
+    }
+    monkeypatch.setattr(online_search, "search_web", lambda query, max_results=6: web_results)
 
     results = online_search._duckduckgo_lookup("Flamengo futebol", "team_form")
 

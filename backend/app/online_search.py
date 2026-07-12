@@ -8,7 +8,9 @@ import urllib.parse
 import urllib.request
 
 from .llm_assistant import enrich_team_search, tactical_search_queries
+from .web_search import search_web
 from .wikipedia_lookup import fetch_team_wikipedia_profile
+from .youtube_search import search_youtube_videos
 
 
 USER_AGENT = "E3I-Tactical-Intelligence/0.3 tactical-video-intelligence"
@@ -95,6 +97,9 @@ def search_public_team_info(team_name: str) -> dict:
                 errors,
             )
         )
+    # Videos reais do YouTube (sem chave de API) para alimentar diretamente a
+    # analise visual; se falhar, o fallback guiado abaixo garante os links.
+    sources.extend(_try_collect("YouTube videos", lambda: _youtube_video_sources(cleaned_name), errors))
     sources.extend(_guided_video_sources(cleaned_name))
 
     wikipedia = _try_collect_one("Wikipedia", lambda: fetch_team_wikipedia_profile(cleaned_name), errors)
@@ -164,33 +169,62 @@ def _try_collect_one(label: str, collect, errors: list[dict]):
 
 
 def _duckduckgo_lookup(query: str, category: str) -> list[dict]:
-    encoded = urllib.parse.quote(query)
-    text = _fetch_text(f"https://duckduckgo.com/html/?q={encoded}")
+    """Busca web publica resiliente: tenta varios motores (DuckDuckGo HTML,
+    DuckDuckGo Lite e Bing) ate obter resultados, com user-agent de navegador.
+    Isso substitui o endpoint unico que falhava com URLError em producao."""
+    outcome = search_web(query, max_results=6)
     sources = []
-    pattern = re.compile(
-        r'<a[^>]+class="result__a"[^>]+href="(?P<href>[^"]+)"[^>]*>(?P<title>.*?)</a>',
-        re.IGNORECASE | re.DOTALL,
-    )
-    for match in pattern.finditer(text):
-        href = html.unescape(match.group("href"))
-        title = _clean_text(_strip_tags(match.group("title")))
-        url = _unwrap_duckduckgo_url(href)
+    for result in outcome["results"]:
+        title = result.get("title") or ""
+        url = result.get("url") or ""
         if not title or not url:
             continue
-        if not _looks_like_football(title):
+        if not _looks_like_football(title, result.get("snippet", "")):
             continue
         sources.append(
             _source(
                 title=title,
                 origin="Busca web publica",
                 url=url,
-                summary=f"Referencia publica para revisar padroes taticos e material visual: {query}",
+                summary=result.get("snippet")
+                or f"Referencia publica para revisar padroes taticos e material visual: {query}",
                 category=category,
                 relevance="Media",
             )
         )
-        if len(sources) >= 6:
-            break
+    if not sources and outcome["errors"]:
+        # Propaga a falha para que o chamador registre o motivo (todos os
+        # motores caíram), mantendo o fallback guiado como rede de seguranca.
+        engines = ", ".join(item["engine"] for item in outcome["errors"])
+        raise RuntimeError(f"Motores de busca indisponiveis: {engines}")
+    return sources
+
+
+def _youtube_video_sources(team_name: str) -> list[dict]:
+    """Videos reais do YouTube (titulo, canal, duracao) para jogo completo,
+    melhores momentos e analise tatica - prontos para o analista escolher e
+    subir no pipeline de visao computacional."""
+    queries = [
+        ("match_videos", f"{team_name} futebol jogo completo", "Jogo completo / melhores momentos"),
+        ("analysis_videos", f"{team_name} analise tatica como joga", "Analise tatica / modelo de jogo"),
+    ]
+    sources: list[dict] = []
+    for category, query, label in queries:
+        for video in search_youtube_videos(query, limit=4):
+            meta = " · ".join(
+                part for part in (video.get("channel"), video.get("duration"), video.get("published")) if part
+            )
+            sources.append(
+                _source(
+                    title=video["title"],
+                    origin="YouTube",
+                    url=video["url"],
+                    summary=f"{label}. {meta}".strip(),
+                    category=category,
+                    relevance="Alta",
+                    published_at=video.get("published") or "",
+                )
+            )
     return sources
 
 
