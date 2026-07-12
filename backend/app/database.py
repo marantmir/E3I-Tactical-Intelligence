@@ -76,9 +76,26 @@ def init_db() -> None:
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS access_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                role TEXT NOT NULL,
+                status TEXT NOT NULL,
+                areas TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
         count = connection.execute("SELECT COUNT(*) FROM analysis_history").fetchone()[0]
         if count == 0:
             seed_history(connection)
+        users_count = connection.execute("SELECT COUNT(*) FROM access_users").fetchone()[0]
+        if users_count == 0:
+            seed_users(connection)
 
 
 def seed_history(connection: sqlite3.Connection) -> None:
@@ -378,3 +395,167 @@ def set_own_team_ref(ref: str) -> str:
             (ref, now),
         )
     return ref
+
+
+# ---------------------------------------------------------------------------
+# Administracao de acesso: usuarios (nome, email, papel, status, areas)
+# ---------------------------------------------------------------------------
+ACCESS_ROLES = ("Administrador", "Analista", "Treinador", "Scout", "Gestor")
+ACCESS_STATUSES = ("Ativo", "Inativo")
+ACCESS_AREAS = ("Dossie", "Formacoes", "Elenco", "Fontes", "Plano", "Relatorio", "Administracao")
+
+
+def seed_users(connection: sqlite3.Connection) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    connection.execute(
+        """
+        INSERT INTO access_users (name, email, role, status, areas, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "Administrador E3I",
+            "admin@e3i.local",
+            "Administrador",
+            "Ativo",
+            json.dumps(list(ACCESS_AREAS), ensure_ascii=False),
+            now,
+            now,
+        ),
+    )
+
+
+def _user_from_row(row: sqlite3.Row) -> dict:
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "email": row["email"],
+        "role": row["role"],
+        "status": row["status"],
+        "areas": json.loads(row["areas"] or "[]"),
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def list_users() -> list[dict]:
+    init_db()
+    with get_connection() as connection:
+        rows = connection.execute(
+            "SELECT * FROM access_users ORDER BY name COLLATE NOCASE ASC, id ASC"
+        ).fetchall()
+    return [_user_from_row(row) for row in rows]
+
+
+def get_user(user_id: int) -> dict | None:
+    init_db()
+    with get_connection() as connection:
+        row = connection.execute("SELECT * FROM access_users WHERE id = ?", (user_id,)).fetchone()
+    return _user_from_row(row) if row else None
+
+
+def get_user_by_email(email: str) -> dict | None:
+    init_db()
+    normalized = (email or "").strip().casefold()
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT * FROM access_users WHERE lower(email) = ?", (normalized,)
+        ).fetchone()
+    return _user_from_row(row) if row else None
+
+
+def create_user(payload: dict) -> dict:
+    init_db()
+    now = datetime.now(timezone.utc).isoformat()
+    values = _normalize_user_payload(payload)
+    if get_user_by_email(values["email"]):
+        raise HTTPException(status_code=409, detail="Ja existe um usuario com este email.")
+    with get_connection() as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO access_users (name, email, role, status, areas, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                values["name"],
+                values["email"],
+                values["role"],
+                values["status"],
+                json.dumps(values["areas"], ensure_ascii=False),
+                now,
+                now,
+            ),
+        )
+        user_id = cursor.lastrowid
+    return get_user(user_id)
+
+
+def update_user(user_id: int, payload: dict) -> dict:
+    init_db()
+    existing = get_user(user_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado.")
+    values = _normalize_user_payload({**existing, **payload})
+    duplicate = get_user_by_email(values["email"])
+    if duplicate and duplicate["id"] != user_id:
+        raise HTTPException(status_code=409, detail="Ja existe outro usuario com este email.")
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as connection:
+        connection.execute(
+            """
+            UPDATE access_users
+            SET name = ?, email = ?, role = ?, status = ?, areas = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                values["name"],
+                values["email"],
+                values["role"],
+                values["status"],
+                json.dumps(values["areas"], ensure_ascii=False),
+                now,
+                user_id,
+            ),
+        )
+    return get_user(user_id)
+
+
+def delete_user(user_id: int) -> dict:
+    init_db()
+    existing = get_user(user_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado.")
+    if existing["role"] == "Administrador" and _active_admin_count() <= 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Nao e possivel excluir o unico administrador ativo. Crie outro admin antes.",
+        )
+    with get_connection() as connection:
+        connection.execute("DELETE FROM access_users WHERE id = ?", (user_id,))
+    return existing
+
+
+def _active_admin_count() -> int:
+    with get_connection() as connection:
+        return connection.execute(
+            "SELECT COUNT(*) FROM access_users WHERE role = 'Administrador' AND status = 'Ativo'"
+        ).fetchone()[0]
+
+
+def _normalize_user_payload(payload: dict) -> dict:
+    name = str(payload.get("name") or "").strip()
+    email = str(payload.get("email") or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Informe o nome do usuario.")
+    if "@" not in email or "." not in email.split("@")[-1]:
+        raise HTTPException(status_code=422, detail="Informe um email valido.")
+    role = str(payload.get("role") or "Analista").strip()
+    if role not in ACCESS_ROLES:
+        raise HTTPException(status_code=422, detail=f"Papel invalido. Use: {', '.join(ACCESS_ROLES)}.")
+    status = str(payload.get("status") or "Ativo").strip()
+    if status not in ACCESS_STATUSES:
+        raise HTTPException(status_code=422, detail=f"Status invalido. Use: {', '.join(ACCESS_STATUSES)}.")
+    areas_raw = payload.get("areas") or []
+    if isinstance(areas_raw, str):
+        areas_raw = [part.strip() for part in areas_raw.split(",")]
+    areas = [area for area in areas_raw if area in ACCESS_AREAS]
+    return {"name": name, "email": email, "role": role, "status": status, "areas": areas}

@@ -31,6 +31,7 @@ from .online_search import (
     _source,
 )
 from .wikipedia_lookup import fetch_team_wikipedia_profile
+from .youtube_search import search_youtube_videos
 
 
 COLLECT_MODES = ("link", "keyword", "api")
@@ -127,8 +128,27 @@ def _collect_from_keyword(keyword: str, team_name: str, errors: list[dict]) -> l
         raise ValueError("Informe a palavra-chave para a busca de fontes.")
     query = f"{team_name} {keyword}".strip()
     sources: list[dict] = []
+    # Videos reais do YouTube pela palavra-chave, prontos para subir na analise.
+    try:
+        for video in search_youtube_videos(f"{query} futebol", limit=5):
+            meta = " · ".join(
+                part for part in (video.get("channel"), video.get("duration"), video.get("published")) if part
+            )
+            sources.append(
+                _source(
+                    title=video["title"],
+                    origin="YouTube",
+                    url=video["url"],
+                    summary=f"Video encontrado por palavra-chave. {meta}".strip(),
+                    category="match_videos",
+                    relevance="Alta",
+                    published_at=video.get("published") or "",
+                )
+            )
+    except Exception as error:
+        errors.append({"source": "YouTube (palavra-chave)", "error": error.__class__.__name__})
+
     for category, suffix in (
-        ("match_videos", "video jogo"),
         ("analysis_videos", "analise tatica"),
         ("team_form", ""),
     ):

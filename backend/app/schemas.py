@@ -41,3 +41,27 @@ class SourceCollectRequest(BaseModel):
     team_name: str | None = None
     save: bool = False
     sources: list[dict] | None = None
+
+
+class AccessUserCreate(BaseModel):
+    name: str = Field(min_length=1)
+    email: str = Field(min_length=3)
+    role: str = Field(default="Analista")
+    status: str = Field(default="Ativo")
+    areas: list[str] = Field(default_factory=list)
+
+
+class AccessUserUpdate(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    role: str | None = None
+    status: str | None = None
+    areas: list[str] | None = None
+
+
+class CollectionRecord(BaseModel):
+    """Payload aberto para CRUD das colecoes de dados. A validacao de campos e
+    tipos e feita no crud_store (por colecao), entao aqui aceitamos um dict
+    livre e apenas garantimos que veio um objeto."""
+
+    model_config = {"extra": "allow"}

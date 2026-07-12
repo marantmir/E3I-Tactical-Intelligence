@@ -7,6 +7,7 @@ import {
   Home,
   LineChart,
   Search,
+  Settings,
   ShieldCheck,
   Swords,
   UsersRound,
@@ -24,7 +25,7 @@ const staticLinks = [
 ];
 
 export default function Sidebar() {
-  const { selectedRef, ownTeamRef } = useTeamSelection();
+  const { selectedRef, ownTeamRef, isAdmin } = useTeamSelection();
   const activeRef = selectedRef || "1";
   const isOwnTeamActive = ownTeamRef && String(ownTeamRef) === String(activeRef);
   const teamLinks = [
@@ -36,7 +37,8 @@ export default function Sidebar() {
     { to: `/team/${activeRef}/report`, label: "Relatorio", icon: FileText },
     ...(isOwnTeamActive ? [] : [{ to: `/team/${activeRef}/matchup`, label: "Confronto", icon: Swords }])
   ];
-  const links = [...staticLinks.slice(0, 3), ...teamLinks, ...staticLinks.slice(3)];
+  const adminLinks = isAdmin ? [{ to: "/admin", label: "Administracao", icon: Settings }] : [];
+  const links = [...staticLinks.slice(0, 3), ...teamLinks, ...staticLinks.slice(3), ...adminLinks];
 
   return (
     <aside className="sidebar">

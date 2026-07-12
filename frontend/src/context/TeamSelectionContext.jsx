@@ -29,7 +29,14 @@ export function TeamSelectionProvider({ children }) {
     api
       .ownTeam()
       .then((data) => {
-        if (active) setOwnTeamRefState(data.ref || null);
+        if (!active) return;
+        setOwnTeamRefState(data.ref || null);
+        // Ao entrar na ferramenta, o time do usuario e o contexto ativo em
+        // todas as telas - a menos que a URL ja aponte explicitamente para
+        // outro time (deep-link para /team/:ref, ex.: um adversario).
+        if (data.ref && !/^\/team\//.test(window.location.pathname)) {
+          setSelectedRef(data.ref);
+        }
       })
       .catch(() => {})
       .finally(() => {
@@ -82,6 +89,9 @@ export function TeamSelectionProvider({ children }) {
   async function setOwnTeam(ref) {
     const result = await api.setOwnTeam(ref);
     setOwnTeamRefState(result.ref);
+    // O time escolhido na tela de abertura passa a ser o time ativo em todas
+    // as telas (dossie, formacoes, elenco, fontes, plano, relatorio).
+    setSelectedRef(result.ref);
     return result;
   }
 
@@ -108,6 +118,8 @@ export function TeamSelectionProvider({ children }) {
   }, [options, ownTeamRef]);
 
   const onboarded = Boolean(ownTeamRef) && Boolean(professionalProfile);
+  // Acesso a area de administracao: perfis com responsabilidade de gestao.
+  const isAdmin = professionalProfile === "Administrador" || professionalProfile === "Gestor esportivo";
 
   const value = useMemo(
     () => ({
@@ -124,6 +136,7 @@ export function TeamSelectionProvider({ children }) {
       professionalProfile,
       setProfessionalProfile,
       onboarded,
+      isAdmin,
       onboardingLoading: ownTeamLoading,
       logout,
       refreshOptions
@@ -138,6 +151,7 @@ export function TeamSelectionProvider({ children }) {
       lastSearchedName,
       professionalProfile,
       onboarded,
+      isAdmin,
       ownTeamLoading
     ]
   );
