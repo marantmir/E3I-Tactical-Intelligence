@@ -1,6 +1,7 @@
 import asyncio
 import json
 import threading
+import time
 import uuid
 from pathlib import Path
 
@@ -48,6 +49,10 @@ DEFAULT_VIDEO_MAX_FRAMES = 240
 DEFAULT_VIDEO_SAMPLE_EVERY = 3
 MAX_VIDEO_FRAMES = 1200
 VIDEO_PROCESSING_TIMEOUT_SECONDS = 35
+# O processamento inclui a etapa de LLM depois do ultimo frame, entao a guarda
+# de travamento precisa ser bem maior que o timeout de visao computacional.
+VIDEO_JOB_STALL_SECONDS = 180
+VIDEO_JOB_KEEPALIVE_SECONDS = 10
 
 
 @router.get("")
@@ -204,7 +209,14 @@ async def team_video_vision_start_job_by_name(
 
 @router.get("/video-vision/jobs/{job_id}/events")
 async def team_video_vision_job_events(job_id: str):
-    return StreamingResponse(_video_job_event_stream(job_id), media_type="text/event-stream")
+    return StreamingResponse(
+        _video_job_event_stream(job_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/{team_id}")
@@ -412,6 +424,7 @@ async def _start_video_vision_job(
 
 async def _video_job_event_stream(job_id: str):
     last_processed = -1
+    last_emit = time.monotonic()
     while True:
         job = video_jobs.get(job_id)
         if job is None:
@@ -419,8 +432,17 @@ async def _video_job_event_stream(job_id: str):
             return
 
         if job.status == "processing":
+            now = time.monotonic()
+            if now - job.updated_at > VIDEO_JOB_STALL_SECONDS:
+                video_jobs.fail(
+                    job_id,
+                    "O processamento parou de reportar progresso e foi encerrado. "
+                    "Envie o video novamente, de preferencia um recorte menor.",
+                )
+                continue
             if job.processed != last_processed:
                 last_processed = job.processed
+                last_emit = now
                 yield _sse_event(
                     {
                         "status": "processing",
@@ -428,14 +450,21 @@ async def _video_job_event_stream(job_id: str):
                         "max_frames": job.max_frames,
                     }
                 )
+            elif now - last_emit > VIDEO_JOB_KEEPALIVE_SECONDS:
+                # Comentario SSE: mantem proxies/load balancers sem derrubar a
+                # conexao em trechos longos sem novo progresso (ex.: etapa LLM).
+                last_emit = now
+                yield ": keepalive\n\n"
             await asyncio.sleep(0.4)
             continue
 
+        # O job finalizado NAO e descartado aqui: fica retido por um TTL curto
+        # (video_jobs.FINISHED_JOB_TTL_SECONDS) para que uma reconexao do
+        # navegador ainda receba o resultado se a conexao caiu no final.
         if job.status == "done":
             yield _sse_event({"status": "done", "result": job.result})
         else:
             yield _sse_event({"status": "error", "message": job.error})
-        video_jobs.discard(job_id)
         return
 
 

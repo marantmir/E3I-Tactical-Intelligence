@@ -217,3 +217,36 @@ def test_video_vision_job_events_for_unknown_job_reports_error():
     assert response.status_code == 200
     events = _parse_sse_events(response.text)
     assert events[-1]["status"] == "error"
+
+
+def test_video_vision_job_result_survives_reconnect():
+    video_bytes = _synthetic_video_bytes()
+
+    start = client.post(
+        "/api/teams/1/video-vision/jobs",
+        params={"max_frames": 60, "sample_every": 1, "team_filter": "all"},
+        files={"file": ("clip.mp4", io.BytesIO(video_bytes), "video/mp4")},
+    )
+    assert start.status_code == 200
+    job_id = start.json()["job_id"]
+
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        events = _parse_sse_events(client.get(f"/api/teams/video-vision/jobs/{job_id}/events").text)
+        if events and events[-1]["status"] != "processing":
+            break
+
+    # Uma reconexao (segunda leitura do stream) ainda recebe o resultado final,
+    # pois o job finalizado fica retido por um TTL curto em vez de descartado.
+    reconnect = client.get(f"/api/teams/video-vision/jobs/{job_id}/events")
+    assert reconnect.status_code == 200
+    reconnect_events = _parse_sse_events(reconnect.text)
+    assert reconnect_events[-1]["status"] == "done"
+    assert reconnect_events[-1]["result"]["annotated_video_url"].startswith("/media/")
+
+
+def test_video_vision_job_events_stream_disables_proxy_buffering():
+    response = client.get("/api/teams/video-vision/jobs/does-not-exist/events")
+
+    assert response.headers["cache-control"] == "no-cache"
+    assert response.headers["x-accel-buffering"] == "no"

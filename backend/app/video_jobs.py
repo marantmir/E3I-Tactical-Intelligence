@@ -14,6 +14,11 @@ import uuid
 from dataclasses import dataclass, field
 
 
+# Finished jobs stay available for this long so a client whose SSE connection
+# dropped right before the final event can reconnect and still get the result.
+FINISHED_JOB_TTL_SECONDS = 180.0
+
+
 @dataclass
 class VideoJob:
     id: str
@@ -24,6 +29,7 @@ class VideoJob:
     result: dict | None = None
     error: str | None = None
     updated_at: float = field(default_factory=time.monotonic)
+    finished_at: float | None = None
 
 
 class VideoJobRegistry:
@@ -34,6 +40,7 @@ class VideoJobRegistry:
     def create(self, max_frames: int) -> VideoJob:
         job = VideoJob(id=uuid.uuid4().hex, max_frames=max_frames)
         with self._lock:
+            self._purge_finished_locked()
             self._jobs[job.id] = job
         return job
 
@@ -56,6 +63,7 @@ class VideoJobRegistry:
                 job.status = "done"
                 job.result = result
                 job.updated_at = time.monotonic()
+                job.finished_at = job.updated_at
 
     def fail(self, job_id: str, error: str) -> None:
         with self._lock:
@@ -64,9 +72,20 @@ class VideoJobRegistry:
                 job.status = "error"
                 job.error = error
                 job.updated_at = time.monotonic()
+                job.finished_at = job.updated_at
 
     def discard(self, job_id: str) -> None:
         with self._lock:
+            self._jobs.pop(job_id, None)
+
+    def _purge_finished_locked(self, ttl: float = FINISHED_JOB_TTL_SECONDS) -> None:
+        now = time.monotonic()
+        stale = [
+            job_id
+            for job_id, job in self._jobs.items()
+            if job.finished_at is not None and now - job.finished_at > ttl
+        ]
+        for job_id in stale:
             self._jobs.pop(job_id, None)
 
 
