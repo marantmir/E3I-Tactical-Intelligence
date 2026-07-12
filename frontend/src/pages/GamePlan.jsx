@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { Activity, AlertTriangle, ClipboardList, ShieldAlert, Target, Users } from "lucide-react";
 
 import { api } from "../api/client.js";
 import ErrorState from "../components/ErrorState.jsx";
@@ -24,17 +25,26 @@ export default function GamePlan() {
       </div>
       <div className="card-grid two">
         <article className="info-panel">
-          <h3>Como pressionar</h3>
+          <h3>
+            <Activity size={17} />
+            Como pressionar
+          </h3>
           <p>{plan.how_to_press}</p>
         </article>
         <article className="info-panel">
-          <h3>Onde atacar</h3>
+          <h3>
+            <Target size={17} />
+            Onde atacar
+          </h3>
           <p>{plan.where_to_attack}</p>
         </article>
       </div>
       <section className="two-column">
         <article>
-          <h3>Alvos ou referencias</h3>
+          <h3>
+            <Users size={17} />
+            Alvos ou referencias
+          </h3>
           <ul className="clean-list">
             {plan.players_to_neutralize.map((item) => (
               <li key={item}>
@@ -45,7 +55,10 @@ export default function GamePlan() {
           </ul>
         </article>
         <article>
-          <h3>Fragilidades a confirmar</h3>
+          <h3>
+            <ShieldAlert size={17} />
+            Fragilidades a confirmar
+          </h3>
           <ul className="risk-list">
             {plan.weaknesses_to_exploit.map((item) => (
               <li key={item}>{item}</li>
@@ -55,7 +68,10 @@ export default function GamePlan() {
       </section>
       <section className="three-column">
         <article>
-          <h3>Sugestoes de treino/coleta</h3>
+          <h3>
+            <ClipboardList size={17} />
+            Sugestoes de treino/coleta
+          </h3>
           <ul className="check-list">
             {plan.training_suggestions.map((item) => (
               <li key={item}>{item}</li>
@@ -63,7 +79,10 @@ export default function GamePlan() {
           </ul>
         </article>
         <article>
-          <h3>Riscos do plano</h3>
+          <h3>
+            <AlertTriangle size={17} />
+            Riscos do plano
+          </h3>
           <ul className="risk-list">
             {plan.plan_risks.map((item) => (
               <li key={item}>{item}</li>
@@ -71,7 +90,10 @@ export default function GamePlan() {
           </ul>
         </article>
         <article>
-          <h3>A coletar</h3>
+          <h3>
+            <Target size={17} />
+            A coletar
+          </h3>
           <ul className="check-list">
             {collection.to_collect.map((item) => (
               <li key={item.stage}>

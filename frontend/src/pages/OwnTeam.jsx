@@ -118,17 +118,19 @@ export default function OwnTeam() {
       </article>
 
       {options.length > 0 ? (
-        <label>
-          Selecionar entre times ja conhecidos
-          <select value={ownTeam?.ref || ""} onChange={handleSelectExisting}>
-            <option value="">Escolha um time</option>
-            {options.map((option) => (
-              <option key={option.ref} value={option.ref}>
-                {option.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="select-panel">
+          <label>
+            Selecionar entre times ja conhecidos
+            <select value={ownTeam?.ref || ""} onChange={handleSelectExisting}>
+              <option value="">Escolha um time</option>
+              {options.map((option) => (
+                <option key={option.ref} value={option.ref}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       ) : null}
 
       <form className="analysis-form" onSubmit={handleCheck}>
