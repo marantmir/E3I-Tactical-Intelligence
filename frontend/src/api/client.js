@@ -197,6 +197,11 @@ export const api = {
       connect();
     });
   },
+  collectSources: (payload) =>
+    request("/api/teams/sources/collect", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
   publicIntelligence: (teamId) => request(`/api/teams/${teamId}/public-intelligence`),
   gamePlan: (teamId) => request(`/api/teams/${teamId}/game-plan`),
   previewAnalysis: (payload) =>

@@ -33,7 +33,8 @@ from ..data_store import (
 from ..llm_assistant import analyze_video_tactics, identify_players_from_tracks
 from ..online_search import search_public_team_info
 from ..rate_limit import enforce_video_upload_rate_limit
-from ..schemas import OnlineTeamProfileSave, OwnTeamSet
+from ..schemas import OnlineTeamProfileSave, OwnTeamSet, SourceCollectRequest
+from ..source_collector import collect_sources, merge_sources_into_payload
 from ..video_jobs import video_jobs
 from ..video_vision import process_video
 from ..wikipedia_lookup import fetch_team_wikipedia_profile
@@ -114,6 +115,59 @@ def save_online_team_profile(payload: OnlineTeamProfileSave):
             "online_search": online,
         }
     )
+
+
+@router.post("/sources/collect")
+def collect_team_sources(payload: SourceCollectRequest):
+    """Coleta fontes por link direto (scraping leve), palavra-chave (busca web
+    publica) ou APIs publicas. Com save=true, mescla as fontes na coleta salva
+    do time para que aparecam em todas as telas."""
+    if payload.save and payload.sources:
+        result = {
+            "mode": payload.mode,
+            "value": payload.value,
+            "team_name": (payload.team_name or "").strip(),
+            "status": "collected",
+            "sources": payload.sources,
+            "errors": [],
+            "note": "Fontes ja coletadas foram salvas na coleta do time.",
+        }
+    else:
+        try:
+            result = collect_sources(payload.mode, payload.value, payload.team_name or "")
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    if payload.save and result["sources"]:
+        team_name = (payload.team_name or "").strip()
+        if not team_name:
+            raise HTTPException(status_code=422, detail="Informe o time para salvar as fontes coletadas.")
+        saved_profile = get_online_profile_by_name(team_name)
+        online = (
+            saved_profile["online_search"]
+            if saved_profile and saved_profile.get("online_search")
+            else _pending_tactical_collection(team_name)
+        )
+        merged = merge_sources_into_payload(online, result["sources"])
+        profile = save_online_profile(
+            {
+                "team_name": team_name,
+                "country": saved_profile.get("country") if saved_profile else None,
+                "league": saved_profile.get("league") if saved_profile else None,
+                "coach": saved_profile.get("coach") if saved_profile else None,
+                "base_formation": saved_profile.get("base_formation") if saved_profile else None,
+                "style": saved_profile.get("style") if saved_profile else None,
+                "confidence": saved_profile.get("confidence") if saved_profile else None,
+                "status": saved_profile.get("status") if saved_profile else "Coleta manual de fontes",
+                "online_search": merged,
+            }
+        )
+        result["saved"] = True
+        result["profile"] = profile
+    else:
+        result["saved"] = False
+
+    return result
 
 
 @router.get("/options")

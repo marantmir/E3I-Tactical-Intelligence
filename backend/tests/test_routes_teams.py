@@ -245,6 +245,85 @@ def test_video_vision_job_result_survives_reconnect():
     assert reconnect_events[-1]["result"]["annotated_video_url"].startswith("/media/")
 
 
+def test_collect_sources_by_link_via_route(monkeypatch):
+    from app import source_collector
+
+    monkeypatch.setattr(
+        source_collector,
+        "_fetch_html_capped",
+        lambda _url: "<title>Compacto do jogo</title>",
+    )
+
+    response = client.post(
+        "/api/teams/sources/collect",
+        json={"mode": "link", "value": "https://youtube.com/watch?v=abc"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["saved"] is False
+    assert payload["sources"][0]["title"] == "Compacto do jogo"
+    assert payload["sources"][0]["category"] == "match_videos"
+
+
+def test_collect_sources_rejects_private_link_with_422():
+    response = client.post(
+        "/api/teams/sources/collect",
+        json={"mode": "link", "value": "http://127.0.0.1/admin"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_collect_sources_save_merges_into_team_profile():
+    sources = [
+        {
+            "title": "Video novo do adversario",
+            "origin": "Link manual",
+            "url": "https://youtube.com/watch?v=xyz",
+            "summary": "compacto do ultimo jogo",
+            "category": "match_videos",
+            "relevance": "Alta",
+            "published_at": "",
+        }
+    ]
+
+    response = client.post(
+        "/api/teams/sources/collect",
+        json={
+            "mode": "link",
+            "value": "https://youtube.com/watch?v=xyz",
+            "team_name": "Adversario Teste",
+            "save": True,
+            "sources": sources,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["saved"] is True
+    assert payload["profile"]["source_count"] == 1
+
+    workspace = client.get(f"/api/teams/workspace/{payload['profile']['id']}")
+    assert workspace.status_code == 200
+    combined = workspace.json()["sources"]["combined"]
+    assert any(card["title"] == "Video novo do adversario" for card in combined)
+
+
+def test_collect_sources_save_requires_team_name(monkeypatch):
+    response = client.post(
+        "/api/teams/sources/collect",
+        json={
+            "mode": "link",
+            "value": "https://youtube.com/watch?v=xyz",
+            "save": True,
+            "sources": [{"title": "x", "url": "https://youtube.com/watch?v=xyz", "category": "match_videos"}],
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_video_vision_job_events_stream_disables_proxy_buffering():
     response = client.get("/api/teams/video-vision/jobs/does-not-exist/events")
 

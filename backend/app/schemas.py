@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -30,3 +32,11 @@ class ReportCreate(BaseModel):
 
 class OwnTeamSet(BaseModel):
     ref: str = Field(min_length=1)
+
+
+class SourceCollectRequest(BaseModel):
+    mode: Literal["link", "keyword", "api"]
+    value: str = Field(min_length=1)
+    team_name: str | None = None
+    save: bool = False
+    sources: list[dict] | None = None
