@@ -1,4 +1,4 @@
-﻿[
+[
   {
     "id": 1,
     "name": "Flamengo",
@@ -8,7 +8,8 @@
     "base_formation": "4-2-3-1",
     "style": "Posse de bola, amplitude e pressao pos-perda",
     "confidence": "Alto",
-    "status": "Analise disponivel"
+    "status": "Analise disponivel",
+    "category": "Masculino"
   },
   {
     "id": 2,
@@ -19,7 +20,8 @@
     "base_formation": "4-3-3",
     "style": "Transicao rapida, intensidade fisica e compactacao defensiva",
     "confidence": "Medio",
-    "status": "Analise disponivel"
+    "status": "Analise disponivel",
+    "category": "Masculino"
   },
   {
     "id": 3,
@@ -30,7 +32,8 @@
     "base_formation": "4-4-2",
     "style": "Bloco medio, ataque direto e jogo pelos corredores",
     "confidence": "Medio",
-    "status": "Analise disponivel"
+    "status": "Analise disponivel",
+    "category": "Masculino"
   },
   {
     "id": 4,
@@ -41,7 +44,8 @@
     "base_formation": "4-2-3-1",
     "style": "Construcao apoiada, triangulacoes e pressao coordenada",
     "confidence": "Alto",
-    "status": "Analise disponivel"
+    "status": "Analise disponivel",
+    "category": "Masculino"
   },
   {
     "id": 5,
@@ -52,7 +56,8 @@
     "base_formation": "4-2-2-2",
     "style": "Posse curta, aproximacoes e superioridade no centro",
     "confidence": "Medio",
-    "status": "Analise disponivel"
+    "status": "Analise disponivel",
+    "category": "Masculino"
   },
   {
     "id": 6,
@@ -63,7 +68,8 @@
     "base_formation": "3-2-4-1",
     "style": "Controle territorial, pressao alta e ocupacao racional dos espacos",
     "confidence": "Alto",
-    "status": "Analise disponivel"
+    "status": "Analise disponivel",
+    "category": "Masculino"
   },
   {
     "id": 7,
@@ -74,7 +80,8 @@
     "base_formation": "4-3-1-2",
     "style": "Ataques verticais, mobilidade ofensiva e transicoes letais",
     "confidence": "Alto",
-    "status": "Analise disponivel"
+    "status": "Analise disponivel",
+    "category": "Masculino"
   },
   {
     "id": 8,
@@ -85,7 +92,8 @@
     "base_formation": "4-3-3",
     "style": "Posse, circulacao curta e pressao apos perda",
     "confidence": "Medio",
-    "status": "Analise disponivel"
+    "status": "Analise disponivel",
+    "category": "Masculino"
   },
   {
     "id": 9,
@@ -96,7 +104,8 @@
     "base_formation": "4-3-3",
     "style": "Pressao alta, ataques rapidos e cruzamentos agressivos",
     "confidence": "Alto",
-    "status": "Analise disponivel"
+    "status": "Analise disponivel",
+    "category": "Masculino"
   },
   {
     "id": 10,
@@ -107,7 +116,7 @@
     "base_formation": "4-2-3-1",
     "style": "Dominio territorial, amplitude e chegada forte na area",
     "confidence": "Medio",
-    "status": "Analise disponivel"
+    "status": "Analise disponivel",
+    "category": "Masculino"
   }
 ]
-

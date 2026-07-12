@@ -14,18 +14,10 @@ const objectives = [
   "Relatório para comissão técnica"
 ];
 
-const profiles = [
-  "Scout",
-  "Treinador",
-  "Analista de desempenho",
-  "Coordenador técnico",
-  "Gestor esportivo"
-];
-
 export default function NewAnalysis() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { setLastSearchedName, refreshOptions } = useTeamSelection();
+  const { setLastSearchedName, refreshOptions, professionalProfile } = useTeamSelection();
   const [teams, setTeams] = useState([]);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -38,8 +30,7 @@ export default function NewAnalysis() {
     team_name: params.get("team") || "Flamengo",
     competition: "Brasileirão Série A",
     season: "2026",
-    objective: objectives[0],
-    user_profile: profiles[2]
+    objective: objectives[0]
   });
 
   useEffect(() => {
@@ -53,6 +44,7 @@ export default function NewAnalysis() {
   function buildPayload() {
     return {
       ...form,
+      user_profile: professionalProfile,
       team_id: selectedTeam?.id
     };
   }
@@ -195,14 +187,6 @@ export default function NewAnalysis() {
           <select name="objective" value={form.objective} onChange={updateField}>
             {objectives.map((objective) => (
               <option key={objective}>{objective}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Perfil do usuário
-          <select name="user_profile" value={form.user_profile} onChange={updateField}>
-            {profiles.map((profile) => (
-              <option key={profile}>{profile}</option>
             ))}
           </select>
         </label>

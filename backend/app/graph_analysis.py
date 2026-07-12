@@ -67,6 +67,7 @@ def build_tactical_graph(team: dict, players: list[dict], formations: list[dict]
 
     main_formation = max(formations, key=lambda item: item["probability"])
     top_players = ordered_players[:3]
+    risk_lane = _risk_lane(main_formation["risks"])
 
     return {
         "formation": main_formation,
@@ -76,12 +77,12 @@ def build_tactical_graph(team: dict, players: list[dict], formations: list[dict]
             "centrality_leader": top_players[0]["name"] if top_players else team["name"],
             "network_density": min(94, 54 + len(edges) * 5),
             "progression_lane": _progression_lane(team["style"]),
-            "risk_lane": _risk_lane(main_formation["risks"]),
+            "risk_lane": risk_lane,
         },
         "insights": [
             f"Rede prioritaria em {main_formation['formation']} com {main_formation['probability']}% de aderencia ao contexto informado.",
             f"Maior centralidade projetada: {top_players[0]['name']} ({top_players[0]['position']}).",
-            f"Zona critica observada: {_risk_lane(main_formation['risks'])}.",
+            f"Zona critica observada: {risk_lane}.",
         ],
     }
 

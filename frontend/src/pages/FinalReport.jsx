@@ -6,10 +6,12 @@ import { api } from "../api/client.js";
 import ErrorState from "../components/ErrorState.jsx";
 import LoadingState from "../components/LoadingState.jsx";
 import ReportPreview from "../components/ReportPreview.jsx";
+import { useTeamSelection } from "../context/TeamSelectionContext.jsx";
 import { useApiResource } from "./useApiResource.js";
 
 export default function FinalReport() {
   const { teamId } = useParams();
+  const { professionalProfile } = useTeamSelection();
   const [report, setReport] = useState(null);
   const [message, setMessage] = useState("");
   const [loadingReport, setLoadingReport] = useState(false);
@@ -28,11 +30,11 @@ export default function FinalReport() {
         const generated = await api.generateReport({
           team_id: Number(team.local_id),
           objective: "Relatorio para comissao tecnica",
-          user_profile: "Analista de desempenho"
+          user_profile: professionalProfile
         });
         setReport(generated);
       } else {
-        setReport(buildWorkspaceReport(data));
+        setReport(buildWorkspaceReport(data, professionalProfile));
       }
     } catch (err) {
       setMessage(err.message || "Nao foi possivel gerar o relatorio.");
@@ -49,7 +51,7 @@ export default function FinalReport() {
         competition: team.league,
         season: "2026",
         objective: "Relatorio para comissao tecnica",
-        user_profile: "Analista de desempenho"
+        user_profile: professionalProfile
       });
       setMessage("Analise salva no historico.");
     } catch (err) {
@@ -89,7 +91,7 @@ export default function FinalReport() {
   );
 }
 
-function buildWorkspaceReport(workspace) {
+function buildWorkspaceReport(workspace, professionalProfile) {
   const keyPlayers = workspace.players.length
     ? workspace.players.slice(0, 3)
     : [
@@ -103,7 +105,7 @@ function buildWorkspaceReport(workspace) {
   return {
     team: workspace.team,
     objective: "Relatorio para comissao tecnica",
-    user_profile: "Analista de desempenho",
+    user_profile: professionalProfile,
     executive_summary: `${workspace.team.name}: relatorio preliminar montado com fontes taticas salvas, grafo de fontes e plano de coleta visual.`,
     opponent_profile: workspace.dossier.summary,
     probable_formation: workspace.team.base_formation,

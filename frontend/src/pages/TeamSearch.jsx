@@ -3,17 +3,21 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { api } from "../api/client.js";
+import CategoryBadge from "../components/CategoryBadge.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import LoadingState from "../components/LoadingState.jsx";
 import SourceCard from "../components/SourceCard.jsx";
 import TeamCard from "../components/TeamCard.jsx";
 import { useTeamSelection } from "../context/TeamSelectionContext.jsx";
 
+const CATEGORY_FILTERS = ["Todos", "Masculino", "Feminino"];
+
 export default function TeamSearch() {
   const [params] = useSearchParams();
   const { lastSearchedName } = useTeamSelection();
   const [query, setQuery] = useState(params.get("query") || lastSearchedName || "");
   const [mode, setMode] = useState("local");
+  const [categoryFilter, setCategoryFilter] = useState("Todos");
   const [results, setResults] = useState([]);
   const [savedProfiles, setSavedProfiles] = useState([]);
   const [onlineResult, setOnlineResult] = useState(null);
@@ -32,11 +36,11 @@ export default function TeamSearch() {
     setLoadingLocal(true);
     setError("");
     api
-      .searchTeams(query)
+      .searchTeams(query, categoryFilter === "Todos" ? "" : categoryFilter)
       .then(setResults)
       .catch((err) => setError(err.message))
       .finally(() => setLoadingLocal(false));
-  }, [query, mode]);
+  }, [query, mode, categoryFilter]);
 
   async function loadSavedProfiles() {
     try {
@@ -138,6 +142,18 @@ export default function TeamSearch() {
 
       {mode === "local" ? (
         <>
+          <div className="segmented-control" aria-label="Categoria do time">
+            {CATEGORY_FILTERS.map((option) => (
+              <button
+                key={option}
+                className={categoryFilter === option ? "active" : ""}
+                type="button"
+                onClick={() => setCategoryFilter(option)}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
           <div className="card-grid three">
             {results.map((team) => (
               <TeamCard key={`${team.id}-${team.name}`} team={team} />
@@ -201,9 +217,12 @@ function OnlineSearchResult({ loading, result, saving, onSave }) {
             <p className="eyebrow">{profile.league}</p>
             <h3>{profile.name}</h3>
           </div>
-          <span className={result.saved ? "badge badge-high" : "badge badge-medium"}>
-            {result.saved ? "Salvo" : "Online"}
-          </span>
+          <div className="team-card-badges">
+            <CategoryBadge category={profile.category} />
+            <span className={result.saved ? "badge badge-high" : "badge badge-medium"}>
+              {result.saved ? "Salvo" : "Online"}
+            </span>
+          </div>
         </div>
         <p>{profile.style}</p>
         <dl className="meta-grid">

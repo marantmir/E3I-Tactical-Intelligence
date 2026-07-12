@@ -1,6 +1,7 @@
 import { ArrowRight, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import CategoryBadge from "./CategoryBadge.jsx";
 import ConfidenceBadge from "./ConfidenceBadge.jsx";
 
 export default function TeamCard({ team }) {
@@ -24,7 +25,10 @@ export default function TeamCard({ team }) {
             <h3>{team.name}</h3>
           </div>
         </div>
-        <ConfidenceBadge level={team.confidence} />
+        <div className="team-card-badges">
+          <CategoryBadge category={team.category} />
+          <ConfidenceBadge level={team.confidence} />
+        </div>
       </div>
       <dl className="meta-grid">
         <div>
