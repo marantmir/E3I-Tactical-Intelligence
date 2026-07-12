@@ -1,6 +1,7 @@
 import asyncio
 import json
 import threading
+import time
 import uuid
 from pathlib import Path
 
@@ -32,7 +33,8 @@ from ..data_store import (
 from ..llm_assistant import analyze_video_tactics, identify_players_from_tracks
 from ..online_search import search_public_team_info
 from ..rate_limit import enforce_video_upload_rate_limit
-from ..schemas import OnlineTeamProfileSave, OwnTeamSet
+from ..schemas import OnlineTeamProfileSave, OwnTeamSet, SourceCollectRequest
+from ..source_collector import collect_sources, merge_sources_into_payload
 from ..video_jobs import video_jobs
 from ..video_vision import process_video
 from ..wikipedia_lookup import fetch_team_wikipedia_profile
@@ -48,6 +50,10 @@ DEFAULT_VIDEO_MAX_FRAMES = 240
 DEFAULT_VIDEO_SAMPLE_EVERY = 3
 MAX_VIDEO_FRAMES = 1200
 VIDEO_PROCESSING_TIMEOUT_SECONDS = 35
+# O processamento inclui a etapa de LLM depois do ultimo frame, entao a guarda
+# de travamento precisa ser bem maior que o timeout de visao computacional.
+VIDEO_JOB_STALL_SECONDS = 180
+VIDEO_JOB_KEEPALIVE_SECONDS = 10
 
 
 @router.get("")
@@ -114,6 +120,59 @@ def save_online_team_profile(payload: OnlineTeamProfileSave):
             "online_search": online,
         }
     )
+
+
+@router.post("/sources/collect")
+def collect_team_sources(payload: SourceCollectRequest):
+    """Coleta fontes por link direto (scraping leve), palavra-chave (busca web
+    publica) ou APIs publicas. Com save=true, mescla as fontes na coleta salva
+    do time para que aparecam em todas as telas."""
+    if payload.save and payload.sources:
+        result = {
+            "mode": payload.mode,
+            "value": payload.value,
+            "team_name": (payload.team_name or "").strip(),
+            "status": "collected",
+            "sources": payload.sources,
+            "errors": [],
+            "note": "Fontes ja coletadas foram salvas na coleta do time.",
+        }
+    else:
+        try:
+            result = collect_sources(payload.mode, payload.value, payload.team_name or "")
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    if payload.save and result["sources"]:
+        team_name = (payload.team_name or "").strip()
+        if not team_name:
+            raise HTTPException(status_code=422, detail="Informe o time para salvar as fontes coletadas.")
+        saved_profile = get_online_profile_by_name(team_name)
+        online = (
+            saved_profile["online_search"]
+            if saved_profile and saved_profile.get("online_search")
+            else _pending_tactical_collection(team_name)
+        )
+        merged = merge_sources_into_payload(online, result["sources"])
+        profile = save_online_profile(
+            {
+                "team_name": team_name,
+                "country": saved_profile.get("country") if saved_profile else None,
+                "league": saved_profile.get("league") if saved_profile else None,
+                "coach": saved_profile.get("coach") if saved_profile else None,
+                "base_formation": saved_profile.get("base_formation") if saved_profile else None,
+                "style": saved_profile.get("style") if saved_profile else None,
+                "confidence": saved_profile.get("confidence") if saved_profile else None,
+                "status": saved_profile.get("status") if saved_profile else "Coleta manual de fontes",
+                "online_search": merged,
+            }
+        )
+        result["saved"] = True
+        result["profile"] = profile
+    else:
+        result["saved"] = False
+
+    return result
 
 
 @router.get("/options")
@@ -211,7 +270,14 @@ async def team_video_vision_start_job_by_name(
 
 @router.get("/video-vision/jobs/{job_id}/events")
 async def team_video_vision_job_events(job_id: str):
-    return StreamingResponse(_video_job_event_stream(job_id), media_type="text/event-stream")
+    return StreamingResponse(
+        _video_job_event_stream(job_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/{team_id}")
@@ -419,6 +485,7 @@ async def _start_video_vision_job(
 
 async def _video_job_event_stream(job_id: str):
     last_processed = -1
+    last_emit = time.monotonic()
     while True:
         job = video_jobs.get(job_id)
         if job is None:
@@ -426,8 +493,17 @@ async def _video_job_event_stream(job_id: str):
             return
 
         if job.status == "processing":
+            now = time.monotonic()
+            if now - job.updated_at > VIDEO_JOB_STALL_SECONDS:
+                video_jobs.fail(
+                    job_id,
+                    "O processamento parou de reportar progresso e foi encerrado. "
+                    "Envie o video novamente, de preferencia um recorte menor.",
+                )
+                continue
             if job.processed != last_processed:
                 last_processed = job.processed
+                last_emit = now
                 yield _sse_event(
                     {
                         "status": "processing",
@@ -435,14 +511,21 @@ async def _video_job_event_stream(job_id: str):
                         "max_frames": job.max_frames,
                     }
                 )
+            elif now - last_emit > VIDEO_JOB_KEEPALIVE_SECONDS:
+                # Comentario SSE: mantem proxies/load balancers sem derrubar a
+                # conexao em trechos longos sem novo progresso (ex.: etapa LLM).
+                last_emit = now
+                yield ": keepalive\n\n"
             await asyncio.sleep(0.4)
             continue
 
+        # O job finalizado NAO e descartado aqui: fica retido por um TTL curto
+        # (video_jobs.FINISHED_JOB_TTL_SECONDS) para que uma reconexao do
+        # navegador ainda receba o resultado se a conexao caiu no final.
         if job.status == "done":
             yield _sse_event({"status": "done", "result": job.result})
         else:
             yield _sse_event({"status": "error", "message": job.error})
-        video_jobs.discard(job_id)
         return
 
 

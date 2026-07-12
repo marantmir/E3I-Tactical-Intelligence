@@ -274,7 +274,6 @@ p {
 h2 {
   margin-bottom: 10px;
   font-size: 1.65rem;
-  overflow-wrap: anywhere;
 }
 
 h3 {
@@ -291,6 +290,64 @@ h3 svg {
 p {
   color: var(--muted);
   line-height: 1.55;
+}
+
+/* Anti-overflow: nenhum texto (URLs longas, nomes de arquivos, termos sem
+   espaco) pode ultrapassar o widget em nenhuma guia. */
+h1,
+h2,
+h3,
+h4,
+p,
+span,
+strong,
+em,
+a,
+li,
+dt,
+dd,
+td,
+th,
+label,
+figcaption {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+article,
+article > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Filhos diretos de conteineres flex que espremem texto para fora */
+.section-heading > *,
+.topbar > *,
+.topbar-brand > *,
+.team-hero > *,
+.team-card-head > *,
+.online-search-panel > *,
+.source-head > *,
+.formation-score > *,
+.notice-strip > *,
+.metric > *,
+.vision-controls > * {
+  min-width: 0;
+}
+
+.badge,
+.source-type,
+.relevance {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+select,
+input,
+option {
+  max-width: 100%;
+  text-overflow: ellipsis;
 }
 
 .intro-panel,
@@ -1093,6 +1150,36 @@ tr:last-child td {
   word-break: break-word;
 }
 
+.source-origin-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  color: var(--blue);
+}
+
+.source-origin-link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-origin-link:hover span {
+  text-decoration: underline;
+}
+
+.source-full-url {
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+  opacity: 0.85;
+}
+
+.source-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .detail-panel {
   border-left: 3px solid var(--green);
   background: #f4f7fd;
@@ -1688,6 +1775,40 @@ tr:last-child td {
   margin: 0;
 }
 
+.source-collector-panel {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.source-collector-panel .section-heading {
+  margin-bottom: 0;
+}
+
+.source-collector-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 10px;
+}
+
+.source-collector-form input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 0 12px;
+}
+
+.source-collector-panel .video-caption {
+  margin: 0;
+}
+
 @media (max-width: 1180px) {
   .metric-grid,
   .highlight-grid {
@@ -1767,6 +1888,10 @@ tr:last-child td {
 
   .content {
     padding: 20px;
+  }
+
+  .source-collector-form {
+    grid-template-columns: 1fr;
   }
 }
 

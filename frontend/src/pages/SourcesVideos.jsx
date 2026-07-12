@@ -4,12 +4,21 @@ import { api } from "../api/client.js";
 import ErrorState from "../components/ErrorState.jsx";
 import LoadingState from "../components/LoadingState.jsx";
 import SourceCard from "../components/SourceCard.jsx";
+import SourceCollectorPanel from "../components/SourceCollectorPanel.jsx";
 import VideoVisionPanel from "../components/VideoVisionPanel.jsx";
 import { useApiResource } from "./useApiResource.js";
 
 export default function SourcesVideos() {
   const { teamId } = useParams();
-  const { data, loading, error } = useApiResource(() => api.teamWorkspace(teamId), [teamId]);
+  const { data, loading, error, setData } = useApiResource(() => api.teamWorkspace(teamId), [teamId]);
+
+  async function reloadWorkspace() {
+    try {
+      setData(await api.teamWorkspace(teamId));
+    } catch {
+      // A coleta ja foi salva; o refresh falho nao deve derrubar a tela.
+    }
+  }
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -47,6 +56,8 @@ export default function SourcesVideos() {
       </div>
 
       <VideoVisionPanel teamRef={data.ref} teamName={data.team.name} />
+
+      <SourceCollectorPanel teamName={data.team.name} onSaved={reloadWorkspace} />
 
       <section className="online-search-panel public-intelligence-panel">
         <div>

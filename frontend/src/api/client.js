@@ -157,30 +157,54 @@ export const api = {
     const { job_id: jobId } = await startResponse.json();
 
     return new Promise((resolve, reject) => {
-      const source = new EventSource(`${API_BASE}/api/teams/video-vision/jobs/${jobId}/events`);
-      source.onmessage = (event) => {
-        let payload;
-        try {
-          payload = JSON.parse(event.data);
-        } catch {
-          return;
-        }
-        if (payload.status === "processing") {
-          onProgress?.(payload);
-        } else if (payload.status === "done") {
+      const maxReconnects = 4;
+      let reconnects = 0;
+      let settled = false;
+
+      const connect = () => {
+        const source = new EventSource(`${API_BASE}/api/teams/video-vision/jobs/${jobId}/events`);
+        source.onmessage = (event) => {
+          let payload;
+          try {
+            payload = JSON.parse(event.data);
+          } catch {
+            return;
+          }
+          reconnects = 0;
+          if (payload.status === "processing") {
+            onProgress?.(payload);
+          } else if (payload.status === "done") {
+            settled = true;
+            source.close();
+            resolve(payload.result);
+          } else {
+            settled = true;
+            source.close();
+            reject(new Error(payload.message || "Falha ao processar o video."));
+          }
+        };
+        source.onerror = () => {
           source.close();
-          resolve(payload.result);
-        } else {
-          source.close();
-          reject(new Error(payload.message || "Falha ao processar o video."));
-        }
+          if (settled) return;
+          reconnects += 1;
+          if (reconnects > maxReconnects) {
+            reject(new Error("Conexao de progresso do processamento foi perdida. Tente novamente."));
+            return;
+          }
+          // O backend retem o resultado do job por alguns minutos, entao a
+          // reconexao ainda recebe o "done" mesmo se a conexao caiu no final.
+          setTimeout(connect, 1000 * reconnects);
+        };
       };
-      source.onerror = () => {
-        source.close();
-        reject(new Error("Conexao de progresso do processamento foi perdida. Tente novamente."));
-      };
+
+      connect();
     });
   },
+  collectSources: (payload) =>
+    request("/api/teams/sources/collect", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
   publicIntelligence: (teamId) => request(`/api/teams/${teamId}/public-intelligence`),
   gamePlan: (teamId) => request(`/api/teams/${teamId}/game-plan`),
   previewAnalysis: (payload) =>
