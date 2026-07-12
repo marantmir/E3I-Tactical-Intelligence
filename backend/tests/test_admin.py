@@ -128,6 +128,45 @@ def test_unknown_collection_returns_404():
     assert client.get("/api/admin/collections/inexistente").status_code == 404
 
 
+def test_deleting_a_team_cascades_to_players_formations_and_sources():
+    team = client.post("/api/admin/collections/teams", json={"name": "Time Cascata FC"}).json()
+    team_id = team["id"]
+    client.post("/api/admin/collections/players", json={"team_id": team_id, "name": "Jogador Orfao"})
+    client.post(
+        "/api/admin/collections/formations", json={"team_id": team_id, "formation": "4-4-2"}
+    )
+    client.post(
+        "/api/admin/collections/sources", json={"team_id": team_id, "title": "Fonte do time"}
+    )
+
+    assert client.delete(f"/api/admin/collections/teams/{team_id}").status_code == 200
+
+    assert client.get(f"/api/teams/{team_id}/players").status_code == 404  # time nao existe mais
+    remaining_players = [p for p in client.get("/api/admin/collections/players").json() if p["team_id"] == team_id]
+    remaining_formations = [
+        f for f in client.get("/api/admin/collections/formations").json() if f["team_id"] == team_id
+    ]
+    remaining_sources = [s for s in client.get("/api/admin/collections/sources").json() if s["team_id"] == team_id]
+    assert remaining_players == []
+    assert remaining_formations == []
+    assert remaining_sources == []
+
+
+def test_new_team_reusing_deleted_id_does_not_inherit_orphaned_records():
+    first = client.post("/api/admin/collections/teams", json={"name": "Primeiro Time FC"}).json()
+    client.post(
+        "/api/admin/collections/formations", json={"team_id": first["id"], "formation": "4-3-3"}
+    )
+    client.delete(f"/api/admin/collections/teams/{first['id']}")
+
+    second = client.post("/api/admin/collections/teams", json={"name": "Segundo Time FC"}).json()
+    assert second["id"] == first["id"]  # id reaproveitado (max+1 apos a exclusao)
+
+    workspace = client.get(f"/api/teams/workspace/{second['id']}")
+    assert workspace.status_code == 200
+    assert workspace.json()["formations"] == []
+
+
 def test_ids_are_assigned_to_legacy_records():
     players = client.get("/api/admin/collections/players").json()
     assert players

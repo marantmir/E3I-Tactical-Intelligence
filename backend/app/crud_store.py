@@ -259,5 +259,21 @@ def delete_record(collection: str, record_id: int) -> dict:
             if int(record.get("id", 0)) == int(record_id):
                 removed = records.pop(index)
                 _write_raw(collection, records)
+                if collection == "teams":
+                    _delete_orphaned_team_scoped_records(record_id)
                 return removed
         raise HTTPException(status_code=404, detail="Registro nao encontrado.")
+
+
+def _delete_orphaned_team_scoped_records(team_id: int) -> None:
+    """Ao excluir um time, remove tambem jogadores/formacoes/fontes desse
+    time nas outras colecoes - sem isso, registros orfaos ficam acumulando
+    silenciosamente (podem inclusive vazar para um time novo que reutilize o
+    mesmo id, misturando dados de times diferentes)."""
+    for other_collection, config in COLLECTIONS.items():
+        if other_collection == "teams" or not config["team_scoped"]:
+            continue
+        records = _ensure_ids(other_collection)
+        remaining = [record for record in records if int(record.get("team_id", -1)) != int(team_id)]
+        if len(remaining) != len(records):
+            _write_raw(other_collection, remaining)

@@ -59,6 +59,19 @@ class AccessUserUpdate(BaseModel):
     areas: list[str] | None = None
 
 
+class DetectedFormationSave(BaseModel):
+    """Formacao estimada pela visao computacional (shape_analysis de um video
+    processado), enviada para virar um registro real na colecao de formacoes
+    do time - a forma mais assertiva de coleta, pois vem de rastreamento de
+    jogadores em video real em vez de estimativa manual."""
+
+    formation: str = Field(min_length=1)
+    probability: int = Field(default=30, ge=0, le=100)
+    context: str = ""
+    advantages: str = ""
+    risks: str = ""
+
+
 class CollectionRecord(BaseModel):
     """Payload aberto para CRUD das colecoes de dados. A validacao de campos e
     tipos e feita no crud_store (por colecao), entao aqui aceitamos um dict

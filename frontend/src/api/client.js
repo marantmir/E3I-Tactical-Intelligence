@@ -205,6 +205,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload)
     }),
+  saveDetectedFormation: (teamId, payload) =>
+    request(`/api/teams/${teamId}/formations/detected`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
   publicIntelligence: (teamId) => request(`/api/teams/${teamId}/public-intelligence`),
   gamePlan: (teamId) => request(`/api/teams/${teamId}/game-plan`),
   previewAnalysis: (payload) =>

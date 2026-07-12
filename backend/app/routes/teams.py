@@ -19,6 +19,7 @@ from ..database import (
 )
 from ..graph_analysis import build_tactical_graph
 from ..data_store import (
+    find_single_team_record,
     formations,
     game_plans,
     get_single_team_record,
@@ -30,10 +31,11 @@ from ..data_store import (
     tactical_analysis,
     teams,
 )
+from ..crud_store import create_record
 from ..llm_assistant import analyze_video_tactics, identify_players_from_tracks
 from ..online_search import search_public_team_info
 from ..rate_limit import enforce_video_upload_rate_limit
-from ..schemas import OnlineTeamProfileSave, OwnTeamSet, SourceCollectRequest
+from ..schemas import DetectedFormationSave, OnlineTeamProfileSave, OwnTeamSet, SourceCollectRequest
 from ..source_collector import collect_sources, merge_sources_into_payload
 from ..video_jobs import video_jobs
 from ..video_vision import process_video
@@ -293,6 +295,26 @@ def team_tactical_analysis(team_id: int):
 @router.get("/{team_id}/formations")
 def team_formations(team_id: int):
     return get_team_records(formations(), team_id)
+
+
+@router.post("/{team_id}/formations/detected", status_code=201)
+def save_detected_formation(team_id: int, payload: DetectedFormationSave):
+    """Persiste como formacao real do time uma estimativa vinda da visao
+    computacional (shape_analysis de um video processado). E a via mais
+    assertiva de coleta: em vez de cadastro manual, a formacao nasce do
+    rastreamento de jogadores em video de jogo de verdade."""
+    get_team(team_id)  # 404 se o time nao existir
+    return create_record(
+        "formations",
+        {
+            "team_id": team_id,
+            "formation": payload.formation,
+            "probability": payload.probability,
+            "context": payload.context,
+            "advantages": payload.advantages,
+            "risks": payload.risks,
+        },
+    )
 
 
 @router.get("/{team_id}/players")
@@ -650,10 +672,16 @@ def _local_team_workspace(team: dict) -> dict:
     online = saved_profile["online_search"] if saved_profile else _pending_tactical_collection(team["name"])
     local_sources = get_team_records(sources(), team_id)
     saved_sources = _online_sources_as_cards(online)
-    dossier = get_single_team_record(tactical_analysis(), team_id, "Dossie tatico")
+    # Time cadastrado sem dossie/plano semeados (ex.: criado agora pela
+    # Administracao) nao pode derrubar a tela inteira com 404: cai no mesmo
+    # fallback usado para perfis online, ate haver coleta real. Formacoes
+    # ficam de fato vazias quando nao ha coleta - a tela mostra um estado
+    # vazio acionavel em vez de um card generico "A definir" mascarando a
+    # ausencia de dado real.
+    dossier = find_single_team_record(tactical_analysis(), team_id) or _fallback_dossier(team, online)
     team_formations = get_team_records(formations(), team_id)
     team_players = get_team_records(players(), team_id)
-    plan = get_single_team_record(game_plans(), team_id, "Plano de jogo")
+    plan = find_single_team_record(game_plans(), team_id) or _fallback_plan(_collection_plan(team["name"]))
     history = [
         record
         for record in list_history()
@@ -814,11 +842,11 @@ def _fallback_dossier(profile: dict, online: dict) -> dict:
     }
 
 
-def _fallback_formations(profile: dict) -> list[dict]:
+def _fallback_formations(profile: dict, team_id: int = 0) -> list[dict]:
     formation = profile.get("base_formation") or "Detectar pelo video"
     return [
         {
-            "team_id": 0,
+            "team_id": team_id,
             "formation": formation,
             "probability": 40 if formation != "Detectar pelo video" else 20,
             "context": "Hipotese inicial ate haver videos processados.",
