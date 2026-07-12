@@ -18,11 +18,9 @@ import ipaddress
 import json
 import re
 import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 
 from .online_search import (
-    USER_AGENT,
     _dedupe_sources,
     _duckduckgo_lookup,
     _fetch_text,
@@ -30,6 +28,7 @@ from .online_search import (
     _guided_video_sources,
     _source,
 )
+from .web_search import fetch_page
 from .wikipedia_lookup import fetch_team_wikipedia_profile
 from .youtube_search import search_youtube_videos
 
@@ -102,7 +101,8 @@ def _collect_from_link(url: str, errors: list[dict]) -> list[dict]:
     site_name = ""
     try:
         page = _fetch_html_capped(normalized)
-        title = _extract_title(page)
+        # og:title evita sufixos de plataforma (ex.: "Titulo do video - YouTube").
+        title = _extract_meta(page, "og:title") or _extract_title(page)
         description = _extract_meta(page, "description") or _extract_meta(page, "og:description")
         site_name = _extract_meta(page, "og:site_name")
     except Exception as error:
@@ -229,15 +229,10 @@ def _thesportsdb_lookup(query: str) -> list[dict]:
 
 
 def _fetch_html_capped(url: str) -> str:
-    request = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": USER_AGENT,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        },
-    )
-    with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-        return response.read(MAX_HTML_BYTES).decode("utf-8", errors="replace")
+    # Sites de video (YouTube, Vimeo, etc.) devolvem 403/HTTPError para um
+    # user-agent "de robo"; um UA de navegador comum e o que evita o bloqueio
+    # (mesma solucao ja usada em web_search/youtube_search).
+    return fetch_page(url, timeout=TIMEOUT_SECONDS)
 
 
 def _validate_public_url(url: str) -> None:

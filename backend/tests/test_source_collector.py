@@ -1,6 +1,8 @@
+import urllib.error
+
 import pytest
 
-from app import source_collector
+from app import source_collector, web_search
 
 
 SAMPLE_PAGE = """
@@ -9,6 +11,18 @@ SAMPLE_PAGE = """
     <title>Palmeiras 3 x 0 - Melhores Momentos | Analise Tatica</title>
     <meta name="description" content="Compacto do jogo com leitura da pressao alta e saida de bola.">
     <meta property="og:site_name" content="Canal Tatico">
+  </head>
+  <body>conteudo</body>
+</html>
+"""
+
+YOUTUBE_PAGE = """
+<html>
+  <head>
+    <title>Palmeiras vence com gol no fim - YouTube</title>
+    <meta property="og:title" content="Palmeiras vence com gol no fim">
+    <meta property="og:description" content="Melhores momentos da partida com analise da pressao alta.">
+    <meta property="og:site_name" content="YouTube">
   </head>
   <body>conteudo</body>
 </html>
@@ -55,6 +69,55 @@ def test_collect_from_link_registers_source_even_when_fetch_fails(monkeypatch):
     assert len(result["sources"]) == 1
     assert result["sources"][0]["url"] == "https://example.com/analise"
     assert result["errors"][0]["error"] == "TimeoutError"
+
+
+def test_collect_from_link_registers_source_when_site_blocks_bot_user_agent(monkeypatch):
+    # Regressao: YouTube (e outros sites de video) devolvem 403 HTTPError
+    # para um user-agent "de robo"; o link ainda deve ser registrado, com o
+    # erro tratado reportado, em vez de deixar a excecao vazar.
+    def fake_fetch(_url):
+        raise urllib.error.HTTPError("https://youtu.be/CX91i5l296c", 403, "Forbidden", {}, None)
+
+    monkeypatch.setattr(source_collector, "_fetch_html_capped", fake_fetch)
+
+    result = source_collector.collect_sources("link", "https://youtu.be/CX91i5l296c")
+
+    assert result["sources"][0]["url"] == "https://youtu.be/CX91i5l296c"
+    assert result["errors"][0]["error"] == "HTTPError"
+    assert result["sources"][0]["category"] == "match_videos"
+
+
+def test_fetch_html_capped_uses_browser_user_agent_not_bot_ua(monkeypatch):
+    # Regressao: _fetch_html_capped precisa delegar ao fetch_page com UA de
+    # navegador (o mesmo que ja funciona para o YouTube em youtube_search.py),
+    # em vez do UA de robo que o site rejeitava com 403.
+    captured = {}
+
+    def fake_fetch_page(url, timeout=8, user_agent=web_search.BROWSER_USER_AGENT):
+        captured["url"] = url
+        captured["user_agent"] = user_agent
+        return SAMPLE_PAGE
+
+    monkeypatch.setattr(source_collector, "fetch_page", fake_fetch_page)
+
+    source_collector._fetch_html_capped("https://youtu.be/CX91i5l296c")
+
+    assert captured["url"] == "https://youtu.be/CX91i5l296c"
+    assert captured["user_agent"] == web_search.BROWSER_USER_AGENT
+    assert "E3I-Tactical-Intelligence" not in captured["user_agent"]
+
+
+def test_collect_from_link_prefers_og_title_over_page_title(monkeypatch):
+    # og:title evita sufixos de plataforma (ex.: "... - YouTube").
+    monkeypatch.setattr(source_collector, "_fetch_html_capped", lambda _url: YOUTUBE_PAGE)
+
+    result = source_collector.collect_sources("link", "https://youtu.be/CX91i5l296c")
+
+    source = result["sources"][0]
+    assert source["title"] == "Palmeiras vence com gol no fim"
+    assert "YouTube" not in source["title"]
+    assert source["origin"] == "YouTube"
+    assert "pressao alta" in source["summary"]
 
 
 @pytest.mark.parametrize(
