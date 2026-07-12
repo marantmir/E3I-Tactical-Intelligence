@@ -118,6 +118,8 @@ export function TeamSelectionProvider({ children }) {
   }, [options, ownTeamRef]);
 
   const onboarded = Boolean(ownTeamRef) && Boolean(professionalProfile);
+  // Acesso a area de administracao: perfis com responsabilidade de gestao.
+  const isAdmin = professionalProfile === "Administrador" || professionalProfile === "Gestor esportivo";
 
   const value = useMemo(
     () => ({
@@ -134,6 +136,7 @@ export function TeamSelectionProvider({ children }) {
       professionalProfile,
       setProfessionalProfile,
       onboarded,
+      isAdmin,
       onboardingLoading: ownTeamLoading,
       logout,
       refreshOptions
@@ -148,6 +151,7 @@ export function TeamSelectionProvider({ children }) {
       lastSearchedName,
       professionalProfile,
       onboarded,
+      isAdmin,
       ownTeamLoading
     ]
   );

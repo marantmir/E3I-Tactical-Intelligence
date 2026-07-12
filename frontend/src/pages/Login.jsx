@@ -6,7 +6,14 @@ import ConfidenceBadge from "../components/ConfidenceBadge.jsx";
 import { useTeamSelection } from "../context/TeamSelectionContext.jsx";
 import { findExistingTeamByName, registerTeamFromOnlineSearch } from "../api/teamRegistration.js";
 
-const PROFESSIONAL_PROFILES = ["Scout", "Treinador", "Analista de desempenho", "Coordenador técnico", "Gestor esportivo"];
+const PROFESSIONAL_PROFILES = [
+  "Administrador",
+  "Scout",
+  "Treinador",
+  "Analista de desempenho",
+  "Coordenador técnico",
+  "Gestor esportivo"
+];
 
 export default function Login() {
   const { options, ownTeam, setOwnTeam, refreshOptions, setLastSearchedName, professionalProfile, setProfessionalProfile } =

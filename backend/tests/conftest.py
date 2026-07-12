@@ -1,3 +1,4 @@
+import shutil
 import sys
 from pathlib import Path
 
@@ -5,6 +6,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 
+from app import crud_store as crud_store_module
+from app import data_store as data_store_module
 from app import database as database_module
 
 
@@ -14,6 +17,20 @@ def isolated_database(tmp_path, monkeypatch):
     monkeypatch.setattr(database_module, "DB_PATH", tmp_path / "e3i_tactical_test.db")
     database_module.init_db()
     yield
+
+
+@pytest.fixture(autouse=True)
+def isolated_data_dir(tmp_path, monkeypatch):
+    """Copy the JSON data collections to a throwaway dir so CRUD tests (and any
+    test that writes) never mutate the real seed files under backend/data."""
+    source = data_store_module.DATA_DIR
+    temp_dir = tmp_path / "data"
+    shutil.copytree(source, temp_dir)
+    monkeypatch.setattr(data_store_module, "DATA_DIR", temp_dir)
+    monkeypatch.setattr(crud_store_module, "DATA_DIR", temp_dir)
+    data_store_module.load_json.cache_clear()
+    yield
+    data_store_module.load_json.cache_clear()
 
 
 @pytest.fixture(autouse=True)

@@ -233,5 +233,19 @@ export const api = {
     request("/api/reports", {
       method: "POST",
       body: JSON.stringify(payload)
-    })
+    }),
+  adminMeta: () => request("/api/admin/meta"),
+  adminUsers: () => request("/api/admin/users"),
+  adminCreateUser: (payload) =>
+    request("/api/admin/users", { method: "POST", body: JSON.stringify(payload) }),
+  adminUpdateUser: (id, payload) =>
+    request(`/api/admin/users/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  adminDeleteUser: (id) => request(`/api/admin/users/${id}`, { method: "DELETE" }),
+  adminList: (collection) => request(`/api/admin/collections/${collection}`),
+  adminCreate: (collection, payload) =>
+    request(`/api/admin/collections/${collection}`, { method: "POST", body: JSON.stringify(payload) }),
+  adminUpdate: (collection, id, payload) =>
+    request(`/api/admin/collections/${collection}/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  adminDelete: (collection, id) =>
+    request(`/api/admin/collections/${collection}/${id}`, { method: "DELETE" })
 };

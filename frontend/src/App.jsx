@@ -7,6 +7,7 @@ import Sidebar from "./components/Sidebar.jsx";
 import Login from "./pages/Login.jsx";
 import { TeamSelectionProvider, useTeamSelection } from "./context/TeamSelectionContext.jsx";
 
+const Admin = lazy(() => import("./pages/Admin.jsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const FinalReport = lazy(() => import("./pages/FinalReport.jsx"));
 const Formations = lazy(() => import("./pages/Formations.jsx"));
@@ -54,6 +55,7 @@ function Gate() {
               <Route path="/team/:teamId/matchup" element={<Matchup />} />
               <Route path="/history" element={<History />} />
               <Route path="/future-ai" element={<FutureAI />} />
+              <Route path="/admin" element={<Admin />} />
             </Routes>
           </Suspense>
         </main>
