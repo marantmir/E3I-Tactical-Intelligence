@@ -143,6 +143,58 @@ def test_team_related_records_endpoints():
         assert response.status_code == 200, suffix
 
 
+def test_workspace_for_team_without_seed_data_falls_back_instead_of_404():
+    # Time criado sem dossie/plano/formacoes semeados (ex.: via Administracao)
+    # nao pode derrubar a tela inteira com 404 - regressao coberta aqui.
+    # Dossie e plano caem em fallback textual; formacoes ficam genuinamente
+    # vazias (sem placeholder mascarando a ausencia de coleta real).
+    created = client.post("/api/admin/collections/teams", json={"name": "Time Sem Dados FC"})
+    assert created.status_code == 201
+    team_id = created.json()["id"]
+
+    response = client.get(f"/api/teams/workspace/{team_id}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["dossier"]["summary"]
+    assert payload["plan"]["how_to_press"]
+    assert payload["formations"] == []
+    assert payload["graph"]["nodes"]  # grafo nao quebra com time sem elenco/formacao
+
+
+def test_save_detected_formation_creates_record_and_appears_in_workspace():
+    created = client.post("/api/admin/collections/teams", json={"name": "Time Video FC"})
+    team_id = created.json()["id"]
+
+    saved = client.post(
+        f"/api/teams/{team_id}/formations/detected",
+        json={
+            "formation": "4-4-2 aproximado",
+            "probability": 55,
+            "context": "Detectado por visao computacional em 180 frames analisados (bloco compacto).",
+            "advantages": "Estimativa baseada na distribuicao media dos rastros no campo 2D.",
+            "risks": "Estimativa automatica; validar com mais videos.",
+        },
+    )
+    assert saved.status_code == 201
+    assert saved.json()["team_id"] == team_id
+
+    formations_response = client.get(f"/api/teams/{team_id}/formations")
+    assert len(formations_response.json()) == 1
+    assert formations_response.json()[0]["formation"] == "4-4-2 aproximado"
+
+    workspace = client.get(f"/api/teams/workspace/{team_id}")
+    assert workspace.json()["formations"][0]["formation"] == "4-4-2 aproximado"
+
+
+def test_save_detected_formation_for_missing_team_returns_404():
+    response = client.post(
+        "/api/teams/999999/formations/detected",
+        json={"formation": "4-3-3"},
+    )
+    assert response.status_code == 404
+
+
 def test_team_public_intelligence_uses_online_search(monkeypatch):
     _mock_online_search(monkeypatch)
 

@@ -74,3 +74,14 @@ def get_single_team_record(records: list[dict], team_id: int, label: str) -> dic
         if record["team_id"] == team_id:
             return record
     raise HTTPException(status_code=404, detail=f"{label} nao encontrado")
+
+
+def find_single_team_record(records: list[dict], team_id: int) -> dict | None:
+    """Como get_single_team_record, mas devolve None em vez de 404 quando o
+    time existe mas ainda nao tem o registro (ex.: time recem-cadastrado sem
+    dossie/plano semeados). Usado onde a ausencia deve virar um fallback, nao
+    um erro que derruba a tela inteira."""
+    for record in records:
+        if record["team_id"] == team_id:
+            return record
+    return None

@@ -65,9 +65,24 @@ def build_tactical_graph(team: dict, players: list[dict], formations: list[dict]
             }
         )
 
-    main_formation = max(formations, key=lambda item: item["probability"])
+    # Time recem-cadastrado pode ainda nao ter formacao/elenco coletados; sem
+    # essa guarda, um time vazio derrubava a montagem do grafo inteiro.
+    main_formation = (
+        max(formations, key=lambda item: item["probability"])
+        if formations
+        else {"formation": "A definir", "probability": 0, "context": "", "advantages": "", "risks": ""}
+    )
     top_players = ordered_players[:3]
     risk_lane = _risk_lane(main_formation["risks"])
+
+    insights = [
+        f"Rede prioritaria em {main_formation['formation']} com {main_formation['probability']}% de aderencia ao contexto informado.",
+    ]
+    if top_players:
+        insights.append(f"Maior centralidade projetada: {top_players[0]['name']} ({top_players[0]['position']}).")
+    else:
+        insights.append("Elenco ainda nao cadastrado para projetar centralidade.")
+    insights.append(f"Zona critica observada: {risk_lane}.")
 
     return {
         "formation": main_formation,
@@ -79,11 +94,7 @@ def build_tactical_graph(team: dict, players: list[dict], formations: list[dict]
             "progression_lane": _progression_lane(team["style"]),
             "risk_lane": risk_lane,
         },
-        "insights": [
-            f"Rede prioritaria em {main_formation['formation']} com {main_formation['probability']}% de aderencia ao contexto informado.",
-            f"Maior centralidade projetada: {top_players[0]['name']} ({top_players[0]['position']}).",
-            f"Zona critica observada: {risk_lane}.",
-        ],
+        "insights": insights,
     }
 
 

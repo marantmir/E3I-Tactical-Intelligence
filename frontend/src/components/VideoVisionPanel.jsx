@@ -43,6 +43,8 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
   const [sampleEvery, setSampleEvery] = useState(3);
   const [teamFilter, setTeamFilter] = useState("auto");
   const [jerseyFiles, setJerseyFiles] = useState([]);
+  const [savingFormation, setSavingFormation] = useState(false);
+  const [formationSaveMessage, setFormationSaveMessage] = useState("");
   const [layers, setLayers] = useState({
     heatmap: true,
     tracks: true,
@@ -67,6 +69,9 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
   const strongestConnection = connectionEdges[0];
   const heatmapPoints = viewMode === "events" ? vision?.ball_heatmap || [] : vision?.heatmap || [];
   const ballTrack = vision?.ball_track || [];
+  const isLocalTeam = /^\d+$/.test(String(teamRef));
+  const shapeAnalysis = vision?.shape_analysis;
+  const canSaveFormation = isLocalTeam && shapeAnalysis?.formation_guess && shapeAnalysis.formation_guess !== "Indefinida";
 
   async function handleFileChange(event) {
     const file = event.target.files?.[0];
@@ -78,6 +83,7 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
     setVideoError(null);
     setSelectedTrackId("all");
     setVision(null);
+    setFormationSaveMessage("");
     try {
       const result = await api.uploadVideoVisionWithProgress(
         teamRef,
@@ -91,6 +97,30 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
     } finally {
       setLoading(false);
       setProgress(null);
+    }
+  }
+
+  async function handleSaveDetectedFormation() {
+    if (!shapeAnalysis) return;
+    setSavingFormation(true);
+    setFormationSaveMessage("");
+    try {
+      const confidence = shapeAnalysis.confidence || "Baixa";
+      const probability = confidence === "Media" ? 55 : confidence === "Alta" ? 70 : 30;
+      await api.saveDetectedFormation(teamRef, {
+        formation: shapeAnalysis.formation_guess,
+        probability,
+        context: `Detectado por visao computacional em ${vision.frames_analyzed || 0} frames analisados (${
+          shapeAnalysis.block || "bloco nao identificado"
+        }).`,
+        advantages: shapeAnalysis.explanation || "",
+        risks: "Estimativa automatica por posicao media dos rastros; valide com mais videos e leitura manual."
+      });
+      setFormationSaveMessage(`Formacao "${shapeAnalysis.formation_guess}" salva no time.`);
+    } catch (saveError) {
+      setFormationSaveMessage(saveError.message || "Falha ao salvar a formacao detectada.");
+    } finally {
+      setSavingFormation(false);
     }
   }
 
@@ -462,6 +492,20 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
               <strong>
                 {vision.shape_analysis?.formation_guess || "Indefinida"} - {vision.shape_analysis?.block || "sem bloco"}
               </strong>
+              {canSaveFormation ? (
+                <div className="formation-save-row">
+                  <button
+                    className="button button-secondary"
+                    type="button"
+                    onClick={handleSaveDetectedFormation}
+                    disabled={savingFormation}
+                  >
+                    <Target size={15} />
+                    {savingFormation ? "Salvando..." : "Salvar como formacao do time"}
+                  </button>
+                  {formationSaveMessage ? <span className="inline-message">{formationSaveMessage}</span> : null}
+                </div>
+              ) : null}
             </article>
             <article>
               <ScanLine size={17} />

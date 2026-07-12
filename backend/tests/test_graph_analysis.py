@@ -60,3 +60,17 @@ def test_progression_and_risk_lane_reflect_style_and_risks():
 
     assert graph["metrics"]["progression_lane"] == "corredores externos"
     assert graph["metrics"]["risk_lane"] == "costas dos laterais"
+
+
+def test_build_tactical_graph_handles_team_without_players_or_formations():
+    # Time recem-cadastrado (ex.: via Administracao) pode nao ter elenco nem
+    # formacao ainda; o grafo deve degradar graciosamente, nao quebrar.
+    graph = build_tactical_graph(_sample_team(), [], [])
+
+    assert graph["nodes"] == [
+        {"id": "team", "label": "Flamengo", "type": "team", "x": 50, "y": 50, "score": 10, "zone": "Modelo coletivo"}
+    ]
+    assert graph["edges"] == []
+    assert graph["formation"]["formation"] == "A definir"
+    assert graph["metrics"]["centrality_leader"] == "Flamengo"
+    assert "Elenco ainda nao cadastrado" in graph["insights"][1]
