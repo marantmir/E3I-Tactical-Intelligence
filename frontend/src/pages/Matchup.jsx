@@ -163,6 +163,10 @@ function TeamSummaryCard({ label, team, dossier, accent }) {
           <dd>{team?.league || "Nao informado"}</dd>
         </div>
         <div>
+          <dt>Categoria</dt>
+          <dd>{team?.category || "Nao informado"}</dd>
+        </div>
+        <div>
           <dt>Confianca</dt>
           <dd>
             <ConfidenceBadge level={dossier.confidence_level || team?.confidence} />

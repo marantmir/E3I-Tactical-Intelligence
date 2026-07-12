@@ -55,10 +55,18 @@ def init_db() -> None:
                 source_count INTEGER NOT NULL,
                 online_payload TEXT NOT NULL,
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                category TEXT NOT NULL DEFAULT 'Masculino'
             )
             """
         )
+        existing_columns = {
+            row["name"] for row in connection.execute("PRAGMA table_info(online_team_profiles)")
+        }
+        if "category" not in existing_columns:
+            connection.execute(
+                "ALTER TABLE online_team_profiles ADD COLUMN category TEXT NOT NULL DEFAULT 'Masculino'"
+            )
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS own_team_setting (
@@ -257,6 +265,7 @@ def save_online_profile(payload: dict) -> dict:
         "search_status": online_payload.get("status") or "saved",
         "source_count": len(sources),
         "online_payload": json.dumps(online_payload, ensure_ascii=False),
+        "category": payload.get("category") or online_payload.get("category") or "Masculino",
     }
 
     with get_connection() as connection:
@@ -270,7 +279,7 @@ def save_online_profile(payload: dict) -> dict:
                 UPDATE online_team_profiles
                 SET team_name = ?, country = ?, league = ?, coach = ?, base_formation = ?,
                     style = ?, confidence = ?, status = ?, search_status = ?, source_count = ?,
-                    online_payload = ?, updated_at = ?
+                    online_payload = ?, category = ?, updated_at = ?
                 WHERE normalized_name = ?
                 """,
                 (
@@ -285,6 +294,7 @@ def save_online_profile(payload: dict) -> dict:
                     values["search_status"],
                     values["source_count"],
                     values["online_payload"],
+                    values["category"],
                     now,
                     normalized,
                 ),
@@ -296,9 +306,9 @@ def save_online_profile(payload: dict) -> dict:
                 INSERT INTO online_team_profiles (
                     normalized_name, team_name, country, league, coach, base_formation,
                     style, confidence, status, search_status, source_count, online_payload,
-                    created_at, updated_at
+                    category, created_at, updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     values["normalized_name"],
@@ -313,6 +323,7 @@ def save_online_profile(payload: dict) -> dict:
                     values["search_status"],
                     values["source_count"],
                     values["online_payload"],
+                    values["category"],
                     now,
                     now,
                 ),
@@ -341,6 +352,7 @@ def _online_profile_from_row(row: sqlite3.Row) -> dict:
         "status": row["status"],
         "search_status": row["search_status"],
         "source_count": row["source_count"],
+        "category": row["category"],
         "crest_url": payload.get("crest_url"),
         "online_search": payload,
         "created_at": row["created_at"],

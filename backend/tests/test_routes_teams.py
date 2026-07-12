@@ -44,6 +44,56 @@ def test_list_teams_returns_seed_data():
     assert {"id", "name", "league"}.issubset(teams[0].keys())
 
 
+def test_list_teams_are_tagged_with_category():
+    response = client.get("/api/teams")
+
+    assert response.status_code == 200
+    teams = response.json()
+    assert all(team["category"] == "Masculino" for team in teams)
+
+
+def test_team_options_expose_category():
+    response = client.get("/api/teams/options")
+
+    assert response.status_code == 200
+    options = response.json()["options"]
+    assert options
+    assert all("category" in option for option in options)
+
+
+def test_search_filters_by_category():
+    masculino = client.get("/api/teams/search", params={"category": "Masculino"})
+    feminino = client.get("/api/teams/search", params={"category": "Feminino"})
+
+    assert masculino.status_code == 200
+    assert feminino.status_code == 200
+    assert len(masculino.json()) >= 1
+    assert feminino.json() == []
+
+
+def test_save_online_profile_persists_explicit_category(monkeypatch):
+    _mock_online_search(monkeypatch)
+
+    response = client.post(
+        "/api/teams/online-profiles",
+        json={"team_name": "Corinthians Feminino", "category": "Feminino"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["category"] == "Feminino"
+    saved = client.get("/api/teams/online-profiles", params={"query": "Corinthians Feminino"}).json()
+    assert saved[0]["category"] == "Feminino"
+
+
+def test_save_online_profile_defaults_category_to_masculino(monkeypatch):
+    _mock_online_search(monkeypatch)
+
+    response = client.post("/api/teams/online-profiles", json={"team_name": "Botafogo"})
+
+    assert response.status_code == 201
+    assert response.json()["category"] == "Masculino"
+
+
 def test_own_team_defaults_to_unset():
     response = client.get("/api/teams/own-team")
 

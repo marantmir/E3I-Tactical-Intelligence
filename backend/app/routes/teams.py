@@ -57,7 +57,7 @@ def list_teams():
 
 
 @router.get("/search")
-def search(query: str = Query(default="")):
+def search(query: str = Query(default=""), category: str | None = Query(default=None)):
     local_results = search_teams(query)
     saved_profiles = list_online_profiles(query) if query.strip() else []
     if query.strip() and not local_results:
@@ -66,13 +66,17 @@ def search(query: str = Query(default="")):
         saved = get_online_profile_by_name(query)
         if saved:
             profile = saved
-        return [profile]
+        results = [profile]
+    else:
+        local_names = {team["name"].casefold() for team in local_results}
+        saved_without_duplicates = [
+            profile for profile in saved_profiles if profile["name"].casefold() not in local_names
+        ]
+        results = local_results + saved_without_duplicates
 
-    local_names = {team["name"].casefold() for team in local_results}
-    saved_without_duplicates = [
-        profile for profile in saved_profiles if profile["name"].casefold() not in local_names
-    ]
-    return local_results + saved_without_duplicates
+    if category:
+        results = [team for team in results if team.get("category", "Masculino").casefold() == category.casefold()]
+    return results
 
 
 @router.get("/online-search")
@@ -106,6 +110,7 @@ def save_online_team_profile(payload: OnlineTeamProfileSave):
             "style": payload.style,
             "confidence": payload.confidence,
             "status": payload.status,
+            "category": payload.category or online.get("category"),
             "online_search": online,
         }
     )
@@ -122,6 +127,7 @@ def team_options():
             "kind": "local",
             "status": team["status"],
             "confidence": team["confidence"],
+            "category": team.get("category", "Masculino"),
             "source_count": len(get_team_records(sources(), team["id"])),
         }
         for team in teams()
@@ -135,6 +141,7 @@ def team_options():
             "kind": "saved",
             "status": profile["status"],
             "confidence": profile["confidence"],
+            "category": profile.get("category", "Masculino"),
             "source_count": profile["source_count"],
         }
         for profile in list_online_profiles()
@@ -532,6 +539,7 @@ def _online_profile_from_search(team_name: str, online: dict) -> dict:
         "confidence": confidence,
         "status": "Perfil tatico para pre-analise visual",
         "source_count": len(online.get("sources") or []),
+        "category": online.get("category") or "Masculino",
         "crest_url": online.get("crest_url"),
         "online_search": online,
     }
@@ -613,6 +621,7 @@ def _online_team_workspace(profile: dict) -> dict:
         "style": profile["style"],
         "confidence": profile["confidence"],
         "status": profile["status"],
+        "category": profile.get("category", "Masculino"),
         "crest_url": profile.get("crest_url"),
     }
     dossier = _fallback_dossier(profile, online)

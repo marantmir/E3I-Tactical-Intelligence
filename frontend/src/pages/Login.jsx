@@ -1,6 +1,7 @@
 import { ArrowRight, Save, ShieldCheck, UserCog, Users } from "lucide-react";
 import { useState } from "react";
 
+import CategoryBadge from "../components/CategoryBadge.jsx";
 import ConfidenceBadge from "../components/ConfidenceBadge.jsx";
 import { useTeamSelection } from "../context/TeamSelectionContext.jsx";
 import { findExistingTeamByName, registerTeamFromOnlineSearch } from "../api/teamRegistration.js";
@@ -130,6 +131,7 @@ export default function Login() {
                 <h2>{ownTeam.name}</h2>
               </div>
               <div className="hero-actions">
+                <CategoryBadge category={ownTeam.category} />
                 <ConfidenceBadge level={ownTeam.confidence} />
               </div>
             </div>

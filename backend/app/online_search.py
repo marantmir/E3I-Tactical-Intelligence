@@ -15,6 +15,48 @@ USER_AGENT = "E3I-Tactical-Intelligence/0.3 tactical-video-intelligence"
 TIMEOUT_SECONDS = 5
 MAX_SOURCES = 24
 
+# Keywords that indicate a scraped result is about a *different* sport than
+# football/soccer, so it can be dropped even though the team name matched.
+NON_FOOTBALL_KEYWORDS = (
+    "basquete", "basketball", "nba",
+    "volei", "vôlei", "voleibol", "volleyball",
+    "handebol", "handball",
+    "rugby", "rúgbi",
+    "hoquei", "hóquei", "hockey", "nhl",
+    "tenis", "tênis", "tennis",
+    "mma", "ufc", "boxe", "boxing",
+    "formula 1", "fórmula 1", "motogp", "nascar",
+    "nfl", "futebol americano", "american football",
+    "beisebol", "baseball", "mlb",
+    "atletismo", "ciclismo", "cycling", "natacao", "natação", "swimming", "golfe", "golf",
+)
+
+# Keywords that indicate the team/club is from women's football, used as a
+# best-effort default when the caller does not state the category explicitly.
+FEMALE_FOOTBALL_KEYWORDS = (
+    "futebol feminino", "feminino", "femenino", "femenina",
+    "women's", "womens", "women", "female", "ladies",
+)
+
+
+def _looks_like_football(*texts: str) -> bool:
+    """Best-effort filter: reject scraped results that are clearly about a
+    different sport, so "sempre considerar times de futebol" holds even when
+    the underlying search engine returns loosely-matched results."""
+    combined = " ".join(text or "" for text in texts).casefold()
+    return not any(keyword in combined for keyword in NON_FOOTBALL_KEYWORDS)
+
+
+def detect_team_category(*texts: str) -> str:
+    """Best-effort men's/women's classification from free text (team name,
+    wikipedia description/summary, scraped titles). Defaults to "Masculino"
+    when no women's-football indicator is found - reviewable/editable by the
+    analyst afterwards, same as every other auto-collected field in the app."""
+    combined = " ".join(text or "" for text in texts).casefold()
+    if any(keyword in combined for keyword in FEMALE_FOOTBALL_KEYWORDS):
+        return "Feminino"
+    return "Masculino"
+
 
 def _fetch_text(url: str, timeout: int = TIMEOUT_SECONDS) -> str:
     request = urllib.request.Request(
@@ -56,6 +98,10 @@ def search_public_team_info(team_name: str) -> dict:
     sources.extend(_guided_video_sources(cleaned_name))
 
     wikipedia = _try_collect_one("Wikipedia", lambda: fetch_team_wikipedia_profile(cleaned_name), errors)
+    if wikipedia and not _looks_like_football(wikipedia.get("description")):
+        # Same name, wrong subject (e.g. a person, city or company page) -
+        # discard rather than attach mismatched club data.
+        wikipedia = None
     if wikipedia:
         sources.append(
             _source(
@@ -67,6 +113,12 @@ def search_public_team_info(team_name: str) -> dict:
                 relevance="Alta",
             )
         )
+
+    team_category = detect_team_category(
+        cleaned_name,
+        wikipedia.get("description") if wikipedia else "",
+        wikipedia.get("summary") if wikipedia else "",
+    )
 
     sources = _dedupe_sources(sources)[:MAX_SOURCES]
     source_groups = _group_sources(sources)
@@ -89,6 +141,7 @@ def search_public_team_info(team_name: str) -> dict:
         "note": _build_note(status, live_count, errors),
         "wikipedia": wikipedia,
         "crest_url": wikipedia.get("crest_url") if wikipedia else None,
+        "category": team_category,
     }
     result["llm_search"] = enrich_team_search(cleaned_name, result)
     return result
@@ -124,6 +177,8 @@ def _duckduckgo_lookup(query: str, category: str) -> list[dict]:
         url = _unwrap_duckduckgo_url(href)
         if not title or not url:
             continue
+        if not _looks_like_football(title):
+            continue
         sources.append(
             _source(
                 title=title,
@@ -140,6 +195,12 @@ def _duckduckgo_lookup(query: str, category: str) -> list[dict]:
 
 
 def _guided_video_sources(team_name: str) -> list[dict]:
+    # No video platform offers a free API to download match footage in bulk,
+    # and scraping/downloading from them would breach their Terms of Service.
+    # So instead of fetching video files automatically, this widens the net of
+    # free, no-key search entry points across "varios lugares" (several video
+    # sources) the analyst can open and manually upload from into the
+    # computer-vision pipeline.
     searches = [
         (
             "match_videos",
@@ -156,6 +217,30 @@ def _guided_video_sources(team_name: str) -> list[dict]:
             "youtube.com/results",
             f"{team_name} analise tatica como joga",
             "Alta",
+        ),
+        (
+            "match_videos",
+            "DuckDuckGo videos",
+            "Busca de videos agregando varias fontes",
+            "duckduckgo.com/videos",
+            f"{team_name} futebol jogo completo melhores momentos",
+            "Alta",
+        ),
+        (
+            "match_videos",
+            "Vimeo",
+            "Videos de jogo em canais e producoes independentes",
+            "vimeo.com/search",
+            f"{team_name} futebol jogo",
+            "Media",
+        ),
+        (
+            "analysis_videos",
+            "Dailymotion",
+            "Videos de jogo e analise em outra plataforma gratuita",
+            "dailymotion.com/search",
+            f"{team_name} futebol analise tatica",
+            "Media",
         ),
         (
             "team_form",
@@ -188,6 +273,12 @@ def _search_url(domain: str, query: str) -> str:
     encoded = urllib.parse.quote(query)
     if domain == "youtube.com/results":
         return f"https://www.youtube.com/results?search_query={encoded}"
+    if domain == "duckduckgo.com/videos":
+        return f"https://duckduckgo.com/?q={encoded}&iar=videos&ia=videos"
+    if domain == "vimeo.com/search":
+        return f"https://vimeo.com/search?q={encoded}"
+    if domain == "dailymotion.com/search":
+        return f"https://www.dailymotion.com/search/{encoded}"
     return f"https://www.google.com/search?q={encoded}"
 
 

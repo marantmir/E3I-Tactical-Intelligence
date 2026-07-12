@@ -72,7 +72,10 @@ export const api = {
   teams: () => request("/api/teams"),
   teamOptions: () => request("/api/teams/options"),
   teamWorkspace: (teamRef) => request(`/api/teams/workspace/${encodeURIComponent(teamRef)}`),
-  searchTeams: (query) => request(`/api/teams/search?query=${encodeURIComponent(query)}`),
+  searchTeams: (query, category = "") =>
+    request(
+      `/api/teams/search?query=${encodeURIComponent(query)}${category ? `&category=${encodeURIComponent(category)}` : ""}`
+    ),
   onlineTeamSearch: (name) => request(`/api/teams/online-search?name=${encodeURIComponent(name)}`),
   onlineProfiles: (query = "") => request(`/api/teams/online-profiles?query=${encodeURIComponent(query)}`),
   saveOnlineProfile: (payload) =>

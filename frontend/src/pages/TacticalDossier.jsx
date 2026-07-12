@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowRight, CircleDot, Swords } from "lucide-react";
 
 import { api } from "../api/client.js";
+import CategoryBadge from "../components/CategoryBadge.jsx";
 import ConfidenceBadge from "../components/ConfidenceBadge.jsx";
 import ErrorState from "../components/ErrorState.jsx";
 import LoadingState from "../components/LoadingState.jsx";
@@ -45,6 +46,7 @@ export default function TacticalDossier() {
           </div>
         </div>
         <div className="hero-actions">
+          <CategoryBadge category={team.category} />
           <ConfidenceBadge level={dossier.confidence_level} />
           {isOwnTeam ? null : (
             <Link className="button button-secondary" to={`/team/${team.ref}/matchup`}>

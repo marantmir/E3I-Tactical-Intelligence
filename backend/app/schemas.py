@@ -19,6 +19,7 @@ class OnlineTeamProfileSave(BaseModel):
     style: str | None = None
     confidence: str | None = None
     status: str | None = None
+    category: str | None = None
     online_search: dict = Field(default_factory=dict)
 
 
