@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { ShieldAlert, Swords, Users } from "lucide-react";
 
 import { api } from "../api/client.js";
@@ -66,10 +66,7 @@ export default function Matchup() {
       {!ownTeam ? (
         <div className="empty-state">
           <h2>Defina o seu time</h2>
-          <p>
-            Para comparar um confronto, defina primeiro qual e o seu time em{" "}
-            <Link to="/meu-time">Meu time</Link>.
-          </p>
+          <p>Nao foi possivel identificar o seu time. Saia e entre novamente na ferramenta para redefini-lo.</p>
         </div>
       ) : isOwnTeam ? (
         <div className="notice-strip">

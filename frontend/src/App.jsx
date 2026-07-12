@@ -4,7 +4,8 @@ import { Route, Routes } from "react-router-dom";
 import Header from "./components/Header.jsx";
 import LoadingState from "./components/LoadingState.jsx";
 import Sidebar from "./components/Sidebar.jsx";
-import { TeamSelectionProvider } from "./context/TeamSelectionContext.jsx";
+import Login from "./pages/Login.jsx";
+import { TeamSelectionProvider, useTeamSelection } from "./context/TeamSelectionContext.jsx";
 
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const FinalReport = lazy(() => import("./pages/FinalReport.jsx"));
@@ -14,7 +15,6 @@ const GamePlan = lazy(() => import("./pages/GamePlan.jsx"));
 const History = lazy(() => import("./pages/History.jsx"));
 const Matchup = lazy(() => import("./pages/Matchup.jsx"));
 const NewAnalysis = lazy(() => import("./pages/NewAnalysis.jsx"));
-const OwnTeam = lazy(() => import("./pages/OwnTeam.jsx"));
 const SourcesVideos = lazy(() => import("./pages/SourcesVideos.jsx"));
 const SquadAnalysis = lazy(() => import("./pages/SquadAnalysis.jsx"));
 const TacticalDossier = lazy(() => import("./pages/TacticalDossier.jsx"));
@@ -23,31 +23,41 @@ const TeamSearch = lazy(() => import("./pages/TeamSearch.jsx"));
 export default function App() {
   return (
     <TeamSelectionProvider>
-      <div className="app-shell">
-        <Sidebar />
-        <div className="workspace">
-          <Header />
-          <main className="content">
-            <Suspense fallback={<LoadingState />}>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/new-analysis" element={<NewAnalysis />} />
-                <Route path="/search" element={<TeamSearch />} />
-                <Route path="/meu-time" element={<OwnTeam />} />
-                <Route path="/team/:teamId" element={<TacticalDossier />} />
-                <Route path="/team/:teamId/formations" element={<Formations />} />
-                <Route path="/team/:teamId/squad" element={<SquadAnalysis />} />
-                <Route path="/team/:teamId/sources" element={<SourcesVideos />} />
-                <Route path="/team/:teamId/game-plan" element={<GamePlan />} />
-                <Route path="/team/:teamId/report" element={<FinalReport />} />
-                <Route path="/team/:teamId/matchup" element={<Matchup />} />
-                <Route path="/history" element={<History />} />
-                <Route path="/future-ai" element={<FutureAI />} />
-              </Routes>
-            </Suspense>
-          </main>
-        </div>
-      </div>
+      <Gate />
     </TeamSelectionProvider>
+  );
+}
+
+function Gate() {
+  const { onboarded, onboardingLoading } = useTeamSelection();
+
+  if (onboardingLoading) return <LoadingState />;
+  if (!onboarded) return <Login />;
+
+  return (
+    <div className="app-shell">
+      <Sidebar />
+      <div className="workspace">
+        <Header />
+        <main className="content">
+          <Suspense fallback={<LoadingState />}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/new-analysis" element={<NewAnalysis />} />
+              <Route path="/search" element={<TeamSearch />} />
+              <Route path="/team/:teamId" element={<TacticalDossier />} />
+              <Route path="/team/:teamId/formations" element={<Formations />} />
+              <Route path="/team/:teamId/squad" element={<SquadAnalysis />} />
+              <Route path="/team/:teamId/sources" element={<SourcesVideos />} />
+              <Route path="/team/:teamId/game-plan" element={<GamePlan />} />
+              <Route path="/team/:teamId/report" element={<FinalReport />} />
+              <Route path="/team/:teamId/matchup" element={<Matchup />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/future-ai" element={<FutureAI />} />
+            </Routes>
+          </Suspense>
+        </main>
+      </div>
+    </div>
   );
 }

@@ -98,6 +98,85 @@ a {
   min-width: 0;
 }
 
+.login-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 40px 20px;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(216, 162, 58, 0.18), transparent 45%),
+    linear-gradient(180deg, #020611 0%, #071b3f 58%, #020712 100%);
+}
+
+.login-card {
+  width: min(640px, 100%);
+  display: grid;
+  gap: 20px;
+  border: 1px solid rgba(216, 162, 58, 0.28);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 32px;
+  box-shadow: var(--shadow);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.login-brand img {
+  width: 64px;
+  height: auto;
+}
+
+.login-brand h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.login-intro {
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.login-step {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  padding: 18px;
+}
+
+.login-step-done {
+  border-color: rgba(13, 59, 120, 0.35);
+  background: #eef6ff;
+}
+
+.login-step label {
+  display: grid;
+  gap: 7px;
+  font-weight: 800;
+  color: #2c3a31;
+}
+
+.login-step form {
+  display: grid;
+  gap: 14px;
+}
+
+.login-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 800;
+  color: var(--green-strong);
+  text-align: center;
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -144,6 +223,22 @@ a {
 
 .topbar h1 {
   font-size: 1.35rem;
+}
+
+.session-context {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.session-context-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .content {
@@ -258,7 +353,9 @@ p {
 .search-panel input,
 .analysis-form input,
 .analysis-form select,
-.filter-bar select {
+.filter-bar select,
+.login-step input,
+.login-step select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;

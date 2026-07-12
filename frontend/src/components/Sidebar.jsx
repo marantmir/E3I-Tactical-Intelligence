@@ -19,7 +19,6 @@ const staticLinks = [
   { to: "/", label: "Dashboard", icon: Home },
   { to: "/new-analysis", label: "Nova analise", icon: ClipboardList },
   { to: "/search", label: "Buscar time", icon: Search },
-  { to: "/meu-time", label: "Meu time", icon: ShieldCheck },
   { to: "/history", label: "Historico", icon: Archive },
   { to: "/future-ai", label: "IA avancada", icon: BrainCircuit }
 ];
@@ -37,7 +36,7 @@ export default function Sidebar() {
     { to: `/team/${activeRef}/report`, label: "Relatorio", icon: FileText },
     ...(isOwnTeamActive ? [] : [{ to: `/team/${activeRef}/matchup`, label: "Confronto", icon: Swords }])
   ];
-  const links = [...staticLinks.slice(0, 4), ...teamLinks, ...staticLinks.slice(4)];
+  const links = [...staticLinks.slice(0, 3), ...teamLinks, ...staticLinks.slice(3)];
 
   return (
     <aside className="sidebar">

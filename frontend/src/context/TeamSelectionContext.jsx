@@ -6,6 +6,7 @@ import { api } from "../api/client.js";
 const TeamSelectionContext = createContext(null);
 const STORAGE_KEY = "e3i-selected-team-ref";
 const LAST_SEARCHED_NAME_KEY = "e3i-last-searched-name";
+const PROFESSIONAL_PROFILE_KEY = "e3i-professional-profile";
 
 export function TeamSelectionProvider({ children }) {
   const location = useLocation();
@@ -13,8 +14,12 @@ export function TeamSelectionProvider({ children }) {
   const [selectedRef, setSelectedRefState] = useState(() => localStorage.getItem(STORAGE_KEY) || "1");
   const [loading, setLoading] = useState(true);
   const [ownTeamRef, setOwnTeamRefState] = useState(null);
+  const [ownTeamLoading, setOwnTeamLoading] = useState(true);
   const [lastSearchedName, setLastSearchedNameState] = useState(
     () => localStorage.getItem(LAST_SEARCHED_NAME_KEY) || ""
+  );
+  const [professionalProfile, setProfessionalProfileState] = useState(
+    () => localStorage.getItem(PROFESSIONAL_PROFILE_KEY) || ""
   );
 
   useEffect(() => {
@@ -26,7 +31,10 @@ export function TeamSelectionProvider({ children }) {
       .then((data) => {
         if (active) setOwnTeamRefState(data.ref || null);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (active) setOwnTeamLoading(false);
+      });
 
     return () => {
       active = false;
@@ -77,6 +85,19 @@ export function TeamSelectionProvider({ children }) {
     return result;
   }
 
+  function setProfessionalProfile(profile) {
+    const normalized = String(profile || "");
+    localStorage.setItem(PROFESSIONAL_PROFILE_KEY, normalized);
+    setProfessionalProfileState(normalized);
+  }
+
+  /** Sends the user back to the login screen so they can switch their team
+   * and/or professional profile. The own-team ref stays selected (and
+   * editable there) so re-entering doesn't lose the current choice. */
+  function logout() {
+    setProfessionalProfile("");
+  }
+
   const selectedTeam = useMemo(() => {
     return options.find((option) => String(option.ref) === String(selectedRef)) || options[0] || null;
   }, [options, selectedRef]);
@@ -85,6 +106,8 @@ export function TeamSelectionProvider({ children }) {
     if (!ownTeamRef) return null;
     return options.find((option) => String(option.ref) === String(ownTeamRef)) || null;
   }, [options, ownTeamRef]);
+
+  const onboarded = Boolean(ownTeamRef) && Boolean(professionalProfile);
 
   const value = useMemo(
     () => ({
@@ -98,9 +121,25 @@ export function TeamSelectionProvider({ children }) {
       setOwnTeam,
       lastSearchedName,
       setLastSearchedName,
+      professionalProfile,
+      setProfessionalProfile,
+      onboarded,
+      onboardingLoading: ownTeamLoading,
+      logout,
       refreshOptions
     }),
-    [loading, options, selectedRef, selectedTeam, ownTeamRef, ownTeam, lastSearchedName]
+    [
+      loading,
+      options,
+      selectedRef,
+      selectedTeam,
+      ownTeamRef,
+      ownTeam,
+      lastSearchedName,
+      professionalProfile,
+      onboarded,
+      ownTeamLoading
+    ]
   );
 
   return <TeamSelectionContext.Provider value={value}>{children}</TeamSelectionContext.Provider>;
