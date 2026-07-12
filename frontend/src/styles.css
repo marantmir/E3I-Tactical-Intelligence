@@ -1051,6 +1051,36 @@ tr:last-child td {
   font-weight: 800;
 }
 
+.source-origin-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  color: var(--blue);
+}
+
+.source-origin-link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-origin-link:hover span {
+  text-decoration: underline;
+}
+
+.source-full-url {
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+  opacity: 0.85;
+}
+
+.source-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .detail-panel {
   border-left: 3px solid var(--green);
   background: #f4f7fd;
