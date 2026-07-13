@@ -2,14 +2,20 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import re
 import urllib.error
+import urllib.parse
 import urllib.request
 
-from .llm_config import DEFAULT_LLM_CONFIG, get_llm_runtime_config
+from .llm_config import DEFAULT_LLM_CONFIG, PROVIDER_DEFAULT_MODELS, get_llm_runtime_config
 
 
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
-DEFAULT_MODEL = "gpt-4.1-mini"
+ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_VERSION = "2023-06-01"
+GOOGLE_GEMINI_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+XAI_CHAT_COMPLETIONS_URL = "https://api.x.ai/v1/chat/completions"
+DEFAULT_MODEL = PROVIDER_DEFAULT_MODELS["openai_responses"]
 DEFAULT_TIMEOUT_SECONDS = 18
 
 
@@ -20,7 +26,7 @@ def llm_status() -> dict:
     return {
         "enabled": enabled,
         "configured": bool(config.get("enabled")),
-        "provider": "openai_responses" if enabled else "local_fallback",
+        "provider": (config.get("provider") or "openai_responses") if enabled else "local_fallback",
         "model": config.get("model", DEFAULT_MODEL) if enabled else "deterministic_rules",
         "has_api_key": bool(api_key),
         "api_key_source": config.get("api_key_source", "missing"),
@@ -215,13 +221,38 @@ def enrich_pre_analysis(team_name: str, objective: str, online_payload: dict, pr
 
 
 def _call_llm_json(system: str, user: str, fallback: dict) -> dict:
+    """Chama o provedor de LLM configurado (nao mais fixo em um so) e devolve
+    um dict JSON. Cada provedor tem sua propria API/autenticacao/formato de
+    resposta; o dispatch abaixo isola essa diferenca dos 5 pontos do app que
+    consomem esta funcao (busca, pre-analise, video, identidade, etc.)."""
     config = get_llm_runtime_config()
     api_key = _api_key()
     if not api_key:
         return fallback
 
+    provider = config.get("provider") or "openai_responses"
+    caller = _PROVIDER_CALLERS.get(provider, _call_openai_responses)
+    model = config.get("model") or PROVIDER_DEFAULT_MODELS.get(provider, DEFAULT_MODEL)
+    try:
+        text = caller(system, user, config, api_key, model)
+        parsed = json.loads(_extract_json_object(text)) if text else {}
+        if not isinstance(parsed, dict):
+            return fallback
+        parsed.setdefault("status", "llm_enriched")
+        parsed.setdefault("provider", provider)
+        parsed.setdefault("model", model)
+        return parsed
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError, ValueError) as error:
+        enriched = dict(fallback)
+        enriched["status"] = "local_fallback"
+        enriched["provider"] = "deterministic_rules"
+        enriched["llm_error"] = error.__class__.__name__
+        return enriched
+
+
+def _call_openai_responses(system: str, user: str, config: dict, api_key: str, model: str) -> str:
     body = {
-        "model": config.get("model") or DEFAULT_MODEL,
+        "model": model,
         "input": [
             {"role": "system", "content": [{"type": "input_text", "text": _system_with_preferences(system, config)}]},
             {"role": "user", "content": [{"type": "input_text", "text": user}]},
@@ -239,27 +270,7 @@ def _call_llm_json(system: str, user: str, fallback: dict) -> dict:
         },
         method="POST",
     )
-    try:
-        timeout = int(config.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS))
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            payload = json.loads(response.read().decode("utf-8", errors="replace"))
-        text = _extract_output_text(payload)
-        parsed = json.loads(text) if text else {}
-        if not isinstance(parsed, dict):
-            return fallback
-        parsed.setdefault("status", "llm_enriched")
-        parsed.setdefault("provider", "openai_responses")
-        parsed.setdefault("model", body["model"])
-        return parsed
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError, ValueError) as error:
-        enriched = dict(fallback)
-        enriched["status"] = "local_fallback"
-        enriched["provider"] = "deterministic_rules"
-        enriched["llm_error"] = error.__class__.__name__
-        return enriched
-
-
-def _extract_output_text(payload: dict) -> str:
+    payload = _send_json_request(request, config)
     if payload.get("output_text"):
         return str(payload["output_text"])
     chunks = []
@@ -268,6 +279,110 @@ def _extract_output_text(payload: dict) -> str:
             if content.get("text"):
                 chunks.append(str(content["text"]))
     return "\n".join(chunks).strip()
+
+
+def _call_anthropic_messages(system: str, user: str, config: dict, api_key: str, model: str) -> str:
+    body = {
+        "model": model,
+        "max_tokens": int(config.get("max_output_tokens", DEFAULT_LLM_CONFIG["max_output_tokens"])),
+        "temperature": float(config.get("temperature", DEFAULT_LLM_CONFIG["temperature"])),
+        "system": _system_with_preferences(system, config),
+        "messages": [{"role": "user", "content": user}],
+    }
+    request = urllib.request.Request(
+        ANTHROPIC_MESSAGES_URL,
+        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": ANTHROPIC_VERSION,
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    payload = _send_json_request(request, config)
+    chunks = [str(item.get("text", "")) for item in payload.get("content") or [] if item.get("type") == "text"]
+    return "\n".join(chunks).strip()
+
+
+def _call_google_gemini(system: str, user: str, config: dict, api_key: str, model: str) -> str:
+    url = f"{GOOGLE_GEMINI_URL_TEMPLATE.format(model=model)}?key={urllib.parse.quote(api_key)}"
+    body = {
+        "systemInstruction": {"parts": [{"text": _system_with_preferences(system, config)}]},
+        "contents": [{"role": "user", "parts": [{"text": user}]}],
+        "generationConfig": {
+            "temperature": float(config.get("temperature", DEFAULT_LLM_CONFIG["temperature"])),
+            "maxOutputTokens": int(config.get("max_output_tokens", DEFAULT_LLM_CONFIG["max_output_tokens"])),
+            "responseMimeType": "application/json",
+        },
+    }
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    payload = _send_json_request(request, config)
+    candidates = payload.get("candidates") or []
+    if not candidates:
+        return ""
+    parts = (candidates[0].get("content") or {}).get("parts") or []
+    return "\n".join(str(part.get("text", "")) for part in parts).strip()
+
+
+def _call_xai_grok(system: str, user: str, config: dict, api_key: str, model: str) -> str:
+    # API da xAI e compatível com o formato Chat Completions da OpenAI.
+    body = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": _system_with_preferences(system, config)},
+            {"role": "user", "content": user},
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": float(config.get("temperature", DEFAULT_LLM_CONFIG["temperature"])),
+        "max_tokens": int(config.get("max_output_tokens", DEFAULT_LLM_CONFIG["max_output_tokens"])),
+    }
+    request = urllib.request.Request(
+        XAI_CHAT_COMPLETIONS_URL,
+        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    payload = _send_json_request(request, config)
+    choices = payload.get("choices") or []
+    if not choices:
+        return ""
+    return str((choices[0].get("message") or {}).get("content", "")).strip()
+
+
+_PROVIDER_CALLERS = {
+    "openai_responses": _call_openai_responses,
+    "anthropic_messages": _call_anthropic_messages,
+    "google_gemini": _call_google_gemini,
+    "xai_grok": _call_xai_grok,
+}
+
+
+def _send_json_request(request: urllib.request.Request, config: dict) -> dict:
+    timeout = int(config.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS))
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8", errors="replace"))
+
+
+def _extract_json_object(text: str) -> str:
+    """OpenAI e Gemini tem modo JSON nativo (resposta ja limpa); Anthropic nao
+    tem, entao a resposta pode vir com texto ao redor do JSON apesar da
+    instrucao no prompt. Extrai o primeiro bloco {...} como rede de seguranca."""
+    stripped = text.strip()
+    try:
+        json.loads(stripped)
+        return stripped
+    except json.JSONDecodeError:
+        pass
+    match = re.search(r"\{.*\}", stripped, re.DOTALL)
+    return match.group(0) if match else stripped
 
 
 def _fallback_search_queries(team_name: str) -> list[dict]:

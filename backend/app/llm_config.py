@@ -8,10 +8,50 @@ from pathlib import Path
 
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "data" / "llm_config.json"
 
+# Provedores suportados. Cada um tem sua propria API, formato de autenticacao
+# e variavel de ambiente para a chave - a UI deixa o usuario trocar livremente
+# entre eles em vez de ficar preso ao provedor parametrizado por padrao.
+SUPPORTED_PROVIDERS = ("openai_responses", "anthropic_messages", "google_gemini", "xai_grok")
+
+PROVIDER_LABELS = {
+    "openai_responses": "OpenAI (Responses API)",
+    "anthropic_messages": "Anthropic Claude (Messages API)",
+    "google_gemini": "Google Gemini",
+    "xai_grok": "xAI Grok",
+}
+
+PROVIDER_DEFAULT_MODELS = {
+    "openai_responses": "gpt-4.1-mini",
+    "anthropic_messages": "claude-sonnet-5",
+    "google_gemini": "gemini-2.5-flash",
+    "xai_grok": "grok-4",
+}
+
+PROVIDER_MODEL_SUGGESTIONS = {
+    "openai_responses": ["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"],
+    "anthropic_messages": ["claude-sonnet-5", "claude-opus-4-8", "claude-haiku-4-5-20251001"],
+    "google_gemini": ["gemini-2.5-flash", "gemini-2.5-pro"],
+    "xai_grok": ["grok-4", "grok-4-fast", "grok-3-mini"],
+}
+
+PROVIDER_ENV_API_KEY = {
+    "openai_responses": "OPENAI_API_KEY",
+    "anthropic_messages": "ANTHROPIC_API_KEY",
+    "google_gemini": "GEMINI_API_KEY",
+    "xai_grok": "XAI_API_KEY",
+}
+
+PROVIDER_ENV_MODEL = {
+    "openai_responses": "OPENAI_MODEL",
+    "anthropic_messages": "ANTHROPIC_MODEL",
+    "google_gemini": "GEMINI_MODEL",
+    "xai_grok": "XAI_MODEL",
+}
+
 DEFAULT_LLM_CONFIG = {
     "enabled": False,
     "provider": "openai_responses",
-    "model": "gpt-4.1-mini",
+    "model": PROVIDER_DEFAULT_MODELS["openai_responses"],
     "timeout_seconds": 18,
     "temperature": 0.2,
     "max_output_tokens": 1400,
@@ -25,8 +65,12 @@ DEFAULT_LLM_CONFIG = {
 
 def get_llm_runtime_config() -> dict:
     config = _read_config()
-    env_api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    env_model = os.getenv("OPENAI_MODEL", "").strip()
+    provider = config.get("provider") or DEFAULT_LLM_CONFIG["provider"]
+    if provider not in SUPPORTED_PROVIDERS:
+        provider = DEFAULT_LLM_CONFIG["provider"]
+
+    env_api_key = os.getenv(PROVIDER_ENV_API_KEY.get(provider, ""), "").strip()
+    env_model = os.getenv(PROVIDER_ENV_MODEL.get(provider, ""), "").strip()
     env_timeout = os.getenv("E3I_LLM_TIMEOUT_SECONDS", "").strip()
 
     if env_api_key:
@@ -84,17 +128,29 @@ def save_llm_config(payload: dict) -> dict:
     if "temperature" in payload and payload["temperature"] is not None:
         next_config["temperature"] = _clamp_float(payload["temperature"], 0, 1)
     if "max_output_tokens" in payload and payload["max_output_tokens"] is not None:
-        next_config["max_output_tokens"] = _clamp_int(payload["max_output_tokens"], 256, 6000)
+        next_config["max_output_tokens"] = _clamp_int(payload["max_output_tokens"], 200, 6000)
 
     if payload.get("clear_api_key"):
         next_config["api_key"] = ""
     elif payload.get("api_key"):
         next_config["api_key"] = str(payload["api_key"]).strip()
 
-    if next_config.get("provider") != "openai_responses":
-        next_config["provider"] = "openai_responses"
-    if not next_config.get("model"):
-        next_config["model"] = DEFAULT_LLM_CONFIG["model"]
+    # Provedor escolhido pelo usuario e respeitado (nao existe mais um
+    # provedor unico parametrizado); so cai no padrao se vier algo
+    # desconhecido/invalido.
+    if next_config.get("provider") not in SUPPORTED_PROVIDERS:
+        next_config["provider"] = DEFAULT_LLM_CONFIG["provider"]
+
+    provider_changed = next_config["provider"] != current.get("provider")
+    model_explicitly_set = bool(payload.get("model"))
+    if not model_explicitly_set and provider_changed:
+        # Trocar de provedor sem informar um modelo novo nao pode deixar o
+        # modelo do provedor anterior (ex.: "gpt-4.1-mini" com Anthropic
+        # selecionado); a UI ja resolve isso ao trocar o select, mas a API
+        # precisa ser correta mesmo com um PATCH parcial direto.
+        next_config["model"] = PROVIDER_DEFAULT_MODELS.get(next_config["provider"], DEFAULT_LLM_CONFIG["model"])
+    elif not next_config.get("model"):
+        next_config["model"] = PROVIDER_DEFAULT_MODELS.get(next_config["provider"], DEFAULT_LLM_CONFIG["model"])
 
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(json.dumps(next_config, ensure_ascii=False, indent=2), encoding="utf-8")

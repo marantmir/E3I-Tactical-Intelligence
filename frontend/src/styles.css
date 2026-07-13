@@ -48,6 +48,8 @@ a {
   position: sticky;
   top: 0;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
   border-right: 1px solid rgba(216, 162, 58, 0.28);
   background:
     linear-gradient(180deg, rgba(216, 162, 58, 0.12), rgba(216, 162, 58, 0) 34%),
@@ -59,6 +61,7 @@ a {
 .brand {
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   min-height: 132px;
   margin-bottom: 20px;
   border: 1px solid rgba(216, 162, 58, 0.28);
@@ -75,12 +78,29 @@ a {
 
 .sidebar nav {
   display: grid;
+  align-content: start;
   gap: 5px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(216, 162, 58, 0.45) transparent;
+}
+
+.sidebar nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar nav::-webkit-scrollbar-thumb {
+  background: rgba(216, 162, 58, 0.45);
+  border-radius: 999px;
 }
 
 .sidebar a {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   gap: 10px;
   min-height: 42px;
   border-radius: 8px;
@@ -799,6 +819,11 @@ tr:last-child td {
   gap: 7px;
   color: #2c3a31;
   font-weight: 800;
+}
+
+.analysis-form label small {
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .analysis-form .toggle-row {
@@ -1839,6 +1864,7 @@ tr:last-child td {
 
   .sidebar nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-y: visible;
   }
 
   .topbar,
