@@ -73,10 +73,20 @@ export default function FutureAI() {
 
   function updateField(event) {
     const { checked, name, type, value } = event.target;
-    setForm((current) => ({
-      ...current,
-      [name]: type === "checkbox" ? checked : value
-    }));
+    setForm((current) => {
+      const next = { ...current, [name]: type === "checkbox" ? checked : value };
+      if (name === "provider") {
+        // Cada provedor tem seus proprios modelos; ao trocar, sugere o
+        // primeiro modelo conhecido do novo provedor em vez de manter o
+        // modelo do provedor anterior (ex.: "gpt-4.1-mini" ao trocar para
+        // Anthropic/Gemini).
+        const suggestions = options.models_by_provider?.[value] || [];
+        if (suggestions.length && !suggestions.some((item) => item.value === current.model)) {
+          next.model = suggestions[0].value;
+        }
+      }
+      return next;
+    });
     setMessage("");
     setTestResult(null);
   }
@@ -123,6 +133,9 @@ export default function FutureAI() {
     }
   }
 
+  const selectedProvider = (options.providers || []).find((item) => item.value === form.provider);
+  const modelOptions = options.models_by_provider?.[form.provider] || [];
+
   return (
     <section className="page-grid">
       <div className="section-heading">
@@ -152,12 +165,13 @@ export default function FutureAI() {
         <label>
           Provedor
           <select name="provider" value={form.provider} onChange={updateField}>
-            {(options.providers || [{ value: "openai_responses", label: "OpenAI Responses API" }]).map((item) => (
+            {(options.providers || [{ value: "openai_responses", label: "OpenAI (Responses API)" }]).map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
               </option>
             ))}
           </select>
+          <small>Troque livremente entre provedores; cada um usa sua propria chave de API.</small>
         </label>
 
         <label>
@@ -167,10 +181,10 @@ export default function FutureAI() {
             name="model"
             value={form.model}
             onChange={updateField}
-            placeholder="gpt-4.1-mini"
+            placeholder={modelOptions[0]?.value || "modelo do provedor"}
           />
           <datalist id="llm-model-options">
-            {(options.models || []).map((item) => (
+            {modelOptions.map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
               </option>
@@ -179,13 +193,17 @@ export default function FutureAI() {
         </label>
 
         <label>
-          API key
+          API key ({selectedProvider?.label || "provedor selecionado"})
           <input
             name="api_key"
             type="password"
             value={form.api_key}
             onChange={updateField}
-            placeholder={hasKey ? `Chave salva: ${keyMask}` : "Cole a OPENAI_API_KEY"}
+            placeholder={
+              hasKey
+                ? `Chave salva: ${keyMask}`
+                : `Cole a chave ou defina ${selectedProvider?.env_api_key || "a variavel de ambiente"} no servidor`
+            }
           />
         </label>
 
@@ -218,7 +236,7 @@ export default function FutureAI() {
           Maximo de tokens
           <input
             max="6000"
-            min="256"
+            min="200"
             name="max_output_tokens"
             step="100"
             type="number"

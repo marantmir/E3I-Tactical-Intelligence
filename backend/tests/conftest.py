@@ -42,6 +42,16 @@ def no_network_llm(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def isolated_llm_config(tmp_path, monkeypatch):
+    """Point the LLM config file at a throwaway path so tests never write to
+    the real backend/data/llm_config.json."""
+    from app import llm_config as llm_config_module
+
+    monkeypatch.setattr(llm_config_module, "CONFIG_PATH", tmp_path / "llm_config_test.json")
+    yield
+
+
+@pytest.fixture(autouse=True)
 def reset_rate_limiters():
     """Rate limiters are process-wide singletons; keep tests independent."""
     from app.rate_limit import video_upload_rate_limiter

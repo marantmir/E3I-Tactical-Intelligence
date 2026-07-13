@@ -4,7 +4,14 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from ..llm_assistant import enrich_pre_analysis, llm_status
-from ..llm_config import public_llm_config, save_llm_config
+from ..llm_config import (
+    PROVIDER_ENV_API_KEY,
+    PROVIDER_LABELS,
+    PROVIDER_MODEL_SUGGESTIONS,
+    SUPPORTED_PROVIDERS,
+    public_llm_config,
+    save_llm_config,
+)
 
 
 router = APIRouter(prefix="/api/llm", tags=["llm"])
@@ -16,7 +23,7 @@ class LLMConfigUpdate(BaseModel):
     model: str | None = None
     timeout_seconds: int | None = Field(default=None, ge=3, le=90)
     temperature: float | None = Field(default=None, ge=0, le=1)
-    max_output_tokens: int | None = Field(default=None, ge=256, le=6000)
+    max_output_tokens: int | None = Field(default=None, ge=200, le=6000)
     language: str | None = None
     analysis_depth: str | None = None
     search_scope: str | None = None
@@ -64,13 +71,17 @@ def test_config():
 def _options() -> dict:
     return {
         "providers": [
-            {"value": "openai_responses", "label": "OpenAI Responses API"},
+            {
+                "value": provider,
+                "label": PROVIDER_LABELS[provider],
+                "env_api_key": PROVIDER_ENV_API_KEY[provider],
+            }
+            for provider in SUPPORTED_PROVIDERS
         ],
-        "models": [
-            {"value": "gpt-4.1-mini", "label": "gpt-4.1-mini"},
-            {"value": "gpt-4.1", "label": "gpt-4.1"},
-            {"value": "gpt-4o-mini", "label": "gpt-4o-mini"},
-        ],
+        "models_by_provider": {
+            provider: [{"value": model, "label": model} for model in models]
+            for provider, models in PROVIDER_MODEL_SUGGESTIONS.items()
+        },
         "analysis_depth": [
             {"value": "objetiva", "label": "Objetiva"},
             {"value": "profunda", "label": "Profunda"},
