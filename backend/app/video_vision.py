@@ -43,6 +43,17 @@ MIN_CONTOUR_AREA = 350
 MIN_TRACK_DISTANCE = 35
 MAX_MOVEMENT_TRACKS = 18
 PROXIMITY_THRESHOLD = 90
+# Rastro sem correspondencia por este numero de frames processados deixa de
+# concorrer no matching: um jogador que saiu do enquadramento nao pode
+# "roubar" a deteccao de quem entrou perto da ultima posicao dele.
+MAX_TRACK_MISSES = 10
+# Amortecimento da predicao por velocidade constante (0 = sem predicao,
+# 1 = extrapolacao completa do ultimo deslocamento).
+VELOCITY_PREDICTION_DAMPING = 0.8
+# A bola nao teleporta: candidato muito distante da ultima posicao conhecida
+# so e aceito depois que a bola fica alguns frames sem deteccao.
+BALL_MAX_JUMP_PX_RATIO = 0.22
+BALL_MISS_TOLERANCE = 6
 PITCH_W, PITCH_H = 105, 68
 DEFAULT_PROCESSING_TIMEOUT_SECONDS = 35
 MAX_PLAYER_BOX_WIDTH_RATIO = 0.18
@@ -132,6 +143,21 @@ class _Track:
     @property
     def last_pos(self) -> tuple[float, float]:
         return self.points[-1][1], self.points[-1][2]
+
+    @property
+    def predicted_pos(self) -> tuple[float, float]:
+        """Posicao esperada no proximo frame processado (modelo de velocidade
+        constante amortecido, como no SORT). Reduz trocas de ID quando dois
+        jogadores se cruzam: cada rastro procura a deteccao na direcao em que
+        ja vinha se movendo, nao apenas a mais proxima da ultima posicao."""
+        if len(self.points) < 2:
+            return self.last_pos
+        _, x1, y1 = self.points[-2]
+        _, x2, y2 = self.points[-1]
+        return (
+            x2 + (x2 - x1) * VELOCITY_PREDICTION_DAMPING,
+            y2 + (y2 - y1) * VELOCITY_PREDICTION_DAMPING,
+        )
 
 
 def _probe_total_frames(capture, reported_total_frames: int) -> int:
@@ -244,6 +270,8 @@ def process_video(
     frame_idx = 0
     processed = 0
     colors: dict[int, tuple[int, int, int]] = {}
+    last_ball_px: tuple[float, float] | None = None
+    ball_misses = 0
 
     while processed < max_frames:
         if max_processing_seconds and time.monotonic() - started_at >= max_processing_seconds:
@@ -266,8 +294,10 @@ def process_video(
         if field_model["detected"]:
             field_samples += 1
             last_field_model = field_model
-        ball = _detect_ball(frame, field_model)
+        ball = _detect_ball(frame, field_model, last_ball_px if ball_misses <= BALL_MISS_TOLERANCE else None, width)
         if ball:
+            last_ball_px = (ball["x"], ball["y"])
+            ball_misses = 0
             ball_track.append(
                 {
                     "frame": frame_idx,
@@ -280,6 +310,8 @@ def process_video(
             grid_x = min(GRID_W - 1, int(ball["pitch_x"] / 100 * GRID_W))
             grid_y = min(GRID_H - 1, int(ball["pitch_y"] / 100 * GRID_H))
             ball_grid[grid_y][grid_x] += 1
+        else:
+            ball_misses += 1
 
         mask = bg_subtractor.apply(frame)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
@@ -302,18 +334,35 @@ def process_video(
             if uniform["key"] != "unknown":
                 uniform_counts[uniform["key"]] += 1
 
-        assigned_tracks = set()
+        # Atribuicao global deteccao<->rastro: todos os pares candidatos sao
+        # ordenados por distancia a posicao PREVISTA do rastro e consumidos do
+        # menor para o maior. Isso remove o vies de ordem do matching guloso
+        # por deteccao (a primeira deteccao da lista "roubava" o rastro mais
+        # proximo mesmo quando outra deteccao combinava melhor com ele).
+        matchable_tracks = {
+            track_id: track for track_id, track in tracks.items() if track.missed <= MAX_TRACK_MISSES
+        }
+        candidate_pairs = []
+        for det_index, (cx, cy, *_rest) in enumerate(detections):
+            for track_id, track in matchable_tracks.items():
+                px, py = track.predicted_pos
+                dist = math.hypot(cx - px, cy - py)
+                if dist < MAX_TRACK_DISTANCE:
+                    candidate_pairs.append((dist, det_index, track_id))
+        candidate_pairs.sort(key=lambda item: item[0])
+
+        detection_to_track: dict[int, int] = {}
+        assigned_tracks: set[int] = set()
+        for _, det_index, track_id in candidate_pairs:
+            if det_index in detection_to_track or track_id in assigned_tracks:
+                continue
+            detection_to_track[det_index] = track_id
+            assigned_tracks.add(track_id)
+
         frame_active_tracks = []
-        for cx, cy, x, y, w, h, uniform in detections:
+        for det_index, (cx, cy, x, y, w, h, uniform) in enumerate(detections):
             pitch_x, pitch_y = _map_to_pitch(cx, cy, field_model)
-            best_id, best_dist = None, MAX_TRACK_DISTANCE
-            for track_id, track in tracks.items():
-                if track_id in assigned_tracks:
-                    continue
-                tx, ty = track.last_pos
-                dist = math.hypot(cx - tx, cy - ty)
-                if dist < best_dist:
-                    best_dist, best_id = dist, track_id
+            best_id = detection_to_track.get(det_index)
 
             if best_id is None:
                 best_id = next_track_id
@@ -344,10 +393,14 @@ def process_video(
                 tracks[best_id].boxes.append((x, y, w, h))
                 tracks[best_id].last_seen = frame_idx
 
+            tracks[best_id].missed = 0
             tracks[best_id].team_counts[uniform["key"]] += 1
-            assigned_tracks.add(best_id)
             track_team_key = _track_team_key(tracks[best_id])
             frame_active_tracks.append((best_id, cx, cy, x, y, w, h, pitch_x, pitch_y, track_team_key))
+
+        for track_id, track in matchable_tracks.items():
+            if track_id not in assigned_tracks:
+                track.missed += 1
 
         current_target_key = _selected_team_key(requested_team_filter, uniform_counts)
         frame_target_tracks = [
@@ -732,7 +785,12 @@ def _field_candidate_gate(
     return {"accepted": True, "reason": "dentro_do_campo"}
 
 
-def _detect_ball(frame, field_model: dict) -> dict | None:
+def _detect_ball(
+    frame,
+    field_model: dict,
+    previous_ball_px: tuple[float, float] | None = None,
+    frame_width: int | None = None,
+) -> dict | None:
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     lower_white = np.array([0, 0, 160])
     upper_white = np.array([180, 70, 255])
@@ -740,6 +798,7 @@ def _detect_ball(frame, field_model: dict) -> dict | None:
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)))
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    max_jump = (frame_width or frame.shape[1]) * BALL_MAX_JUMP_PX_RATIO
     candidates = []
     for contour in contours:
         area = cv2.contourArea(contour)
@@ -756,13 +815,25 @@ def _detect_ball(frame, field_model: dict) -> dict | None:
         if aspect < 0.55 or aspect > 1.8:
             continue
         cx, cy = x + w / 2, y + h / 2
+        # Consistencia temporal: com bola vista recentemente, candidatos alem
+        # do salto maximo sao descartados (linhas do campo, meiao e placas
+        # brancas pontuam bem em circularidade mas aparecem longe da bola) e
+        # os demais sao ranqueados tambem pela proximidade da ultima posicao.
+        proximity_score = 1.0
+        if previous_ball_px is not None:
+            jump = math.hypot(cx - previous_ball_px[0], cy - previous_ball_px[1])
+            if jump > max_jump:
+                continue
+            proximity_score = 1.0 - jump / max(1.0, max_jump)
         pitch_x, pitch_y = _map_to_pitch(cx, cy, field_model)
-        candidates.append((area, circularity, cx, cy, pitch_x, pitch_y))
+        candidates.append((area, circularity, proximity_score, cx, cy, pitch_x, pitch_y))
 
     if not candidates:
         return None
 
-    area, circularity, cx, cy, pitch_x, pitch_y = max(candidates, key=lambda item: (item[1], -item[0]))
+    area, circularity, _, cx, cy, pitch_x, pitch_y = max(
+        candidates, key=lambda item: (item[1] * 0.6 + item[2] * 0.4, -item[0])
+    )
     return {
         "x": cx,
         "y": cy,

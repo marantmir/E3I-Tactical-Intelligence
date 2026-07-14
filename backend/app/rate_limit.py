@@ -41,6 +41,16 @@ class RateLimiter:
 
 
 def _client_key(request: Request) -> str:
+    # Atras de um proxy/load balancer (ex.: Render), request.client.host e o
+    # IP do proxy - todos os usuarios cairiam na MESMA janela de rate limit.
+    # Com E3I_TRUST_PROXY=1 no deploy, usa o primeiro IP de X-Forwarded-For
+    # (o cliente real). Fica desligado por padrao porque, com o app exposto
+    # diretamente, o header e forjavel e permitiria burlar o limite.
+    if os.getenv("E3I_TRUST_PROXY", "").strip() in {"1", "true", "yes"}:
+        forwarded = request.headers.get("X-Forwarded-For", "")
+        first_hop = forwarded.split(",")[0].strip()
+        if first_hop:
+            return first_hop
     if request.client:
         return request.client.host
     return "unknown"

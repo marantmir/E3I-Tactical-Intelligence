@@ -95,6 +95,10 @@ export const api = {
   players: (teamId) => request(`/api/teams/${teamId}/players`),
   sources: (teamId) => request(`/api/teams/${teamId}/sources`),
   graphAnalysis: (teamId) => request(`/api/teams/${teamId}/graph-analysis`),
+  operationalResearch: (teamId, formation = "") =>
+    request(
+      `/api/teams/${teamId}/operational-research${formation ? `?formation=${encodeURIComponent(formation)}` : ""}`
+    ),
   uploadVideoVision: async (teamRef, file, options = {}) => {
     const maxUploadBytes = 300 * 1024 * 1024;
     if (file.size > maxUploadBytes) {
@@ -239,18 +243,39 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload)
     }),
-  adminMeta: () => request("/api/admin/meta"),
-  adminUsers: () => request("/api/admin/users"),
+  adminMeta: () => request("/api/admin/meta", { headers: adminHeaders() }),
+  adminUsers: () => request("/api/admin/users", { headers: adminHeaders() }),
   adminCreateUser: (payload) =>
-    request("/api/admin/users", { method: "POST", body: JSON.stringify(payload) }),
+    request("/api/admin/users", { method: "POST", body: JSON.stringify(payload), headers: adminHeaders() }),
   adminUpdateUser: (id, payload) =>
-    request(`/api/admin/users/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-  adminDeleteUser: (id) => request(`/api/admin/users/${id}`, { method: "DELETE" }),
-  adminList: (collection) => request(`/api/admin/collections/${collection}`),
+    request(`/api/admin/users/${id}`, { method: "PUT", body: JSON.stringify(payload), headers: adminHeaders() }),
+  adminDeleteUser: (id) => request(`/api/admin/users/${id}`, { method: "DELETE", headers: adminHeaders() }),
+  adminList: (collection) => request(`/api/admin/collections/${collection}`, { headers: adminHeaders() }),
   adminCreate: (collection, payload) =>
-    request(`/api/admin/collections/${collection}`, { method: "POST", body: JSON.stringify(payload) }),
+    request(`/api/admin/collections/${collection}`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: adminHeaders()
+    }),
   adminUpdate: (collection, id, payload) =>
-    request(`/api/admin/collections/${collection}/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+    request(`/api/admin/collections/${collection}/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+      headers: adminHeaders()
+    }),
   adminDelete: (collection, id) =>
-    request(`/api/admin/collections/${collection}/${id}`, { method: "DELETE" })
+    request(`/api/admin/collections/${collection}/${id}`, { method: "DELETE", headers: adminHeaders() })
 };
+
+// Em deploys com E3I_ADMIN_TOKEN definido no backend, o token informado pelo
+// administrador fica no localStorage e segue em todas as chamadas de admin.
+// Sem token salvo (uso local), nenhum header extra e enviado.
+function adminHeaders() {
+  let token = "";
+  try {
+    token = window.localStorage.getItem("e3i_admin_token") || "";
+  } catch {
+    token = "";
+  }
+  return token ? { "X-Admin-Token": token } : {};
+}

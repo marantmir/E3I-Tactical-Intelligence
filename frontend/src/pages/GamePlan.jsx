@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { Activity, AlertTriangle, ClipboardList, ShieldAlert, Target, Users } from "lucide-react";
+import { Activity, AlertTriangle, BrainCircuit, ClipboardList, ShieldAlert, Target, Users } from "lucide-react";
 
 import { api } from "../api/client.js";
 import ErrorState from "../components/ErrorState.jsx";
@@ -8,7 +8,12 @@ import { useApiResource } from "./useApiResource.js";
 
 export default function GamePlan() {
   const { teamId } = useParams();
+  const isLocalTeam = /^\d+$/.test(String(teamId));
   const { data, loading, error } = useApiResource(() => api.teamWorkspace(teamId), [teamId]);
+  const { data: research } = useApiResource(
+    () => (isLocalTeam ? api.operationalResearch(teamId) : Promise.resolve(null)),
+    [teamId]
+  );
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -103,6 +108,88 @@ export default function GamePlan() {
           </ul>
         </article>
       </section>
+      {research ? <OperationalResearch research={research} /> : null}
     </section>
+  );
+}
+
+function OperationalResearch({ research }) {
+  const lineup = research.lineup || {};
+  const comparison = research.formation_comparison || {};
+  const recommendations = comparison.recommendations || {};
+  const stateLabels = { vencendo: "Vencendo", empatando: "Empatando", perdendo: "Perdendo" };
+
+  return (
+    <>
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Pesquisa operacional</p>
+          <h2>Escalacao otima e cenarios por formacao</h2>
+        </div>
+      </div>
+      <div className="card-grid two">
+        <article className="info-panel">
+          <h3>
+            <BrainCircuit size={17} />
+            Escalacao otima para {research.target_formation}
+          </h3>
+          {lineup.status === "sem_elenco" ? (
+            <p>{lineup.note}</p>
+          ) : (
+            <>
+              <p>
+                Forca da escalacao: <strong>{lineup.lineup_strength}</strong> / 10 · Cobertura posicional:{" "}
+                <strong>{lineup.positional_coverage}%</strong>
+                {lineup.gaps?.length ? ` · Vagas frageis: ${lineup.gaps.join(", ")}` : ""}
+              </p>
+              <ul className="clean-list">
+                {(lineup.assignments || []).map((slot) => (
+                  <li key={slot.slot_id}>
+                    <strong>
+                      {slot.position} — {slot.player ? slot.player.name : "sem jogador disponivel"}
+                    </strong>
+                    <span>
+                      {slot.player ? `Fit ${slot.fit}/10 · ${slot.explanation}` : slot.explanation}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="inline-message">{lineup.note}</p>
+            </>
+          )}
+        </article>
+        <article className="info-panel">
+          <h3>
+            <ClipboardList size={17} />
+            Formacao recomendada por estado de jogo
+          </h3>
+          {Object.keys(recommendations).length ? (
+            <ul className="clean-list">
+              {Object.entries(recommendations).map(([state, item]) => (
+                <li key={state}>
+                  <strong>
+                    {stateLabels[state] || state}: {item.formation}
+                  </strong>
+                  <span>{item.reason}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>Cadastre formacoes do time para comparar cenarios.</p>
+          )}
+          {(comparison.scenarios || []).length ? (
+            <ul className="check-list">
+              {comparison.scenarios.map((scenario) => (
+                <li key={scenario.formation}>
+                  <strong>{scenario.formation}:</strong> utilidade {scenario.utility} · ofensivo{" "}
+                  {scenario.offensive_index} · defensivo {scenario.defensive_index}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <p className="inline-message">{comparison.note}</p>
+        </article>
+      </div>
+    </>
   );
 }

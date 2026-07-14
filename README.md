@@ -13,7 +13,7 @@ Aplicacao web para inteligencia tatica de futebol. O fluxo prioriza videos de pa
 - Pre-analise antes do salvamento.
 - Analise por grafos com conexoes entre rastros, zonas, centralidade e densidade.
 - Leitura visual de videos com mapa de calor, trilhas de movimento, bola provavel, homografia aproximada, eventos e recomendacoes, com barra de progresso ao vivo (SSE) durante o processamento.
-- Pesquisa operacional para comparar formacao, risco, estrategia e ajustes por cenario.
+- Pesquisa operacional real: escalacao otima por problema de atribuicao (matching bipartido de peso maximo, exato) e comparacao de cenarios por formacao com recomendacao por estado de jogo (vencendo, empatando, perdendo).
 - Relatorio final consolidado para comissao tecnica.
 - Historico persistido em SQLite.
 
@@ -90,6 +90,7 @@ Resumo para Render:
 - `GET /api/teams/search?query=...`
 - `GET /api/teams/{team_id}/public-intelligence`
 - `GET /api/teams/{team_id}/graph-analysis`
+- `GET /api/teams/{team_id}/operational-research?formation=4-3-3` (escalacao otima + cenarios)
 - `POST /api/teams/{team_id}/video-vision/upload` (sincrono)
 - `POST /api/teams/{team_id}/video-vision/jobs` + `GET /api/teams/video-vision/jobs/{job_id}/events` (assincrono com progresso ao vivo via SSE)
 - `POST /api/analysis/preview`
@@ -102,6 +103,19 @@ Resumo para Render:
 A busca publica evita dados institucionais e foca em materiais taticos, videos de jogos e analises publicas. Se a rede externa estiver bloqueada, o sistema preserva o fluxo com links estruturados para coleta manual.
 
 As visualizacoes de grafos e videos sao calculadas no backend a partir do conteudo visual disponivel e exibidas no frontend como apoio a decisao tecnica.
+
+### Visao computacional
+
+O tracking usa predicao por velocidade constante (estilo SORT) e atribuicao global deteccao-rastro ordenada por distancia, com aposentadoria de rastros perdidos para evitar troca de identidade quando jogadores se cruzam ou saem do enquadramento. A deteccao de bola aplica consistencia temporal (candidatos que "teleportam" sao descartados).
+
+### Pesquisa operacional
+
+`app/operational_research.py` resolve o problema de atribuicao jogador-vaga com `networkx.max_weight_matching` (algoritmo blossom, exato). Cada atribuicao carrega afinidade posicional, fit 0-10 e justificativa auditavel. A comparacao de cenarios otimiza cada formacao conhecida do time e recomenda uma por estado de jogo. Resultado exposto em `GET /api/teams/{team_id}/operational-research` e na tela Plano de Jogo.
+
+### Seguranca no deploy
+
+- `E3I_ADMIN_TOKEN`: quando definido, todas as rotas `/api/admin/*` exigem o header `X-Admin-Token` com o mesmo valor (no navegador, salve com `localStorage.setItem("e3i_admin_token", "valor")`). Sem a variavel, o comportamento aberto e mantido para uso local.
+- `E3I_TRUST_PROXY=1`: atras de proxy/load balancer (ex.: Render), faz o rate limit usar o primeiro IP de `X-Forwarded-For` em vez de agrupar todos os usuarios no IP do proxy. Ja habilitado no `render.yaml`.
 
 ### Camada LLM opcional
 

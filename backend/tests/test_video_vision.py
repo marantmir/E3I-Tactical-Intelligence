@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import pytest
 
-from app.video_vision import process_video
+from app.video_vision import _detect_ball, _default_field_model, _Track, process_video
 
 
 def _write_synthetic_match_clip(path: Path, frames: int = 60, fps: float = 25.0, size: tuple[int, int] = (320, 240)) -> None:
@@ -175,6 +175,54 @@ def test_process_video_falls_back_to_sequential_when_seeking_is_unsupported(tmp_
     assert config["full_video_coverage"] is False
     assert config["source_total_frames"] == 0
     assert config["sample_every"] == 2
+
+
+def test_track_predicts_next_position_from_velocity():
+    track = _Track(1, 100.0, 50.0, 0, 10.0, 10.0, (95, 40, 10, 20))
+    track.points.append((1, 110.0, 50.0))
+
+    px, py = track.predicted_pos
+
+    # Modelo de velocidade constante amortecido: continua na direcao do
+    # ultimo deslocamento (+10px em x), nao fica parado na ultima posicao.
+    assert px > 110.0
+    assert py == 50.0
+
+
+def test_track_without_history_predicts_last_position():
+    track = _Track(1, 100.0, 50.0, 0, 10.0, 10.0, (95, 40, 10, 20))
+
+    assert track.predicted_pos == track.last_pos
+
+
+def _frame_with_white_ball(center: tuple[int, int], size: tuple[int, int] = (320, 240)) -> np.ndarray:
+    width, height = size
+    frame = np.full((height, width, 3), (60, 160, 60), dtype=np.uint8)
+    cv2.circle(frame, center, 6, (250, 250, 250), -1)
+    return frame
+
+
+def test_detect_ball_rejects_teleporting_candidate():
+    frame = _frame_with_white_ball((50, 50))
+    field_model = _default_field_model(320, 240)
+
+    ungated = _detect_ball(frame, field_model, previous_ball_px=None, frame_width=320)
+    gated = _detect_ball(frame, field_model, previous_ball_px=(280.0, 200.0), frame_width=320)
+
+    assert ungated is not None
+    # O unico candidato esta a ~240px da ultima posicao conhecida; acima do
+    # salto maximo permitido, deve ser descartado como falso positivo.
+    assert gated is None
+
+
+def test_detect_ball_accepts_candidate_near_previous_position():
+    frame = _frame_with_white_ball((60, 55))
+    field_model = _default_field_model(320, 240)
+
+    ball = _detect_ball(frame, field_model, previous_ball_px=(50.0, 50.0), frame_width=320)
+
+    assert ball is not None
+    assert abs(ball["x"] - 60) <= 3
 
 
 def test_process_video_rejects_unreadable_file(tmp_path: Path):
