@@ -1,6 +1,7 @@
 import os
 import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -13,10 +14,17 @@ from .logging_config import configure_logging, log_event
 from .routes import admin, analysis, llm, reports, teams
 
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    init_db()
+    yield
+
+
 app = FastAPI(
     title="E3I Tactical Intelligence",
     description="API para inteligencia tatica com busca publica, grafos e leitura visual de videos.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 logger = configure_logging()
@@ -65,11 +73,6 @@ FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 MEDIA_DIR = Path(__file__).resolve().parents[1] / "media"
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
-
-
-@app.on_event("startup")
-def startup() -> None:
-    init_db()
 
 
 @app.get("/api/health", tags=["health"])

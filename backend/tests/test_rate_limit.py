@@ -2,7 +2,42 @@ import time
 
 import pytest
 
-from app.rate_limit import RateLimiter, video_upload_rate_limiter
+from app.rate_limit import RateLimiter, _client_key, video_upload_rate_limiter
+
+
+class _StubClient:
+    host = "10.0.0.9"
+
+
+class _StubRequest:
+    def __init__(self, headers=None, client=_StubClient()):
+        self.headers = headers or {}
+        self.client = client
+
+
+def test_client_key_ignores_forwarded_header_by_default(monkeypatch):
+    monkeypatch.delenv("E3I_TRUST_PROXY", raising=False)
+
+    key = _client_key(_StubRequest(headers={"X-Forwarded-For": "203.0.113.7, 10.0.0.1"}))
+
+    # Sem proxy confiavel declarado, o header e forjavel e nao pode ser usado.
+    assert key == "10.0.0.9"
+
+
+def test_client_key_uses_first_forwarded_hop_behind_trusted_proxy(monkeypatch):
+    monkeypatch.setenv("E3I_TRUST_PROXY", "1")
+
+    key = _client_key(_StubRequest(headers={"X-Forwarded-For": "203.0.113.7, 10.0.0.1"}))
+
+    assert key == "203.0.113.7"
+
+
+def test_client_key_falls_back_to_socket_when_header_missing(monkeypatch):
+    monkeypatch.setenv("E3I_TRUST_PROXY", "1")
+
+    key = _client_key(_StubRequest())
+
+    assert key == "10.0.0.9"
 
 
 def test_rate_limiter_allows_requests_within_the_limit():

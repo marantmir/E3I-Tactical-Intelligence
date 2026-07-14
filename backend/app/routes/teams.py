@@ -34,6 +34,7 @@ from ..data_store import (
 from ..crud_store import create_record
 from ..llm_assistant import analyze_video_tactics, identify_players_from_tracks
 from ..online_search import search_public_team_info
+from ..operational_research import build_operational_research
 from ..rate_limit import enforce_video_upload_rate_limit
 from ..schemas import DetectedFormationSave, OnlineTeamProfileSave, OwnTeamSet, SourceCollectRequest
 from ..source_collector import collect_sources, merge_sources_into_payload
@@ -325,6 +326,20 @@ def team_players(team_id: int):
 @router.get("/{team_id}/sources")
 def team_sources(team_id: int):
     return get_team_records(sources(), team_id)
+
+
+@router.get("/{team_id}/operational-research")
+def team_operational_research(team_id: int, formation: str | None = Query(default=None)):
+    """Pesquisa operacional real sobre o elenco cadastrado: escalacao otima
+    (problema de atribuicao resolvido de forma exata) para a formacao alvo e
+    comparacao de cenarios entre as formacoes conhecidas do time."""
+    team = get_team(team_id)
+    return build_operational_research(
+        team,
+        get_team_records(players(), team_id),
+        get_team_records(formations(), team_id),
+        requested_formation=formation,
+    )
 
 
 @router.get("/{team_id}/graph-analysis")

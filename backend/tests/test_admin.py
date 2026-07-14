@@ -6,6 +6,26 @@ from app.main import app
 client = TestClient(app)
 
 
+# ------------------------ Protecao opcional por token ------------------------
+
+def test_admin_routes_open_by_default(monkeypatch):
+    monkeypatch.delenv("E3I_ADMIN_TOKEN", raising=False)
+
+    assert client.get("/api/admin/meta").status_code == 200
+
+
+def test_admin_routes_require_token_when_configured(monkeypatch):
+    monkeypatch.setenv("E3I_ADMIN_TOKEN", "segredo-do-deploy")
+
+    without_token = client.get("/api/admin/meta")
+    wrong_token = client.get("/api/admin/meta", headers={"X-Admin-Token": "errado"})
+    with_token = client.get("/api/admin/meta", headers={"X-Admin-Token": "segredo-do-deploy"})
+
+    assert without_token.status_code == 401
+    assert wrong_token.status_code == 401
+    assert with_token.status_code == 200
+
+
 # --------------------------- Usuarios (acesso) ---------------------------
 
 def test_seed_admin_user_exists():

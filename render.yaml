@@ -13,3 +13,7 @@ services:
         value: gpt-4.1-mini
       - key: E3I_LLM_TIMEOUT_SECONDS
         value: "18"
+      # Render fica atras de proxy: usa X-Forwarded-For para o rate limit
+      # distinguir usuarios reais em vez de agrupar todos no IP do proxy.
+      - key: E3I_TRUST_PROXY
+        value: "1"

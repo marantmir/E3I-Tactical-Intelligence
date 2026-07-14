@@ -7,10 +7,18 @@
 - /api/admin/collections/{collection}/{id}  -> PUT (editar) / DELETE (excluir)
 
 Colecoes suportadas: teams, players, formations, sources (ver crud_store).
+
+Protecao opcional: com a variavel de ambiente E3I_ADMIN_TOKEN definida no
+deploy, todas as rotas de administracao passam a exigir o header
+X-Admin-Token com o mesmo valor. Sem a variavel, o comportamento atual
+(aberto, adequado a uso local) e mantido.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter
+import hmac
+import os
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ..crud_store import COLLECTIONS, create_record, delete_record, list_records, update_record
 from ..data_store import teams
@@ -26,7 +34,19 @@ from ..database import (
 from ..schemas import AccessUserCreate, AccessUserUpdate
 
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+def require_admin_token(request: Request) -> None:
+    expected = os.getenv("E3I_ADMIN_TOKEN", "").strip()
+    if not expected:
+        return
+    provided = request.headers.get("X-Admin-Token", "")
+    if not hmac.compare_digest(provided.encode(), expected.encode()):
+        raise HTTPException(
+            status_code=401,
+            detail="Acesso administrativo requer o header X-Admin-Token valido neste deploy.",
+        )
+
+
+router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin_token)])
 
 
 @router.get("/meta")

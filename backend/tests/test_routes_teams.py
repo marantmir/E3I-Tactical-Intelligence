@@ -137,6 +137,29 @@ def test_team_graph_analysis_returns_nodes_and_edges():
     assert payload["edges"]
 
 
+def test_team_operational_research_returns_optimized_lineup():
+    response = client.get("/api/teams/1/operational-research")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["lineup"]["status"] in {"otimizado", "sem_elenco"}
+    assert payload["formation_comparison"]["scenarios"]
+    assert payload["target_formation"]
+
+
+def test_team_operational_research_accepts_formation_override():
+    response = client.get("/api/teams/1/operational-research?formation=3-5-2")
+
+    assert response.status_code == 200
+    assert response.json()["target_formation"] == "3-5-2"
+
+
+def test_team_operational_research_unknown_team_returns_404():
+    response = client.get("/api/teams/999999/operational-research")
+
+    assert response.status_code == 404
+
+
 def test_team_related_records_endpoints():
     for suffix in ("formations", "players", "sources", "tactical-analysis", "game-plan"):
         response = client.get(f"/api/teams/1/{suffix}")
