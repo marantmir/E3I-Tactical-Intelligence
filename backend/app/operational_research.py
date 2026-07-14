@@ -1,23 +1,23 @@
 """Pesquisa operacional aplicada ao plano de jogo.
 
-Este modulo entrega a camada de otimizacao prometida pelo produto:
+Este módulo entrega a camada de otimização prometida pelo produto:
 
-1. Escalacao otima (problema de atribuicao): cada jogador do elenco e cada
-   vaga da formacao viram nos de um grafo bipartido; o peso da aresta e o
-   "fit" do jogador na vaga (afinidade posicional x nota tatica + bonus de
-   influencia/status). A escalacao que maximiza a soma dos fits e resolvida
+1. Escalação ótima (problema de atribuição): cada jogador do elenco e cada
+   vaga da formação viram nós de um grafo bipartido; o peso da aresta é o
+   "fit" do jogador na vaga (afinidade posicional x nota tática + bônus de
+   influência/status). A escalação que maximiza a soma dos fits é resolvida
    com `networkx.max_weight_matching` (algoritmo blossom, exato, sem
-   dependencia extra) - nao com heuristica gulosa, que erra quando um
+   dependência extra) - não com heurística gulosa, que erra quando um
    jogador serve bem em duas vagas.
 
-2. Comparacao de cenarios: cada formacao conhecida do time e otimizada e
-   recebe indices ofensivo/defensivo/equilibrio derivados da escalacao
-   otima, gerando recomendacoes por estado de jogo (vencendo, empatando,
+2. Comparação de cenários: cada formação conhecida do time é otimizada e
+   recebe índices ofensivo/defensivo/equilíbrio derivados da escalação
+   ótima, gerando recomendações por estado de jogo (vencendo, empatando,
    perdendo).
 
-Tudo e deterministico e explicavel: cada atribuicao carrega afinidade, nota
-e justificativa, para que a comissao tecnica audite a sugestao em vez de
-receber um numero opaco.
+Tudo é determinístico e explicável: cada atribuição carrega afinidade, nota
+e justificativa, para que a comissão técnica audite a sugestão em vez de
+receber um número opaco.
 """
 from __future__ import annotations
 
@@ -26,8 +26,8 @@ import re
 import networkx as nx
 
 
-# Afinidade entre a posicao de origem do jogador e a posicao da vaga.
-# 1.0 = posicao natural; valores parciais refletem adaptacoes comuns no
+# Afinidade entre a posição de origem do jogador e a posição da vaga.
+# 1.0 = posição natural; valores parciais refletem adaptações comuns no
 # futebol (ex.: volante improvisado de zagueiro). Pares ausentes recebem
 # CROSS_AFFINITY; linha no gol (e vice-versa) recebe GOAL_MISMATCH.
 POSITION_AFFINITY: dict[str, dict[str, float]] = {
@@ -50,10 +50,10 @@ GAME_STATES = ("vencendo", "empatando", "perdendo")
 def parse_formation_slots(formation: str) -> list[dict]:
     """Converte "4-2-3-1" em vagas posicionais (GOL + linhas).
 
-    Regras: primeira linha e a defesa (4+ jogadores = 2 laterais + zagueiros;
-    3 ou menos = so zagueiros), a ultima linha e o ataque, linhas
-    intermediarias comecam na base (volantes) e sobem para criacao (meias).
-    Uma unica linha intermediaria e dividida entre base e criacao.
+    Regras: primeira linha é a defesa (4+ jogadores = 2 laterais + zagueiros;
+    3 ou menos = só zagueiros), a última linha é o ataque, linhas
+    intermediárias começam na base (volantes) e sobem para criação (meias).
+    Uma única linha intermediária é dividida entre base e criação.
     """
     numbers = [int(part) for part in re.findall(r"\d+", formation or "") if 0 < int(part) <= 6]
     if len(numbers) < 2:
@@ -98,9 +98,9 @@ def _slot_affinity(player_position: str, slot_position: str) -> float:
 
 
 def _fit_score(player: dict, slot_position: str) -> float:
-    """Fit 0-10: afinidade posicional escala a nota tatica, com bonus leve de
-    influencia e status de titular. O bonus nunca supera a afinidade para nao
-    escalar um atacante no gol so porque ele e influente."""
+    """Fit 0-10: afinidade posicional escala a nota tática, com bônus leve de
+    influência e status de titular. O bônus nunca supera a afinidade para não
+    escalar um atacante no gol só porque ele é influente."""
     affinity = _slot_affinity(player.get("position", ""), slot_position)
     base = float(player.get("tactical_score") or 0.0)
     bonus = INFLUENCE_BONUS.get(str(player.get("influence") or ""), 0.0)
@@ -110,7 +110,7 @@ def _fit_score(player: dict, slot_position: str) -> float:
 
 
 def optimize_lineup(players: list[dict], formation: str) -> dict:
-    """Resolve o problema de atribuicao jogador->vaga de forma exata."""
+    """Resolve o problema de atribuição jogador->vaga de forma exata."""
     slots = parse_formation_slots(formation)
     if not players:
         return {
@@ -122,7 +122,7 @@ def optimize_lineup(players: list[dict], formation: str) -> dict:
             "lineup_strength": 0.0,
             "positional_coverage": 0.0,
             "gaps": [slot["position"] for slot in slots],
-            "note": "Cadastre o elenco (Administracao > Elenco) para otimizar a escalacao.",
+            "note": "Cadastre o elenco (Administração > Elenco) para otimizar a escalação.",
         }
 
     graph = nx.Graph()
@@ -154,7 +154,7 @@ def optimize_lineup(players: list[dict], formation: str) -> dict:
                     "player": None,
                     "fit": 0.0,
                     "natural_position": False,
-                    "explanation": "Sem jogador disponivel para esta vaga no elenco cadastrado.",
+                    "explanation": "Sem jogador disponível para esta vaga no elenco cadastrado.",
                 }
             )
             continue
@@ -177,9 +177,9 @@ def optimize_lineup(players: list[dict], formation: str) -> dict:
                 "fit": fit,
                 "natural_position": natural,
                 "explanation": (
-                    "Posicao natural."
+                    "Posição natural."
                     if natural
-                    else f"Adaptado de {player.get('position') or 'posicao nao informada'} "
+                    else f"Adaptado de {player.get('position') or 'posição não informada'} "
                     f"(afinidade {_slot_affinity(player.get('position', ''), slot['position']):.2f})."
                 ),
             }
@@ -214,8 +214,8 @@ def optimize_lineup(players: list[dict], formation: str) -> dict:
         "positional_coverage": round(len(filled) / max(1, len(slots)) * 100, 1),
         "gaps": gaps,
         "note": (
-            "Escalacao que maximiza a soma dos fits jogador-vaga. Fits baixos e vagas sem "
-            "jogador indicam onde o elenco cadastrado nao cobre a formacao."
+            "Escalação que maximiza a soma dos fits jogador-vaga. Fits baixos e vagas sem "
+            "jogador indicam onde o elenco cadastrado não cobre a formação."
         ),
     }
 
@@ -226,7 +226,7 @@ def _line_index(assignments: list[dict], slot_positions: set[str]) -> float:
 
 
 def compare_formation_scenarios(players: list[dict], formations: list[dict]) -> dict:
-    """Otimiza cada formacao conhecida e recomenda uma por estado de jogo."""
+    """Otimiza cada formação conhecida e recomenda uma por estado de jogo."""
     scenarios = []
     for record in formations:
         lineup = optimize_lineup(players, record.get("formation") or "")
@@ -244,8 +244,8 @@ def compare_formation_scenarios(players: list[dict], formations: list[dict]) -> 
                 "defensive_index": defensive,
                 "balance_index": balance,
                 "gaps": lineup["gaps"],
-                # Utilidade combina qualidade da escalacao otima com a
-                # aderencia observada da formacao ao contexto do time.
+                # Utilidade combina qualidade da escalação ótima com a
+                # aderência observada da formação ao contexto do time.
                 "utility": round(0.65 * lineup["lineup_strength"] + 0.35 * probability / 10, 2),
                 "risks": record.get("risks") or "",
             }
@@ -261,15 +261,15 @@ def compare_formation_scenarios(players: list[dict], formations: list[dict]) -> 
         recommendations = {
             "vencendo": {
                 "formation": by_defense["formation"],
-                "reason": f"Maior indice defensivo otimizado ({by_defense['defensive_index']}).",
+                "reason": f"Maior índice defensivo otimizado ({by_defense['defensive_index']}).",
             },
             "empatando": {
                 "formation": by_balance["formation"],
-                "reason": f"Melhor equilibrio entre linhas ({by_balance['balance_index']}).",
+                "reason": f"Melhor equilíbrio entre linhas ({by_balance['balance_index']}).",
             },
             "perdendo": {
                 "formation": by_attack["formation"],
-                "reason": f"Maior indice ofensivo otimizado ({by_attack['offensive_index']}).",
+                "reason": f"Maior índice ofensivo otimizado ({by_attack['offensive_index']}).",
             },
         }
 
@@ -277,8 +277,8 @@ def compare_formation_scenarios(players: list[dict], formations: list[dict]) -> 
         "scenarios": scenarios,
         "recommendations": recommendations,
         "note": (
-            "Indices derivados da escalacao otima de cada formacao com o elenco cadastrado. "
-            "Recomendacoes por estado de jogo sao ponto de partida para a comissao, nao decisao final."
+            "Índices derivados da escalação ótima de cada formação com o elenco cadastrado. "
+            "Recomendações por estado de jogo são ponto de partida para a comissão, não decisão final."
         ),
     }
 
@@ -295,7 +295,7 @@ def build_operational_research(
             {
                 "formation": team["base_formation"],
                 "probability": 50,
-                "context": "Formacao base cadastrada do time (sem alternativas coletadas).",
+                "context": "Formação base cadastrada do time (sem alternativas coletadas).",
                 "risks": "",
             }
         ]
@@ -314,7 +314,7 @@ def build_operational_research(
         "method": {
             "model": "problema_de_atribuicao",
             "solver": "networkx.max_weight_matching (blossom, exato)",
-            "objective": "maximizar soma dos fits jogador-vaga da formacao",
+            "objective": "maximizar soma dos fits jogador-vaga da formação",
         },
         "target_formation": target_formation,
         "lineup": lineup,

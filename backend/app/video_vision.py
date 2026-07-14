@@ -1,18 +1,18 @@
 """
-Visao computacional real sobre video enviado pelo usuario.
+Visão computacional real sobre vídeo enviado pelo usuário.
 
 Pipeline:
-1. Le o video com OpenCV, amostrando frames distribuidos do inicio ao fim
-   (via seek). A duracao real e obtida por sondagem direta no decodificador
-   (busca exponencial + binaria), nao apenas pelos metadados do container
-   (CAP_PROP_FRAME_COUNT), que podem ser 0/errados em gravacoes de celular
-   ou webm nao finalizado - assim a analise representa o video completo
-   enviado e nao apenas os primeiros segundos.
+1. Lê o vídeo com OpenCV, amostrando frames distribuídos do início ao fim
+   (via seek). A duração real é obtida por sondagem direta no decodificador
+   (busca exponencial + binária), não apenas pelos metadados do container
+   (CAP_PROP_FRAME_COUNT), que podem ser 0/errados em gravações de celular
+   ou webm não finalizado - assim a análise representa o vídeo completo
+   enviado e não apenas os primeiros segundos.
 2. Detecta objetos em movimento por Background Subtraction (MOG2).
-3. Faz tracking simples por centroide (nearest-neighbor entre frames).
-4. Acumula heatmap real de ocupacao (grid normalizado 0-100).
-5. Gera video anotado (bounding boxes + ID + trilha) em MP4.
-6. Constroi grafo de proximidade real (networkx) entre os tracks:
+3. Faz tracking simples por centróide (nearest-neighbor entre frames).
+4. Acumula heatmap real de ocupação (grid normalizado 0-100).
+5. Gera vídeo anotado (bounding boxes + ID + trilha) em MP4.
+6. Constrói grafo de proximidade real (networkx) entre os tracks:
    nos = jogadores/objetos detectados, arestas = coocorrencia espacial
    (ficaram proximos no campo durante o video), peso = frequencia.
 7. Detecta "eventos" como picos de velocidade (sprints/mudancas bruscas).
@@ -1394,7 +1394,7 @@ def _draw_tactical_overlay(
 
     cv2.rectangle(overlay, (12, 12), (min(width - 12, 520), 74), blue, -1)
     cv2.addWeighted(overlay, 0.24, frame, 0.76, 0, frame)
-    cv2.putText(frame, "E3I leitura tatica", (24, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.7, white, 2)
+    cv2.putText(frame, "E3I leitura tática", (24, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.7, white, 2)
     cv2.putText(frame, f"{tactic} | {team_focus_label}", (24, 62), cv2.FONT_HERSHEY_SIMPLEX, 0.58, gold, 2)
     if ball:
         center = (int(ball["x"]), int(ball["y"]))
