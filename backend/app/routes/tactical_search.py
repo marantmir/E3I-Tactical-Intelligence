@@ -8,6 +8,12 @@ from fastapi import APIRouter, Query, HTTPException
 from datetime import datetime, timezone
 
 from ..tactical_search.integration import search_tactical_enhanced, enrich_online_search_result
+from ..tactical_search.feature_flags import (
+    get_feature_flags,
+    cache_enabled,
+    llm_enrichment_enabled,
+    recency_scoring_enabled,
+)
 from ..online_search import search_public_team_info
 
 router = APIRouter(prefix="/api/teams/search", tags=["tactical-search"])
@@ -65,6 +71,19 @@ def search_tactical(
         }
     """
     try:
+        # Get feature flag status
+        flags = get_feature_flags()
+
+        # Respect feature flags: disable features if not enabled
+        cache_allowed = cache_enabled()
+        llm_allowed = llm_enrichment_enabled()
+        recency_allowed = recency_scoring_enabled()
+
+        # Override user parameters if features are disabled
+        effective_cache = use_cache and cache_allowed
+        effective_llm = use_llm and llm_allowed
+        effective_recency = use_recency and recency_allowed
+
         # Montar query com formação se fornecida
         query = team
         if formation:
@@ -75,10 +94,20 @@ def search_tactical(
             team_name=team,
             query=query,
             max_sources=max_sources,
-            use_cache=use_cache,
-            use_llm_ranking=use_llm,
-            use_recency=use_recency,
+            use_cache=effective_cache,
+            use_llm_ranking=effective_llm,
+            use_recency=effective_recency,
         )
+
+        # Add feature flag status to response
+        result["feature_flags"] = {
+            "cache_enabled": cache_allowed,
+            "llm_enrichment_enabled": llm_allowed,
+            "recency_scoring_enabled": recency_allowed,
+            "cache_used": effective_cache,
+            "llm_used": effective_llm,
+            "recency_used": effective_recency,
+        }
 
         return result
 
@@ -234,6 +263,11 @@ def get_tactical_search_status():
         # Check LLM
         llm_config = llm_status()
 
+        # Get feature flags configuration
+        flags = get_feature_flags()
+        flag_snapshot = flags.get_config_snapshot()
+        flag_warnings = flags.validate()
+
         return {
             "status": "operational" if cache_ok else "degraded",
             "tactical_search_hub": {
@@ -248,13 +282,23 @@ def get_tactical_search_status():
                 "cache": {
                     "available": cache_ok,
                     "backend": "Redis/SQLite/Memory",
-                    "ttl_days": 7,
+                    "ttl_days": flags.get("cache_ttl_days", 7),
                 },
                 "llm": {
                     "available": llm_config["enabled"],
                     "provider": llm_config.get("provider", "none"),
                     "model": llm_config.get("model", "none"),
                 },
+            },
+            "feature_flags": {
+                "cache_enabled": flags.is_enabled("cache_enabled"),
+                "llm_query_enrichment_enabled": flags.is_enabled("llm_query_enrichment_enabled"),
+                "llm_semantic_ranking_enabled": flags.is_enabled("llm_semantic_ranking_enabled"),
+                "recency_scoring_enabled": flags.is_enabled("recency_scoring_enabled"),
+                "retry_enabled": flags.is_enabled("retry_enabled"),
+                "parallel_enabled": flags.is_enabled("parallel_enabled"),
+                "ab_test_enabled": flags.is_enabled("ab_test_enabled"),
+                "warnings": flag_warnings,
             },
             "retrieved_at": datetime.now(timezone.utc).isoformat(),
         }
