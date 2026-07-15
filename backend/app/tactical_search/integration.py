@@ -5,11 +5,14 @@ Conecta o pipeline completo de busca tática com o sistema de busca existente.
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timezone
 
 from .search_hub import tactical_search
 from .llm_tactical_enrichment import rank_sources_with_llm, explain_search_results
 from .recency_scoring import boost_tactical_score_with_recency
+from .monitoring import get_monitor, QueryMetrics, TimingContext
+from .tactical_keywords import extract_formation
 
 logger = logging.getLogger(__name__)
 
@@ -59,67 +62,118 @@ def search_tactical_enhanced(
         }
     """
     logger.info(f"Tactical search enhanced: {team_name}")
+    total_start = time.monotonic()
+    monitor = get_monitor()
 
-    # 1. Usar query customizada ou gerar a partir do team_name
-    search_query = query or f"{team_name} futebol"
+    try:
+        # 1. Usar query customizada ou gerar a partir do team_name
+        search_query = query or f"{team_name} futebol"
 
-    # 2. Executar pipeline tático completo
-    result = tactical_search(
-        search_query,
-        max_sources=max_sources,
-        use_cache=use_cache,
-        parallel=True,
-    )
-
-    # 3. Enriquecer com LLM se disponível e solicitado
-    if use_llm_ranking and result["sources"]:
-        logger.debug(f"Applying LLM ranking to {len(result['sources'])} sources")
-        try:
-            ranked_result = rank_sources_with_llm(
-                result["sources"],
+        # 2. Executar pipeline tático completo
+        with TimingContext("tactical_search") as search_timer:
+            result = tactical_search(
                 search_query,
-                formation=result.get("formation"),
-                top_k=max_sources,
+                max_sources=max_sources,
+                use_cache=use_cache,
+                parallel=True,
             )
-            result["sources"] = [r["source"] for r in ranked_result.get("ranked", [])]
-            result["llm_ranking"] = ranked_result.get("status", "local_fallback")
-        except Exception as e:
-            logger.warning(f"LLM ranking failed: {e}")
-            result["llm_ranking"] = "error"
 
-    # 4. Aplicar scoring de recência se solicitado
-    if use_recency and result["sources"]:
-        logger.debug(f"Applying recency scoring to {len(result['sources'])} sources")
-        enhanced_sources = []
-        for source in result["sources"][:max_sources]:
-            enhanced = boost_tactical_score_with_recency(
-                source,
-                source.get("score", 5.0),
-                recency_weight=0.20,
-            )
-            enhanced_sources.append(enhanced)
-        result["sources"] = enhanced_sources
+        # 3. Enriquecer com LLM se disponível e solicitado
+        llm_duration = 0.0
+        if use_llm_ranking and result["sources"]:
+            logger.debug(f"Applying LLM ranking to {len(result['sources'])} sources")
+            with TimingContext("llm_ranking") as llm_timer:
+                try:
+                    ranked_result = rank_sources_with_llm(
+                        result["sources"],
+                        search_query,
+                        formation=result.get("formation"),
+                        top_k=max_sources,
+                    )
+                    result["sources"] = [r["source"] for r in ranked_result.get("ranked", [])]
+                    result["llm_ranking"] = ranked_result.get("status", "local_fallback")
+                except Exception as e:
+                    logger.warning(f"LLM ranking failed: {e}")
+                    result["llm_ranking"] = "error"
+                llm_duration = llm_timer.duration
 
-    # 5. Gerar explicações se houver fontes
-    if result["sources"]:
-        logger.debug("Generating search explanations")
-        try:
-            explanations = explain_search_results(
-                result["sources"],
-                search_query,
-                formation=result.get("formation"),
-                language=result.get("language", "pt-BR"),
-            )
-            result["explanations"] = explanations
-        except Exception as e:
-            logger.warning(f"Explanation generation failed: {e}")
+        # 4. Aplicar scoring de recência se solicitado
+        recency_duration = 0.0
+        if use_recency and result["sources"]:
+            logger.debug(f"Applying recency scoring to {len(result['sources'])} sources")
+            with TimingContext("recency_scoring") as recency_timer:
+                enhanced_sources = []
+                for source in result["sources"][:max_sources]:
+                    enhanced = boost_tactical_score_with_recency(
+                        source,
+                        source.get("score", 5.0),
+                        recency_weight=0.20,
+                    )
+                    enhanced_sources.append(enhanced)
+                result["sources"] = enhanced_sources
+                recency_duration = recency_timer.duration
 
-    # 6. Adicionar metadata
-    result["team_name"] = team_name
-    result["search_method"] = "tactical_search_hub_v2.4"
-    result["retrieved_at"] = datetime.now(timezone.utc).isoformat()
+        # 5. Gerar explicações se houver fontes
+        if result["sources"]:
+            logger.debug("Generating search explanations")
+            try:
+                explanations = explain_search_results(
+                    result["sources"],
+                    search_query,
+                    formation=result.get("formation"),
+                    language=result.get("language", "pt-BR"),
+                )
+                result["explanations"] = explanations
+            except Exception as e:
+                logger.warning(f"Explanation generation failed: {e}")
 
-    return result
+        # 6. Adicionar metadata
+        result["team_name"] = team_name
+        result["search_method"] = "tactical_search_hub_v2.4"
+        result["retrieved_at"] = datetime.now(timezone.utc).isoformat()
+
+        # 7. Registrar métricas de monitoring
+        total_duration = time.monotonic() - total_start
+        formation = extract_formation(search_query)
+        sources = result.get("sources", [])
+
+        metrics = QueryMetrics(
+            team_name=team_name,
+            query=search_query,
+            formation=formation,
+            duration_total=total_duration,
+            duration_search=search_timer.duration,
+            duration_llm=llm_duration,
+            duration_recency=recency_duration,
+            cache_hit=result.get("cached", False),
+            cache_backend=result.get("cache_backend", "none"),
+            source_count=len(sources),
+            top_score=sources[0].get("combined_score", sources[0].get("score", 0.0)) if sources else 0.0,
+            avg_score=sum(s.get("combined_score", s.get("score", 5.0)) for s in sources) / len(sources) if sources else 0.0,
+            llm_enabled=use_llm_ranking,
+            llm_used=use_llm_ranking and len(sources) > 0,
+            recency_enabled=use_recency,
+            recency_used=use_recency and len(sources) > 0,
+            formation_detected=formation is not None,
+            status=result.get("status", "unknown"),
+            error=None,
+        )
+        monitor.record_query(metrics)
+
+        return result
+
+    except Exception as e:
+        # Record error in monitoring
+        total_duration = time.monotonic() - total_start
+        metrics = QueryMetrics(
+            team_name=team_name,
+            query=query or f"{team_name} futebol",
+            duration_total=total_duration,
+            status="error",
+            error=str(e),
+        )
+        monitor.record_query(metrics)
+        raise
 
 
 def enrich_online_search_result(
