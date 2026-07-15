@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .database import init_db
 from .logging_config import configure_logging, log_event
-from .routes import admin, analysis, llm, reports, teams
+from .routes import admin, analysis, llm, reports, teams, tactical_search
 
 
 @asynccontextmanager
@@ -68,6 +68,7 @@ app.include_router(analysis.router)
 app.include_router(reports.router)
 app.include_router(llm.router)
 app.include_router(admin.router)
+app.include_router(tactical_search.router)
 
 FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 MEDIA_DIR = Path(__file__).resolve().parents[1] / "media"
