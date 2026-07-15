@@ -14,15 +14,32 @@ Fluxo:
 9. Dedupe + cache + return ranked sources
 
 Componentes:
-- cache_layer.py: Cache abstrato com fallback chain
-- tactical_keywords.py: 200+ keywords em 3 idiomas + formação
-- video_validator.py: Parse de duração, resolução, qualidade
-- tactical_ranking.py: Ranking baseado em relevância tática
-- retry_policy.py: Exponential backoff com jitter
-- parallel_search.py: Executor paralelo com timeout
-- llm_tactical_enrichment.py: Query enrichment + re-ranking semântico
-- recency_scoring.py: Trending + autoridade + decay temporal
+- cache_layer.py: Cache abstrato com fallback chain (Redis/SQLite/Memory)
+- tactical_keywords.py: 200+ keywords em 3 idiomas + formação (4-3-3, 5-2-3, etc)
+- video_validator.py: Parse de duração, resolução, qualidade (7 formatos)
+- tactical_ranking.py: Ranking ponderado (45% tática, 20% qualidade, 20% autoridade, 15% categoria)
+- retry_policy.py: Exponential backoff com jitter (1s→2s→4s→8s→16s capped, ±20%)
+- parallel_search.py: Executor paralelo com timeout cascade (10s individual, 15s total)
+- llm_tactical_enrichment.py: Query enrichment + re-ranking semântico multi-provider
+- recency_scoring.py: 4 componentes (35% recency, 25% trend, 20% views, 20% authority)
 - search_hub.py: Orquestrador central
+- feature_flags.py: Controle de features via env vars com rollout gradual (0-100%)
+- monitoring.py: Métricas de performance, cache, latência, qualidade, features
+
+Feature Flags:
+- Cache enable/disable via E3I_FEATURE_CACHE_ENABLED
+- LLM enrichment enable/disable via E3I_FEATURE_LLM_QUERY_ENRICHMENT_ENABLED
+- Recency scoring enable/disable via E3I_FEATURE_RECENCY_SCORING_ENABLED
+- Rollout gradual (0-100%) com deterministic hashing per user_id
+- Runtime configuration changes via get_feature_flags().set()
+
+Monitoring:
+- Cache hit/miss rates por backend
+- Latência por componente (p50, p95, p99)
+- Qualidade de ranking (score distribution)
+- Uso de features (adoption percentages)
+- Erros e tipos de erro
+- Histórico recente para debugging
 
 Requisitos:
 - Python 3.11+
@@ -56,8 +73,45 @@ Exemplo de uso:
     #     "status": "available",
     #     "errors": []
     # }
+
+Controle de Features:
+
+    from backend.app.tactical_search.feature_flags import get_feature_flags
+
+    flags = get_feature_flags()
+
+    # Verificar se feature está habilitada
+    if flags.is_enabled("llm_query_enrichment_enabled"):
+        # usar LLM
+        pass
+
+    # Rollout gradual para user específico (0-100%)
+    if flags.rollout_pct("llm_query_enrichment", user_id="user123"):
+        # dar feature para este user
+        pass
+
+    # Configurar em runtime
+    flags.set("cache_ttl_days", 14)
+    flags.set("retry_max_attempts", 5)
+
+Monitoring:
+
+    from backend.app.tactical_search.monitoring import get_monitor
+
+    monitor = get_monitor()
+
+    # Ver resumo de performance
+    summary = monitor.get_summary()
+    print(f"Cache hit rate: {summary['cache']}")
+    print(f"Latência p95: {summary['latency']['total']['p95_ms']}ms")
+
+    # Acesso via API
+    # GET /api/teams/search/tactical/monitoring
+    # GET /api/teams/search/tactical/monitoring/recent?limit=10
 """
 from .search_hub import tactical_search
+from .feature_flags import get_feature_flags
+from .monitoring import get_monitor
 
-__all__ = ["tactical_search"]
+__all__ = ["tactical_search", "get_feature_flags", "get_monitor"]
 __version__ = "2.4.0"
