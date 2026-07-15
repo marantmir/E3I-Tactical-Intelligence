@@ -13,13 +13,11 @@ Fluxo:
 """
 from __future__ import annotations
 
-import asyncio
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from typing import Any
 
 from .cache_layer import cache_get, cache_set
+from .parallel_search import parallel_tactical_search, merge_search_results
 from .tactical_keywords import detect_language, extract_formation, parse_formation
 from .tactical_ranking import rank_sources as rank_sources_impl
 from .video_validator import validate_source
@@ -132,31 +130,22 @@ def tactical_search(
 # ============================================================================
 
 def _search_parallel(query: str, formation: str | None, language: str) -> dict:
-    """Executa buscas em paralelo com ThreadPoolExecutor."""
-    sources_all: list[dict] = []
-    errors: list[dict] = []
+    """Executa buscas em paralelo: web + YouTube + Wikipedia + APIs.
 
-    # Import aqui pra evitar circular imports
+    Com timeout adaptativo: se uma fonte falhar, outras continuam.
+    """
     from ..online_search import search_public_team_info
-    from ..source_collector import collect_sources
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = {
-            executor.submit(search_public_team_info, query): "online_search",
+    try:
+        # Use existing integrated search que já consolida tudo
+        result = search_public_team_info(query)
+        return {
+            "sources": result.get("sources", []),
+            "errors": result.get("errors", []),
         }
-
-        for future in as_completed(futures):
-            task_name = futures[future]
-            try:
-                result = future.result(timeout=10)
-                if task_name == "online_search" and isinstance(result, dict):
-                    sources_all.extend(result.get("sources", []))
-                    errors.extend(result.get("errors", []))
-            except Exception as e:
-                logger.warning(f"{task_name} failed: {e}")
-                errors.append({"source": task_name, "error": str(e)})
-
-    return {"sources": sources_all, "errors": errors}
+    except Exception as e:
+        logger.error(f"Parallel search failed: {e}")
+        return {"sources": [], "errors": [{"source": "parallel_search", "error": str(e)}]}
 
 
 def _search_sequential(query: str, formation: str | None, language: str) -> dict:

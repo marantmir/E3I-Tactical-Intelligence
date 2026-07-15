@@ -1,13 +1,13 @@
-"""Busca web publica resiliente, sem chave de API.
+"""Busca web pública resiliente com retry exponencial.
 
-O motivo de existir: em producao a raspagem de um unico endpoint do
+O motivo de existir: em produção a raspagem de um único endpoint do
 DuckDuckGo falhava com URLError (bloqueio de user-agent de script, timeout ou
-endpoint indisponivel para IPs de datacenter). Este modulo tenta varios
-motores em sequencia ate obter resultados, sempre com user-agent de navegador
-comum, e devolve tambem qual motor respondeu e quais falharam.
+endpoint indisponível para IPs de datacenter). Este módulo tenta vários
+motores em sequência até obter resultados, sempre com user-agent de navegador
+comum, com retry exponencial e jitter.
 
 Motores, em ordem:
-1. DuckDuckGo HTML (html.duckduckgo.com) - markup estavel de resultados
+1. DuckDuckGo HTML (html.duckduckgo.com) - markup estável de resultados
 2. DuckDuckGo Lite (lite.duckduckgo.com) - markup minimalista, raramente bloqueado
 3. Bing (www.bing.com/search) - fallback independente do DuckDuckGo
 """
@@ -17,6 +17,8 @@ import html
 import re
 import urllib.parse
 import urllib.request
+
+from .tactical_search.retry_policy import retry_with_backoff
 
 
 # Motores de busca bloqueiam user-agents "de script"; um UA de navegador comum
@@ -29,6 +31,7 @@ TIMEOUT_SECONDS = 8
 MAX_PAGE_BYTES = 1536 * 1024
 
 
+@retry_with_backoff(max_attempts=3, base_delay=1.0, max_delay=8.0, jitter=True)
 def fetch_page(url: str, timeout: int = TIMEOUT_SECONDS, user_agent: str = BROWSER_USER_AGENT) -> str:
     request = urllib.request.Request(
         url,
