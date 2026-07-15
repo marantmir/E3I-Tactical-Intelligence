@@ -14,6 +14,7 @@ from ..tactical_search.feature_flags import (
     llm_enrichment_enabled,
     recency_scoring_enabled,
 )
+from ..tactical_search.monitoring import get_monitor
 from ..online_search import search_public_team_info
 
 router = APIRouter(prefix="/api/teams/search", tags=["tactical-search"])
@@ -309,6 +310,84 @@ def get_tactical_search_status():
             "error": str(e),
             "retrieved_at": datetime.now(timezone.utc).isoformat(),
         }
+
+
+@router.get("/tactical/monitoring")
+def get_monitoring_data():
+    """Monitoring dashboard para Tactical Search Hub.
+
+    Retorna estatísticas de performance:
+    - Cache hit/miss rates por backend
+    - Latência de queries (min/max/avg/p50/p95/p99)
+    - Qualidade de ranking (score distribution)
+    - Uso de features (LLM, recency, formation detection)
+    - Erros e taxas de erro
+    - Histórico recente de queries
+
+    Exemplo:
+        GET /api/teams/search/tactical/monitoring
+
+    Returns:
+        {
+            "total_queries": 1523,
+            "cache": {
+                "redis": {
+                    "hits": 850,
+                    "misses": 673,
+                    "hit_rate_percent": 55.8
+                }
+            },
+            "latency": {
+                "total": {
+                    "min_ms": 45.2,
+                    "max_ms": 2340.5,
+                    "avg_ms": 340.7,
+                    "p95_ms": 1200.3,
+                    "p99_ms": 2000.1
+                },
+                "llm": {...}
+            },
+            "features": {
+                "llm_enrichment_percent": 65.0,
+                "recency_scoring_percent": 80.0
+            },
+            "errors": {...}
+        }
+    """
+    try:
+        monitor = get_monitor()
+        summary = monitor.get_summary()
+        return summary
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Monitoring query failed: {str(e)}"
+        )
+
+
+@router.get("/tactical/monitoring/recent")
+def get_recent_monitoring_data(limit: int = Query(10, ge=1, le=100)):
+    """Histórico recente de queries para debugging.
+
+    Exemplo:
+        GET /api/teams/search/tactical/monitoring/recent?limit=20
+    """
+    try:
+        monitor = get_monitor()
+        recent = monitor.get_recent_queries(limit=limit)
+        return {
+            "limit": limit,
+            "count": len(recent),
+            "queries": recent,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Recent monitoring query failed: {str(e)}"
+        )
 
 
 __all__ = ["router"]
