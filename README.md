@@ -1,21 +1,21 @@
 # E3I Tactical Intelligence
 
-Aplicacao web para inteligencia tatica de futebol. O fluxo prioriza videos de partidas, gera pre-analise visual, revisa evidencias, visualiza grafos taticos, analisa movimentos e salva o dossie no historico local.
+Aplicação web para inteligência tática de futebol. O fluxo prioriza vídeos de partidas, gera pré-análise visual, revisa evidências, visualiza grafos táticos, analisa movimentos e salva o dossiê no histórico local.
 
 ## Funcionalidades
 
-- Selecao global de time ativo para consumir dados locais, fontes salvas e pendencias de coleta nas telas.
-- "Meu time": define qual time e o seu para habilitar o Confronto e evitar compara-lo contra si mesmo.
-- Cadastro-ou-selecao automatico ao iniciar uma analise: se o time ja existe, e so selecionado; se nao existe, cadastrar passa a ser a acao principal.
-- Confronto: comparacao lado a lado entre o seu time ativo e o time analisado (formacao, pontos fortes/fracos, elenco).
-- Busca publica restrita a materiais taticos e videos analisaveis, enriquecida com dados reais da Wikipedia (descricao e escudo do time, sem chave de API).
-- Escudos dos times exibidos nos cards, no dossie e no confronto para uma leitura mais visual.
-- Pre-analise antes do salvamento.
-- Analise por grafos com conexoes entre rastros, zonas, centralidade e densidade.
-- Leitura visual de videos com mapa de calor, trilhas de movimento, bola provavel, homografia aproximada, eventos e recomendacoes, com barra de progresso ao vivo (SSE) durante o processamento.
-- Pesquisa operacional real: escalacao otima por problema de atribuicao (matching bipartido de peso maximo, exato) e comparacao de cenarios por formacao com recomendacao por estado de jogo (vencendo, empatando, perdendo).
-- Relatorio final consolidado para comissao tecnica.
-- Historico persistido em SQLite.
+- Seleção global de time ativo para consumir dados locais, fontes salvas e pendências de coleta nas telas.
+- "Meu time": define qual time é o seu para habilitar o Confronto e evitar compará-lo contra si mesmo.
+- Cadastro-ou-seleção automático ao iniciar uma análise: se o time já existe, é só selecionado; se não existe, cadastrar passa a ser a ação principal.
+- Confronto: comparação lado a lado entre o seu time ativo e o time analisado (formação, pontos fortes/fracos, elenco).
+- Busca pública restrita a materiais táticos e vídeos analisáveis, enriquecida com dados reais da Wikipedia (descrição e escudo do time, sem chave de API).
+- Escudos dos times exibidos nos cards, no dossiê e no confronto para uma leitura mais visual.
+- Pré-análise antes do salvamento.
+- Análise por grafos com conexões entre rastros, zonas, centralidade e densidade.
+- Leitura visual de vídeos com mapa de calor, trilhas de movimento, bola provável, homografia aproximada, eventos e recomendações, com barra de progresso ao vivo (SSE) durante o processamento.
+- Pesquisa operacional real: escalação ótima por problema de atribuição (matching bipartido de peso máximo, exato) e comparação de cenários por formação com recomendação por estado de jogo (vencendo, empatando, perdendo).
+- Relatório final consolidado para comissão técnica.
+- Histórico persistido em SQLite.
 
 ## Arquitetura
 
@@ -90,46 +90,46 @@ Resumo para Render:
 - `GET /api/teams/search?query=...`
 - `GET /api/teams/{team_id}/public-intelligence`
 - `GET /api/teams/{team_id}/graph-analysis`
-- `GET /api/teams/{team_id}/operational-research?formation=4-3-3` (escalacao otima + cenarios)
-- `POST /api/teams/{team_id}/video-vision/upload` (sincrono)
-- `POST /api/teams/{team_id}/video-vision/jobs` + `GET /api/teams/video-vision/jobs/{job_id}/events` (assincrono com progresso ao vivo via SSE)
+- `GET /api/teams/{team_id}/operational-research?formation=4-3-3` (escalação ótima + cenários)
+- `POST /api/teams/{team_id}/video-vision/upload` (síncrono)
+- `POST /api/teams/{team_id}/video-vision/jobs` + `GET /api/teams/video-vision/jobs/{job_id}/events` (assíncrono com progresso ao vivo via SSE)
 - `POST /api/analysis/preview`
 - `POST /api/analysis`
 - `GET /api/history`
 - `POST /api/reports`
 
-## Observacoes Tecnicas
+## Observações Técnicas
 
-A busca publica evita dados institucionais e foca em materiais taticos, videos de jogos e analises publicas. Se a rede externa estiver bloqueada, o sistema preserva o fluxo com links estruturados para coleta manual.
+A busca pública evita dados institucionais e foca em materiais táticos, vídeos de jogos e análises públicas. Se a rede externa estiver bloqueada, o sistema preserva o fluxo com links estruturados para coleta manual.
 
-As visualizacoes de grafos e videos sao calculadas no backend a partir do conteudo visual disponivel e exibidas no frontend como apoio a decisao tecnica.
+As visualizações de grafos e vídeos são calculadas no backend a partir do conteúdo visual disponível e exibidas no frontend como apoio à decisão técnica.
 
-### Visao computacional
+### Visão computacional
 
-O tracking usa predicao por velocidade constante (estilo SORT) e atribuicao global deteccao-rastro ordenada por distancia, com aposentadoria de rastros perdidos para evitar troca de identidade quando jogadores se cruzam ou saem do enquadramento. A deteccao de bola aplica consistencia temporal (candidatos que "teleportam" sao descartados).
+O tracking usa predição por velocidade constante (estilo SORT) e atribuição global detecção-rastro ordenada por distância, com aposentadoria de rastros perdidos para evitar troca de identidade quando jogadores se cruzam ou saem do enquadramento. A detecção de bola aplica consistência temporal (candidatos que "teleportam" são descartados).
 
 ### Pesquisa operacional
 
-`app/operational_research.py` resolve o problema de atribuicao jogador-vaga com `networkx.max_weight_matching` (algoritmo blossom, exato). Cada atribuicao carrega afinidade posicional, fit 0-10 e justificativa auditavel. A comparacao de cenarios otimiza cada formacao conhecida do time e recomenda uma por estado de jogo. Resultado exposto em `GET /api/teams/{team_id}/operational-research` e na tela Plano de Jogo.
+`app/operational_research.py` resolve o problema de atribuição jogador-vaga com `networkx.max_weight_matching` (algoritmo blossom, exato). Cada atribuição carrega afinidade posicional, fit 0-10 e justificativa auditável. A comparação de cenários otimiza cada formação conhecida do time e recomenda uma por estado de jogo. Resultado exposto em `GET /api/teams/{team_id}/operational-research` e na tela Plano de Jogo.
 
-### Seguranca no deploy
+### Segurança no deploy
 
-- `E3I_ADMIN_TOKEN`: quando definido, todas as rotas `/api/admin/*` exigem o header `X-Admin-Token` com o mesmo valor (no navegador, salve com `localStorage.setItem("e3i_admin_token", "valor")`). Sem a variavel, o comportamento aberto e mantido para uso local.
-- `E3I_TRUST_PROXY=1`: atras de proxy/load balancer (ex.: Render), faz o rate limit usar o primeiro IP de `X-Forwarded-For` em vez de agrupar todos os usuarios no IP do proxy. Ja habilitado no `render.yaml`.
+- `E3I_ADMIN_TOKEN`: quando definido, todas as rotas `/api/admin/*` exigem o header `X-Admin-Token` com o mesmo valor (no navegador, salve com `localStorage.setItem("e3i_admin_token", "valor")`). Sem a variável, o comportamento aberto é mantido para uso local.
+- `E3I_TRUST_PROXY=1`: atrás de proxy/load balancer (ex.: Render), faz o rate limit usar o primeiro IP de `X-Forwarded-For` em vez de agrupar todos os usuários no IP do proxy. Já habilitado no `render.yaml`.
 
 ### Camada LLM opcional
 
-O backend usa uma camada LLM opcional para enriquecer consultas de busca, pre-analises, leitura tatica do video e hipoteses de identificacao de time/jogador/numero. Sem chave de API, o sistema continua operando com fallback local deterministico.
+O backend usa uma camada LLM opcional para enriquecer consultas de busca, pré-análises, leitura tática do vídeo e hipóteses de identificação de time/jogador/número. Sem chave de API, o sistema continua operando com fallback local determinístico.
 
-Pelo app, acesse `IA avancada` (`/future-ai`) para parametrizar:
+Pelo app, acesse `IA avançada` (`/future-ai`) para parametrizar:
 
 - habilitar/desabilitar uso da LLM;
 - informar API key;
 - selecionar modelo;
 - ajustar timeout, temperatura e limite de tokens;
-- definir idioma, profundidade, escopo de busca e modo de identificacao visual.
+- definir idioma, profundidade, escopo de busca e modo de identificação visual.
 
-As configuracoes locais ficam em `backend/data/llm_config.json`, arquivo ignorado pelo Git por poder conter chave de API.
+As configurações locais ficam em `backend/data/llm_config.json`, arquivo ignorado pelo Git por poder conter chave de API.
 
 ```powershell
 $env:OPENAI_API_KEY="sua_chave"
@@ -137,6 +137,6 @@ $env:OPENAI_MODEL="gpt-4.1-mini"
 $env:E3I_LLM_TIMEOUT_SECONDS="18"
 ```
 
-Tambem e possivel configurar por variaveis de ambiente. O modelo nunca deve inventar nomes de jogadores: quando OCR/crops da camisa nao forem suficientes, a interface mantem a identidade como "nao identificado" e orienta a confirmacao visual.
+Também é possível configurar por variáveis de ambiente. O modelo nunca deve inventar nomes de jogadores: quando OCR/crops da camisa não forem suficientes, a interface mantém a identidade como "não identificado" e orienta a confirmação visual.
 
 Repositorio alvo: `https://github.com/marantmir/e3i-tactical-intelligence`

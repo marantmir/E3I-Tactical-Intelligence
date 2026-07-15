@@ -192,11 +192,11 @@ export const api = {
           if (settled) return;
           reconnects += 1;
           if (reconnects > maxReconnects) {
-            reject(new Error("Conexao de progresso do processamento foi perdida. Tente novamente."));
+            reject(new Error("Conexão de progresso do processamento foi perdida. Tente novamente."));
             return;
           }
-          // O backend retem o resultado do job por alguns minutos, entao a
-          // reconexao ainda recebe o "done" mesmo se a conexao caiu no final.
+          // O backend retém o resultado do job por alguns minutos, então a
+          // reconexão ainda recebe o "done" mesmo se a conexão caiu no final.
           setTimeout(connect, 1000 * reconnects);
         };
       };
@@ -269,7 +269,7 @@ export const api = {
 
 // Em deploys com E3I_ADMIN_TOKEN definido no backend, o token informado pelo
 // administrador fica no localStorage e segue em todas as chamadas de admin.
-// Sem token salvo (uso local), nenhum header extra e enviado.
+// Sem token salvo (uso local), nenhum header extra é enviado.
 function adminHeaders() {
   let token = "";
   try {

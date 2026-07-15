@@ -191,8 +191,8 @@ def _collect_from_public_apis(query: str, errors: list[dict]) -> list[dict]:
 
 
 def _thesportsdb_lookup(query: str) -> list[dict]:
-    """TheSportsDB e uma API publica gratuita (chave de teste '3') com ficha
-    de clubes: liga, pais, estadio e descricao."""
+    """TheSportsDB é uma API pública gratuita (chave de teste '3') com ficha
+    de clubes: liga, país, estádio e descrição."""
     encoded = urllib.parse.quote(query)
     payload = json.loads(_fetch_text(f"https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t={encoded}"))
     sources = []

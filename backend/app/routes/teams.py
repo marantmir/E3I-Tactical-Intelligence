@@ -138,7 +138,7 @@ def collect_team_sources(payload: SourceCollectRequest):
             "status": "collected",
             "sources": payload.sources,
             "errors": [],
-            "note": "Fontes ja coletadas foram salvas na coleta do time.",
+            "note": "Fontes já coletadas foram salvas na coleta do time.",
         }
     else:
         try:
@@ -300,11 +300,11 @@ def team_formations(team_id: int):
 
 @router.post("/{team_id}/formations/detected", status_code=201)
 def save_detected_formation(team_id: int, payload: DetectedFormationSave):
-    """Persiste como formacao real do time uma estimativa vinda da visao
+    """Persiste como formação real do time uma estimativa vinda da visão
     computacional (shape_analysis de um video processado). E a via mais
-    assertiva de coleta: em vez de cadastro manual, a formacao nasce do
+    assertiva de coleta: em vez de cadastro manual, a formação nasce do
     rastreamento de jogadores em video de jogo de verdade."""
-    get_team(team_id)  # 404 se o time nao existir
+    get_team(team_id)  # 404 se o time não existir
     return create_record(
         "formations",
         {
@@ -330,9 +330,9 @@ def team_sources(team_id: int):
 
 @router.get("/{team_id}/operational-research")
 def team_operational_research(team_id: int, formation: str | None = Query(default=None)):
-    """Pesquisa operacional real sobre o elenco cadastrado: escalacao otima
-    (problema de atribuicao resolvido de forma exata) para a formacao alvo e
-    comparacao de cenarios entre as formacoes conhecidas do time."""
+    """Pesquisa operacional real sobre o elenco cadastrado: escalação ótima
+    (problema de atribuição resolvido de forma exata) para a formação alvo e
+    comparação de cenários entre as formações conhecidas do time."""
     team = get_team(team_id)
     return build_operational_research(
         team,
@@ -398,7 +398,7 @@ async def _save_uploaded_video(file: UploadFile) -> tuple[Path, int, str]:
     if extension not in ALLOWED_VIDEO_TYPES:
         raise HTTPException(
             status_code=400,
-            detail=f"Formato nao suportado ({extension}). Use: {', '.join(sorted(ALLOWED_VIDEO_TYPES))}.",
+            detail=f"Formato não suportado ({extension}). Use: {', '.join(sorted(ALLOWED_VIDEO_TYPES))}.",
         )
 
     upload_name = f"upload_{uuid.uuid4().hex}{extension}"
@@ -526,7 +526,7 @@ async def _video_job_event_stream(job_id: str):
     while True:
         job = video_jobs.get(job_id)
         if job is None:
-            yield _sse_event({"status": "error", "message": "Job de processamento nao encontrado ou ja finalizado."})
+            yield _sse_event({"status": "error", "message": "Job de processamento não encontrado ou já finalizado."})
             return
 
         if job.status == "processing":
@@ -584,7 +584,7 @@ def _video_processing_profile(
     if extension == ".mkv":
         max_frames = min(max_frames, 360)
         sample_every = max(sample_every, 3)
-        reasons.append("MKV pode exigir mais decodificacao; perfil seguro aplicado.")
+        reasons.append("MKV pode exigir mais decodificação; perfil seguro aplicado.")
 
     if size_bytes >= 180 * 1024 * 1024:
         max_frames = min(max_frames, 240)
@@ -678,7 +678,7 @@ def _resolve_team_reference(team_ref: str) -> dict:
     profile = get_online_profile_by_name(cleaned)
     if profile:
         return {"kind": "online", "profile": profile}
-    raise HTTPException(status_code=404, detail="Time ou fonte tatica salva nao encontrado.")
+    raise HTTPException(status_code=404, detail="Time ou fonte tática salva não encontrado.")
 
 
 def _local_team_workspace(team: dict) -> dict:
@@ -687,10 +687,10 @@ def _local_team_workspace(team: dict) -> dict:
     online = saved_profile["online_search"] if saved_profile else _pending_tactical_collection(team["name"])
     local_sources = get_team_records(sources(), team_id)
     saved_sources = _online_sources_as_cards(online)
-    # Time cadastrado sem dossie/plano semeados (ex.: criado agora pela
-    # Administracao) nao pode derrubar a tela inteira com 404: cai no mesmo
-    # fallback usado para perfis online, ate haver coleta real. Formacoes
-    # ficam de fato vazias quando nao ha coleta - a tela mostra um estado
+    # Time cadastrado sem dossiê/plano semeados (ex.: criado agora pela
+    # Administração) não pode derrubar a tela inteira com 404: cai no mesmo
+    # fallback usado para perfis online, até haver coleta real. Formações
+    # ficam de fato vazias quando não há coleta - a tela mostra um estado
     # vazio acionavel em vez de um card generico "A definir" mascarando a
     # ausencia de dado real.
     dossier = find_single_team_record(tactical_analysis(), team_id) or _fallback_dossier(team, online)
@@ -785,7 +785,7 @@ def _online_sources_as_cards(online: dict) -> list[dict]:
                 "source": source.get("url") or source.get("origin") or "Fonte salva",
                 "date": retrieved_at,
                 "relevance": source.get("relevance") or "Media",
-                "summary": source.get("summary") or "Fonte salva para validacao visual.",
+                "summary": source.get("summary") or "Fonte salva para validação visual.",
                 "category": source.get("category") or "team_form",
             }
         )
@@ -811,14 +811,14 @@ def _pending_tactical_collection(team_name: str) -> dict:
         "status": "not_collected",
         "query": f"{team_name} futebol analise tatica videos",
         "summary": (
-            f"Ainda nao ha fontes taticas salvas para {team_name}. Use a busca online ou envie videos "
+            f"Ainda não há fontes táticas salvas para {team_name}. Use a busca online ou envie vídeos "
             "para iniciar a coleta visual."
         ),
         "sources": [],
         "source_groups": {"match_videos": [], "analysis_videos": [], "team_form": []},
         "coverage": {"match_videos": 0, "analysis_videos": 0, "team_form": 0},
         "analysis_focus": [
-            "Coletar videos com camera aberta para rastrear linhas, bola e movimentacao coletiva.",
+            "Coletar vídeos com câmera aberta para rastrear linhas, bola e movimentação coletiva.",
             "Separar trechos por fase: posse, pressao, transicao, ultimo terco e bola parada.",
             "Salvar fontes taticas para que todas as telas usem o mesmo material de apoio.",
         ],
@@ -832,7 +832,7 @@ def _pending_tactical_collection(team_name: str) -> dict:
 def _collection_plan(team_name: str) -> list[dict]:
     return [
         {"stage": "Videos", "action": f"Buscar jogos completos e melhores momentos recentes de {team_name}."},
-        {"stage": "Recortes", "action": "Separar lances de pressao, construcao, transicao e finalizacao."},
+        {"stage": "Recortes", "action": "Separar lances de pressão, construção, transição e finalização."},
         {"stage": "Visao computacional", "action": "Enviar videos para gerar tracking, heatmap, grafo e eventos."},
         {"stage": "Revisao", "action": "Salvar fontes e comparar os achados nas telas de dossie, fontes e relatorio."},
     ]
@@ -845,14 +845,14 @@ def _fallback_dossier(profile: dict, online: dict) -> dict:
         "summary": profile.get("style") or online.get("summary") or "Dossie visual ainda em coleta.",
         "offensive_model": focus[0] if focus else "Modelo ofensivo deve ser extraido dos videos salvos/enviados.",
         "defensive_model": "Mapear bloco, distancia entre linhas e gatilhos de pressao por visao computacional.",
-        "offensive_transition": "Identificar progressao apos recuperacao pela trilha da bola e dos rastros.",
-        "defensive_transition": "Detectar recomposicao, contrapressao e compactacao apos perda.",
+        "offensive_transition": "Identificar progressão após recuperação pela trilha da bola e dos rastros.",
+        "defensive_transition": "Detectar recomposição, contrapressão e compactação após perda.",
         "set_pieces": "Coletar recortes de bola parada para analise separada.",
         "formation_variations": [profile.get("base_formation") or "Detectar pelo video"],
         "strengths": focus[:3] or ["Fontes taticas salvas para orientar a revisao visual."],
         "weaknesses": [
             "Ainda faltam eventos extraidos de video para confirmar padroes.",
-            "Formacao e funcoes dependem de tracking e homografia por partida.",
+            "Formação e funções dependem de tracking e homografia por partida.",
         ],
     }
 
@@ -865,7 +865,7 @@ def _fallback_formations(profile: dict, team_id: int = 0) -> list[dict]:
             "formation": formation,
             "probability": 40 if formation != "Detectar pelo video" else 20,
             "context": "Hipotese inicial ate haver videos processados.",
-            "advantages": "Permite organizar a revisao, mas nao substitui a leitura visual.",
+            "advantages": "Permite organizar a revisão, mas não substitui a leitura visual.",
             "risks": "Baixa confianca sem tracking, bola e homografia do video.",
         }
     ]
@@ -875,7 +875,7 @@ def _fallback_plan(collection_plan: list[dict]) -> dict:
     actions = [item["action"] for item in collection_plan]
     return {
         "how_to_press": "Definir apos observar gatilhos reais de pressao nos videos.",
-        "where_to_attack": "Definir apos mapa de ocupacao, bola e rede de conexoes.",
+        "where_to_attack": "Definir após mapa de ocupação, bola e rede de conexões.",
         "players_to_neutralize": ["A identificar por centralidade visual"],
         "weaknesses_to_exploit": ["A confirmar por recorrencia de padroes nos videos"],
         "training_suggestions": actions[:3],
