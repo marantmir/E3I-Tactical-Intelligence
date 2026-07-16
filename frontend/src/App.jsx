@@ -20,6 +20,7 @@ const SourcesVideos = lazy(() => import("./pages/SourcesVideos.jsx"));
 const SquadAnalysis = lazy(() => import("./pages/SquadAnalysis.jsx"));
 const TacticalDossier = lazy(() => import("./pages/TacticalDossier.jsx"));
 const TeamSearch = lazy(() => import("./pages/TeamSearch.jsx"));
+const VideoAnalysis = lazy(() => import("./pages/VideoAnalysis.jsx"));
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ function Gate() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/new-analysis" element={<NewAnalysis />} />
               <Route path="/search" element={<TeamSearch />} />
+              <Route path="/video-analysis" element={<VideoAnalysis />} />
               <Route path="/team/:teamId" element={<TacticalDossier />} />
               <Route path="/team/:teamId/formations" element={<Formations />} />
               <Route path="/team/:teamId/squad" element={<SquadAnalysis />} />

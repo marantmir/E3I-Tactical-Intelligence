@@ -19,6 +19,7 @@ import { useTeamSelection } from "../context/TeamSelectionContext.jsx";
 const staticLinks = [
   { to: "/", label: "Dashboard", icon: Home },
   { to: "/new-analysis", label: "Nova analise", icon: ClipboardList },
+  { to: "/video-analysis", label: "Analise de video", icon: Video },
   { to: "/search", label: "Buscar time", icon: Search },
   { to: "/history", label: "Historico", icon: Archive },
   { to: "/future-ai", label: "IA avancada", icon: BrainCircuit }
