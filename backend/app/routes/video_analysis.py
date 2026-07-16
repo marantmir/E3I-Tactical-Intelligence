@@ -1,6 +1,7 @@
 """API Routes for Real-time Video Analysis
 
 Endpoints para upload e processamento de vídeos com streaming de movimentações.
+Suporta upload de arquivo, URL, e processamento em tempo real via WebSocket.
 """
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
@@ -13,6 +14,12 @@ from typing import Optional
 import tempfile
 
 from ..video_analysis.video_processor import VideoStreamProcessor, RealTimeGraphBuilder
+
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +88,96 @@ async def upload_video(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/upload-url")
+async def upload_video_from_url(
+    video_url: str = Query(...),
+    filename: Optional[str] = Query(None),
+    team_names: Optional[str] = Query(None),
+):
+    """Upload de vídeo via URL para análise.
+
+    Args:
+        video_url: URL do vídeo (MP4, AVI, MOV)
+        filename: Nome do arquivo (opcional)
+        team_names: JSON com nomes dos times {"0": "Flamengo", "1": "Botafogo"}
+
+    Returns:
+        {
+            "video_id": "uuid",
+            "filename": "video.mp4",
+            "size_bytes": 5242880,
+            "status": "uploaded",
+            "source": "url"
+        }
+    """
+    if not HAS_REQUESTS:
+        raise HTTPException(status_code=500, detail="requests library not installed")
+
+    try:
+        import urllib.parse
+
+        # Download vídeo
+        logger.info(f"Baixando vídeo de: {video_url}")
+        response = requests.get(video_url, timeout=300, stream=True)
+        response.raise_for_status()
+
+        # Gerar nome do arquivo
+        if not filename:
+            parsed = urllib.parse.urlparse(video_url)
+            filename = os.path.basename(parsed.path) or "video.mp4"
+
+        # Salvar arquivo temporário
+        temp_dir = tempfile.gettempdir()
+        video_path = os.path.join(temp_dir, filename)
+
+        with open(video_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+
+        # Obter metadados
+        processor = VideoStreamProcessor()
+        metadata = processor.get_video_metadata(video_path)
+
+        # Gerar ID único
+        video_id = Path(video_path).stem
+
+        # Parse team names if provided
+        team_mapping = {}
+        if team_names:
+            try:
+                team_mapping = json.loads(team_names)
+            except:
+                pass
+
+        # Armazenar para próximas operações
+        active_processors[video_id] = {
+            "path": video_path,
+            "metadata": metadata,
+            "processor": processor,
+            "graph_builder": RealTimeGraphBuilder(),
+            "team_names": team_mapping or {"0": "Team A", "1": "Team B"},
+            "source": "url",
+            "original_url": video_url,
+        }
+
+        return JSONResponse({
+            "video_id": video_id,
+            "filename": filename,
+            "size_bytes": os.path.getsize(video_path),
+            "duration_seconds": metadata.duration_seconds,
+            "fps": metadata.fps,
+            "resolution": f"{metadata.width}x{metadata.height}",
+            "total_frames": metadata.total_frames,
+            "status": "uploaded",
+            "source": "url",
+        })
+
+    except Exception as e:
+        logger.error(f"Erro no upload de URL: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/stream/{video_id}")
 async def get_video_stream(video_id: str):
     """Stream de vídeo processado.
@@ -134,41 +231,24 @@ async def websocket_stream(websocket: WebSocket, video_id: str):
     processor = processor_info["processor"]
     graph_builder = processor_info["graph_builder"]
     video_path = processor_info["path"]
+    team_names = processor_info.get("team_names", {"0": "Team A", "1": "Team B"})
+    source = processor_info.get("source", "unknown")
 
     skip_frames = 1  # Processar todos os frames
 
     try:
-        # Função callback para enviar dados ao cliente
-        def frame_callback(frame_data):
-            # Atualizar grafo
-            graph_builder.update(frame_data)
-
-            # Obter dados do grafo
-            graph_data = graph_builder.get_current_graph_data()
-            proximities = graph_builder.calculate_proximities()
-
-            # Preparar mensagem
-            message = {
-                "type": "frame_data",
-                "frame_idx": frame_data.frame_idx,
-                "timestamp": frame_data.timestamp,
-                "data": graph_data,
-                "proximities": proximities,
-            }
-
-            # Enviar via WebSocket (será feito de forma assíncrona)
-            return message
-
         # Processar vídeo
         metadata = processor.get_video_metadata(video_path)
 
-        # Enviar metadados
+        # Enviar metadados com team names
         await websocket.send_json({
             "type": "metadata",
             "duration_seconds": metadata.duration_seconds,
             "fps": metadata.fps,
             "total_frames": metadata.total_frames,
             "resolution": f"{metadata.width}x{metadata.height}",
+            "team_names": team_names,
+            "source": source,
         })
 
         # Processar e enviar frame a frame

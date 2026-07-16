@@ -7,6 +7,7 @@
  * - Player trajectories/trails
  * - Proximity edges between nearby players
  * - Real-time statistics
+ * - Support for file upload and URL input
  */
 import React, { useState, useEffect, useRef } from 'react';
 import './VideoAnalysisStreaming.css';
@@ -28,6 +29,9 @@ const VideoAnalysisStreaming = () => {
     proximities: 0,
   });
   const [error, setError] = useState(null);
+  const [uploadMode, setUploadMode] = useState('file'); // 'file' or 'url'
+  const [videoUrl, setVideoUrl] = useState('');
+  const [teamNames, setTeamNames] = useState({ '0': 'Team A', '1': 'Team B' });
 
   // Canvas state for rendering
   const playerTracksRef = useRef(new Map()); // player_id -> [points]
@@ -111,7 +115,7 @@ const VideoAnalysisStreaming = () => {
       [offsetX + fieldWidth, offsetY],
       [offsetX + fieldWidth, offsetY + fieldHeight],
       [offsetX, offsetY + fieldHeight],
-    ].forEach(([cx, cy], idx) => {
+    ].forEach(([cx, cy]) => {
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2.5;
       ctx.beginPath();
@@ -365,7 +369,7 @@ const VideoAnalysisStreaming = () => {
     const teams = graphData.teams || {};
     Object.entries(teams).forEach(([teamId, players]) => {
       const teamColor = teamColorsRef.current[parseInt(teamId)];
-      const teamName = teamId === '0' ? 'Team A' : 'Team B';
+      const teamName = teamNames[teamId] || (teamId === '0' ? 'Team A' : 'Team B');
 
       ctx.fillStyle = teamColor;
       ctx.fillRect(padding + 10, y - 10, 8, 8);
@@ -377,7 +381,7 @@ const VideoAnalysisStreaming = () => {
   };
 
   /**
-   * Handle video upload
+   * Handle video upload from file
    */
   const handleVideoUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -389,6 +393,7 @@ const VideoAnalysisStreaming = () => {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('team_names', JSON.stringify(teamNames));
 
       const response = await fetch('/api/videos/upload', {
         method: 'POST',
@@ -400,27 +405,72 @@ const VideoAnalysisStreaming = () => {
       }
 
       const data = await response.json();
-      setVideoId(data.video_id);
-      setMetadata({
-        filename: data.filename,
-        duration: data.duration_seconds,
-        fps: data.fps,
-        resolution: data.resolution,
-        totalFrames: data.total_frames,
-      });
-
-      // Reset tracks for new video
-      playerTracksRef.current.clear();
-      setStats({ frameIdx: 0, totalPlayers: 0, fps: 0, timestamp: 0, proximities: 0 });
-
-      // Auto-connect to WebSocket
-      setTimeout(() => connectWebSocket(data.video_id), 500);
+      initializeVideo(data);
     } catch (err) {
       setError(err.message);
       console.error('Upload error:', err);
     } finally {
       setIsUploading(false);
     }
+  };
+
+  /**
+   * Handle video upload from URL
+   */
+  const handleUrlSubmit = async () => {
+    if (!videoUrl.trim()) {
+      setError('Please enter a valid video URL');
+      return;
+    }
+
+    setIsUploading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams({
+        video_url: videoUrl,
+        team_names: JSON.stringify(teamNames),
+      });
+
+      const response = await fetch(`/api/videos/upload-url?${params}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      initializeVideo(data);
+      setVideoUrl('');
+    } catch (err) {
+      setError(err.message);
+      console.error('URL upload error:', err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  /**
+   * Initialize video after upload
+   */
+  const initializeVideo = (data) => {
+    setVideoId(data.video_id);
+    setMetadata({
+      filename: data.filename,
+      duration: data.duration_seconds,
+      fps: data.fps,
+      resolution: data.resolution,
+      totalFrames: data.total_frames,
+      source: data.source,
+    });
+
+    // Reset tracks for new video
+    playerTracksRef.current.clear();
+    setStats({ frameIdx: 0, totalPlayers: 0, fps: 0, timestamp: 0, proximities: 0 });
+
+    // Auto-connect to WebSocket
+    setTimeout(() => connectWebSocket(data.video_id), 500);
   };
 
   /**
@@ -453,7 +503,12 @@ const VideoAnalysisStreaming = () => {
             fps: message.fps,
             totalFrames: message.total_frames,
             resolution: message.resolution,
+            teamNames: message.team_names,
+            source: message.source,
           }));
+          if (message.team_names) {
+            setTeamNames(message.team_names);
+          }
         } else if (message.type === 'frame_data') {
           setStats({
             frameIdx: message.frame_idx,
@@ -577,24 +632,68 @@ const VideoAnalysisStreaming = () => {
     <div className="video-analysis-streaming">
       <div className="streaming-header">
         <h2>⚽ Real-time Video Analysis</h2>
-        <p>Upload a video to visualize player movements in real-time</p>
+        <p>Upload a video via file or URL to visualize player movements in real-time</p>
       </div>
 
       <div className="upload-section">
-        <div className="upload-input-wrapper">
-          <input
-            ref={uploadInputRef}
-            type="file"
-            accept="video/mp4,video/avi,video/quicktime"
-            onChange={handleVideoUpload}
+        <div className="upload-mode-toggle">
+          <button
+            className={`mode-btn ${uploadMode === 'file' ? 'active' : ''}`}
+            onClick={() => setUploadMode('file')}
             disabled={isUploading || isStreaming}
-            className="upload-input"
-            id="video-upload"
-          />
-          <label htmlFor="video-upload" className="upload-label">
-            {isUploading ? '📤 Uploading...' : '📁 Choose Video'}
-          </label>
+          >
+            📁 File Upload
+          </button>
+          <button
+            className={`mode-btn ${uploadMode === 'url' ? 'active' : ''}`}
+            onClick={() => setUploadMode('url')}
+            disabled={isUploading || isStreaming}
+          >
+            🔗 URL
+          </button>
         </div>
+
+        {uploadMode === 'file' && (
+          <div className="upload-input-wrapper">
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept="video/mp4,video/avi,video/quicktime"
+              onChange={handleVideoUpload}
+              disabled={isUploading || isStreaming}
+              className="upload-input"
+              id="video-upload"
+            />
+            <label htmlFor="video-upload" className="upload-label">
+              {isUploading ? '📤 Uploading...' : '📁 Choose Video'}
+            </label>
+          </div>
+        )}
+
+        {uploadMode === 'url' && (
+          <div className="url-input-wrapper">
+            <input
+              type="text"
+              placeholder="Enter video URL (e.g., https://example.com/video.mp4)"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              disabled={isUploading || isStreaming}
+              className="url-input"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleUrlSubmit();
+                }
+              }}
+            />
+            <button
+              onClick={handleUrlSubmit}
+              disabled={isUploading || isStreaming || !videoUrl.trim()}
+              className="upload-label"
+            >
+              {isUploading ? '📤 Loading...' : '🚀 Load'}
+            </button>
+          </div>
+        )}
 
         {videoId && metadata && (
           <div className="video-info">
@@ -614,6 +713,12 @@ const VideoAnalysisStreaming = () => {
               <span className="label">FPS:</span>
               <span>{metadata.fps}</span>
             </div>
+            {metadata.source && (
+              <div className="info-item">
+                <span className="label">Source:</span>
+                <span className="source-badge">{metadata.source.toUpperCase()}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -665,11 +770,11 @@ const VideoAnalysisStreaming = () => {
       <div className="legend">
         <div className="legend-item">
           <div className="color-box" style={{ backgroundColor: '#E63946' }} />
-          <span>Team A (Red)</span>
+          <span>{teamNames['0'] || 'Team A'} (Red)</span>
         </div>
         <div className="legend-item">
           <div className="color-box" style={{ backgroundColor: '#457B9D' }} />
-          <span>Team B (Blue)</span>
+          <span>{teamNames['1'] || 'Team B'} (Blue)</span>
         </div>
         <div className="legend-item">
           <div className="color-box" style={{ backgroundColor: '#FFD60A' }} />

@@ -32,18 +32,70 @@
 
 .upload-section {
   display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  align-items: center;
+  flex-direction: column;
+  gap: 15px;
   padding: 15px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.upload-input-wrapper {
+.upload-mode-toggle {
+  display: flex;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px;
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.mode-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #a0aec0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.3s ease;
+}
+
+.mode-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.mode-btn.active {
+  background: linear-gradient(135deg, #e63946 0%, #f77f88 100%);
+  color: white;
+  border-color: transparent;
+}
+
+.mode-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.upload-inputs-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+}
+
+.upload-input-wrapper,
+.url-input-wrapper {
   position: relative;
+  flex: 1;
+  display: flex;
+  gap: 10px;
+  min-width: 300px;
+}
+
+.upload-input-wrapper {
   flex: 0 0 auto;
+  min-width: auto;
 }
 
 .upload-input {
@@ -73,11 +125,38 @@
   transform: none;
 }
 
+.url-input {
+  flex: 1;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.url-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(230, 57, 70, 0.5);
+  box-shadow: 0 0 12px rgba(230, 57, 70, 0.2);
+}
+
+.url-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.url-input::placeholder {
+  color: #718096;
+}
+
 .video-info {
   display: flex;
-  gap: 20px;
-  flex: 1;
-  min-width: 300px;
+  flex-wrap: wrap;
+  gap: 15px;
+  width: 100%;
 }
 
 .info-item {
@@ -98,6 +177,16 @@
   font-size: 14px;
   color: #e2e8f0;
   font-weight: 500;
+}
+
+.source-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: linear-gradient(135deg, #e63946 0%, #f77f88 100%);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
 .streaming-indicator {
