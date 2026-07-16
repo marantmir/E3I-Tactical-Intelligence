@@ -39,33 +39,53 @@ const VideoAnalysisStreaming = () => {
   const TRAIL_LENGTH = 20; // Keep last N positions for trail
 
   /**
-   * Draw soccer field with markings
+   * Draw soccer field with markings - realistic perspective
    */
   const drawField = (ctx, width, height) => {
-    const scale = Math.min(width / FIELD_WIDTH, height / FIELD_HEIGHT);
-    const offsetX = (width - FIELD_WIDTH * scale) / 2;
-    const offsetY = (height - FIELD_HEIGHT * scale) / 2;
+    // Calculate field dimensions with padding
+    const padding = 20;
+    const availableWidth = width - padding * 2;
+    const availableHeight = height - padding * 2;
 
-    ctx.fillStyle = '#1a4d2e';
+    const scale = Math.min(availableWidth / FIELD_WIDTH, availableHeight / FIELD_HEIGHT);
+    const fieldWidth = FIELD_WIDTH * scale;
+    const fieldHeight = FIELD_HEIGHT * scale;
+
+    const offsetX = (width - fieldWidth) / 2;
+    const offsetY = (height - fieldHeight) / 2;
+
+    // Gradient background for depth
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, '#0d3a1a');
+    gradient.addColorStop(0.5, '#1a5a2e');
+    gradient.addColorStop(1, '#0d3a1a');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
+    // Field background
+    ctx.fillStyle = '#1a6d3a';
+    ctx.fillRect(offsetX, offsetY, fieldWidth, fieldHeight);
 
-    // Border
-    ctx.strokeRect(offsetX, offsetY, FIELD_WIDTH * scale, FIELD_HEIGHT * scale);
+    // Field lines
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Outer border
+    ctx.strokeRect(offsetX, offsetY, fieldWidth, fieldHeight);
 
     // Center line
     ctx.beginPath();
-    ctx.moveTo(offsetX + (FIELD_WIDTH / 2) * scale, offsetY);
-    ctx.lineTo(offsetX + (FIELD_WIDTH / 2) * scale, offsetY + FIELD_HEIGHT * scale);
+    ctx.moveTo(offsetX + fieldWidth / 2, offsetY);
+    ctx.lineTo(offsetX + fieldWidth / 2, offsetY + fieldHeight);
     ctx.stroke();
 
     // Center circle
     ctx.beginPath();
     ctx.arc(
-      offsetX + (FIELD_WIDTH / 2) * scale,
-      offsetY + (FIELD_HEIGHT / 2) * scale,
+      offsetX + fieldWidth / 2,
+      offsetY + fieldHeight / 2,
       9.15 * scale,
       0,
       2 * Math.PI
@@ -76,39 +96,92 @@ const VideoAnalysisStreaming = () => {
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(
-      offsetX + (FIELD_WIDTH / 2) * scale,
-      offsetY + (FIELD_HEIGHT / 2) * scale,
-      0.25 * scale,
+      offsetX + fieldWidth / 2,
+      offsetY + fieldHeight / 2,
+      0.4 * scale,
       0,
       2 * Math.PI
     );
     ctx.fill();
 
-    // Penalty areas
-    [offsetY, offsetY + FIELD_HEIGHT * scale - 40.32 * scale].forEach((y) => {
-      ctx.strokeRect(offsetX, y, 16.5 * scale, 40.32 * scale);
+    // Corner arcs
+    const cornerRadius = 1 * scale;
+    [
+      [offsetX, offsetY],
+      [offsetX + fieldWidth, offsetY],
+      [offsetX + fieldWidth, offsetY + fieldHeight],
+      [offsetX, offsetY + fieldHeight],
+    ].forEach(([cx, cy], idx) => {
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, cornerRadius, 0, 2 * Math.PI);
+      ctx.stroke();
     });
+
+    // Penalty areas (with arcs)
+    const penaltyWidth = 16.5 * scale;
+    const penaltyHeight = 40.32 * scale;
+    const penaltyArcRadius = 9.15 * scale;
+
+    // Left penalty area
+    ctx.strokeRect(offsetX, offsetY + (fieldHeight - penaltyHeight) / 2, penaltyWidth, penaltyHeight);
+    ctx.beginPath();
+    ctx.arc(
+      offsetX + penaltyWidth,
+      offsetY + fieldHeight / 2,
+      penaltyArcRadius,
+      0,
+      2 * Math.PI
+    );
+    ctx.stroke();
+
+    // Right penalty area
+    ctx.strokeRect(
+      offsetX + fieldWidth - penaltyWidth,
+      offsetY + (fieldHeight - penaltyHeight) / 2,
+      penaltyWidth,
+      penaltyHeight
+    );
+    ctx.beginPath();
+    ctx.arc(
+      offsetX + fieldWidth - penaltyWidth,
+      offsetY + fieldHeight / 2,
+      penaltyArcRadius,
+      0,
+      2 * Math.PI
+    );
+    ctx.stroke();
 
     // Goal areas
-    [offsetY, offsetY + FIELD_HEIGHT * scale - 18.32 * scale].forEach((y) => {
-      ctx.strokeRect(offsetX, y, 5.5 * scale, 18.32 * scale);
-    });
+    const goalWidth = 5.5 * scale;
+    const goalHeight = 18.32 * scale;
 
-    return { scale, offsetX, offsetY };
+    // Left goal area
+    ctx.strokeRect(offsetX, offsetY + (fieldHeight - goalHeight) / 2, goalWidth, goalHeight);
+
+    // Right goal area
+    ctx.strokeRect(
+      offsetX + fieldWidth - goalWidth,
+      offsetY + (fieldHeight - goalHeight) / 2,
+      goalWidth,
+      goalHeight
+    );
+
+    return { scale, offsetX, offsetY, fieldWidth, fieldHeight };
   };
 
   /**
    * Convert field coordinates to canvas coordinates
    */
-  const fieldToCanvas = (x, y, width, height) => {
-    const scale = Math.min(width / FIELD_WIDTH, height / FIELD_HEIGHT);
-    const offsetX = (width - FIELD_WIDTH * scale) / 2;
-    const offsetY = (height - FIELD_HEIGHT * scale) / 2;
+  const fieldToCanvas = (x, y, fieldInfo) => {
+    const canvasX = fieldInfo.offsetX + x * fieldInfo.scale;
+    const canvasY = fieldInfo.offsetY + y * fieldInfo.scale;
 
     return {
-      x: offsetX + x * scale,
-      y: offsetY + y * scale,
-      scale,
+      x: canvasX,
+      y: canvasY,
+      scale: fieldInfo.scale,
     };
   };
 
@@ -124,56 +197,64 @@ const VideoAnalysisStreaming = () => {
     const height = canvas.height;
 
     // Draw field
-    drawField(ctx, width, height);
+    const fieldInfo = drawField(ctx, width, height);
 
-    // Update player tracks
+    // Update player tracks and validate they're in field bounds
     const teams = graphData.teams || {};
     Object.entries(teams).forEach(([teamId, players]) => {
       players?.forEach((player) => {
-        const trackKey = `${teamId}_${player.player_id}`;
-        if (!playerTracksRef.current.has(trackKey)) {
-          playerTracksRef.current.set(trackKey, []);
-        }
+        // Only track players within field bounds
+        if (player.x >= 0 && player.x <= FIELD_WIDTH &&
+            player.y >= 0 && player.y <= FIELD_HEIGHT) {
+          const trackKey = `${teamId}_${player.player_id}`;
+          if (!playerTracksRef.current.has(trackKey)) {
+            playerTracksRef.current.set(trackKey, []);
+          }
 
-        const track = playerTracksRef.current.get(trackKey);
-        track.push({ x: player.x, y: player.y });
+          const track = playerTracksRef.current.get(trackKey);
+          track.push({ x: player.x, y: player.y });
 
-        // Keep only last N positions
-        if (track.length > TRAIL_LENGTH) {
-          track.shift();
+          // Keep only last N positions
+          if (track.length > TRAIL_LENGTH) {
+            track.shift();
+          }
         }
       });
     });
 
-    // Draw trajectories (trails)
+    // Draw trajectories (trails) - subtle
     Object.entries(teams).forEach(([teamId, players]) => {
       const teamColor = teamColorsRef.current[parseInt(teamId)];
       players?.forEach((player) => {
-        const trackKey = `${teamId}_${player.player_id}`;
-        const track = playerTracksRef.current.get(trackKey) || [];
+        // Only draw trails for valid positions
+        if (player.x >= 0 && player.x <= FIELD_WIDTH &&
+            player.y >= 0 && player.y <= FIELD_HEIGHT) {
+          const trackKey = `${teamId}_${player.player_id}`;
+          const track = playerTracksRef.current.get(trackKey) || [];
 
-        if (track.length > 1) {
-          ctx.strokeStyle = `${teamColor}40`; // Transparent
-          ctx.lineWidth = 1;
-          ctx.beginPath();
+          if (track.length > 1) {
+            ctx.strokeStyle = `${teamColor}25`; // Very transparent
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
 
-          track.forEach((point, idx) => {
-            const canvas_pos = fieldToCanvas(point.x, point.y, width, height);
-            if (idx === 0) {
-              ctx.moveTo(canvas_pos.x, canvas_pos.y);
-            } else {
-              ctx.lineTo(canvas_pos.x, canvas_pos.y);
-            }
-          });
+            track.forEach((point, idx) => {
+              const canvas_pos = fieldToCanvas(point.x, point.y, fieldInfo);
+              if (idx === 0) {
+                ctx.moveTo(canvas_pos.x, canvas_pos.y);
+              } else {
+                ctx.lineTo(canvas_pos.x, canvas_pos.y);
+              }
+            });
 
-          ctx.stroke();
+            ctx.stroke();
+          }
         }
       });
     });
 
     // Draw proximity edges
-    ctx.strokeStyle = '#FFD60A50'; // Semi-transparent yellow
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#FFD60A40'; // Semi-transparent yellow
+    ctx.lineWidth = 1.5;
     proximities?.forEach((prox) => {
       // Find player positions
       let pos1, pos2;
@@ -185,8 +266,8 @@ const VideoAnalysisStreaming = () => {
       });
 
       if (pos1 && pos2) {
-        const c1 = fieldToCanvas(pos1.x, pos1.y, width, height);
-        const c2 = fieldToCanvas(pos2.x, pos2.y, width, height);
+        const c1 = fieldToCanvas(pos1.x, pos1.y, fieldInfo);
+        const c2 = fieldToCanvas(pos2.x, pos2.y, fieldInfo);
 
         ctx.beginPath();
         ctx.moveTo(c1.x, c1.y);
@@ -195,31 +276,49 @@ const VideoAnalysisStreaming = () => {
       }
     });
 
-    // Draw players
+    // Draw players with number badges
     Object.entries(teams).forEach(([teamId, players]) => {
       const teamColor = teamColorsRef.current[parseInt(teamId)];
-      const teamName = teamId === '0' ? 'Team A' : 'Team B';
 
       players?.forEach((player) => {
-        const canvasPos = fieldToCanvas(player.x, player.y, width, height);
+        // Only render players within field bounds
+        if (player.x >= 0 && player.x <= FIELD_WIDTH &&
+            player.y >= 0 && player.y <= FIELD_HEIGHT) {
+          const canvasPos = fieldToCanvas(player.x, player.y, fieldInfo);
+          const playerNum = player.player_id % 11 || 11; // 1-11 instead of 0-10
 
-        // Player circle
-        ctx.fillStyle = teamColor;
-        ctx.beginPath();
-        ctx.arc(canvasPos.x, canvasPos.y, 5, 0, 2 * Math.PI);
-        ctx.fill();
+          // Draw player marker (circle)
+          ctx.fillStyle = teamColor;
+          ctx.beginPath();
+          ctx.arc(canvasPos.x, canvasPos.y, 8, 0, 2 * Math.PI);
+          ctx.fill();
 
-        // Player outline
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+          // Player outline (white)
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(canvasPos.x, canvasPos.y, 8, 0, 2 * Math.PI);
+          ctx.stroke();
 
-        // Player ID (small)
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 8px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(player.player_id % 11, canvasPos.x, canvasPos.y);
+          // Number badge background (darker)
+          const badgeRadius = 12;
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+          ctx.beginPath();
+          ctx.arc(canvasPos.x + 8, canvasPos.y - 8, badgeRadius, 0, 2 * Math.PI);
+          ctx.fill();
+
+          // Number badge border
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Player number
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 14px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(playerNum, canvasPos.x + 8, canvasPos.y - 8);
+        }
       });
     });
 
@@ -427,6 +526,14 @@ const VideoAnalysisStreaming = () => {
         // Draw initial field
         const ctx = canvas.getContext('2d');
         drawField(ctx, canvas.width, canvas.height);
+
+        // Set high DPI for retina displays
+        const dpr = window.devicePixelRatio || 1;
+        if (dpr > 1) {
+          canvas.width = rect.width * dpr;
+          canvas.height = rect.height * dpr;
+          ctx.scale(dpr, dpr);
+        }
       }
     }
 
@@ -436,6 +543,13 @@ const VideoAnalysisStreaming = () => {
         if (rect) {
           canvas.width = rect.width;
           canvas.height = rect.height;
+
+          const dpr = window.devicePixelRatio || 1;
+          if (dpr > 1) {
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.getContext('2d').scale(dpr, dpr);
+          }
 
           if (lastFrameRef.current) {
             renderFrame(
@@ -449,7 +563,7 @@ const VideoAnalysisStreaming = () => {
             );
           } else {
             const ctx = canvas.getContext('2d');
-            drawField(ctx, canvas.width, canvas.height);
+            drawField(ctx, rect.width, rect.height);
           }
         }
       }
