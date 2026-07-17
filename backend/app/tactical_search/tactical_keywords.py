@@ -77,10 +77,10 @@ TACTICAL_KEYWORDS: dict[Language, dict[str, list[str]]] = {
             "set play", "bola inativa", "levantamento",
         ],
         "analysis": [
-            "análise", "analise", "tática", "tatica", "como joga", "modelo de jogo",
-            "scout", "scouting", "performance", "padrão", "padroes",
+            "análise", "tática", "como joga", "modelo de jogo",
+            "scout", "scouting", "performance", "padrão",
             "comportamento", "comportamental", "estudo", "revisão",
-            "tendência", "estratégia", "estrategico", "leitura", "interpretação",
+            "tendência", "estratégia", "estratégico", "leitura", "interpretação",
         ],
     },
     "es": {

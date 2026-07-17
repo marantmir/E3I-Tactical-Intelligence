@@ -84,7 +84,7 @@ def search_public_team_info(team_name: str) -> dict:
     visual analysis pipeline.
     """
     cleaned_name = " ".join(team_name.strip().split())
-    query_text = f"{cleaned_name} futebol analise tatica videos"
+    query_text = f"{cleaned_name} futebol análise tática vídeos"
     errors: list[dict] = []
     sources: list[dict] = []
 
@@ -97,8 +97,8 @@ def search_public_team_info(team_name: str) -> dict:
                 errors,
             )
         )
-    # Videos reais do YouTube (sem chave de API) para alimentar diretamente a
-    # analise visual; se falhar, o fallback guiado abaixo garante os links.
+    # Vídeos reais do YouTube (sem chave de API) para alimentar diretamente a
+    # análise visual; se falhar, o fallback guiado abaixo garante os links.
     sources.extend(_try_collect("YouTube videos", lambda: _youtube_video_sources(cleaned_name), errors))
     sources.extend(_guided_video_sources(cleaned_name))
 
@@ -201,12 +201,12 @@ def _duckduckgo_lookup(query: str, category: str) -> list[dict]:
 
 
 def _youtube_video_sources(team_name: str) -> list[dict]:
-    """Videos reais do YouTube (titulo, canal, duracao) para jogo completo,
-    melhores momentos e analise tatica - prontos para o analista escolher e
-    subir no pipeline de visao computacional."""
+    """Vídeos reais do YouTube (título, canal, duração) para jogo completo,
+    melhores momentos e análise tática - prontos para o analista escolher e
+    subir no pipeline de visão computacional."""
     queries = [
         ("match_videos", f"{team_name} futebol jogo completo", "Jogo completo / melhores momentos"),
-        ("analysis_videos", f"{team_name} analise tatica como joga", "Analise tatica / modelo de jogo"),
+        ("analysis_videos", f"{team_name} análise tática como joga", "Análise tática / modelo de jogo"),
     ]
     sources: list[dict] = []
     for category, query, label in queries:
@@ -239,23 +239,23 @@ def _guided_video_sources(team_name: str) -> list[dict]:
         (
             "match_videos",
             "YouTube melhores momentos",
-            "Videos de jogo e melhores momentos",
+            "Vídeos de jogo e melhores momentos",
             "youtube.com/results",
-            f"{team_name} futebol melhores momentos jogo completo analise",
+            f"{team_name} futebol melhores momentos jogo completo análise",
             "Alta",
         ),
         (
             "analysis_videos",
-            "YouTube analise tatica",
-            "Analises taticas e comentarios sobre o modelo de jogo",
+            "YouTube análise tática",
+            "Análises táticas e comentários sobre o modelo de jogo",
             "youtube.com/results",
-            f"{team_name} analise tatica como joga",
+            f"{team_name} análise tática como joga",
             "Alta",
         ),
         (
             "match_videos",
-            "DuckDuckGo videos",
-            "Busca de videos agregando varias fontes",
+            "DuckDuckGo vídeos",
+            "Busca de vídeos agregando várias fontes",
             "duckduckgo.com/videos",
             f"{team_name} futebol jogo completo melhores momentos",
             "Alta",
@@ -271,18 +271,18 @@ def _guided_video_sources(team_name: str) -> list[dict]:
         (
             "analysis_videos",
             "Dailymotion",
-            "Videos de jogo e analise em outra plataforma gratuita",
+            "Vídeos de jogo e análise em outra plataforma gratuita",
             "dailymotion.com/search",
-            f"{team_name} futebol analise tatica",
-            "Media",
+            f"{team_name} futebol análise tática",
+            "Média",
         ),
         (
             "team_form",
-            "Busca web tatica",
-            "Padroes de jogo e comportamento coletivo",
+            "Busca web tática",
+            "Padrões de jogo e comportamento coletivo",
             "google.com/search",
-            f"{team_name} futebol padroes taticos saida de bola pressao transicao",
-            "Media",
+            f"{team_name} futebol padrões táticos saída de bola pressão transição",
+            "Média",
         ),
     ]
     sources = []
@@ -371,25 +371,25 @@ def _status_from(live_count: int, errors: list[dict]) -> str:
 def _build_summary(team_name: str, sources: list[dict], coverage: dict, live_count: int) -> str:
     if live_count:
         return (
-            f"Coleta tatica para {team_name}: {len(sources)} referencias organizadas, "
-            f"incluindo {coverage.get('match_videos', 0)} referencias de video, "
-            f"{coverage.get('analysis_videos', 0)} analises taticas e "
-            f"{coverage.get('team_form', 0)} fontes sobre padroes de jogo."
+            f"Coleta tática para {team_name}: {len(sources)} referências organizadas, "
+            f"incluindo {coverage.get('match_videos', 0)} referências de vídeo, "
+            f"{coverage.get('analysis_videos', 0)} análises táticas e "
+            f"{coverage.get('team_form', 0)} fontes sobre padrões de jogo."
         )
     return (
-        f"A busca direta nao retornou fontes ao vivo neste ambiente. Mesmo assim, o dossie de {team_name} "
-        "foi preparado com consultas estruturadas para videos de jogos e analises taticas."
+        f"A busca direta não retornou fontes ao vivo neste ambiente. Mesmo assim, o dossiê de {team_name} "
+        "foi preparado com consultas estruturadas para vídeos de jogos e análises táticas."
     )
 
 
 def _analysis_focus(team_name: str, groups: dict[str, list[dict]]) -> list[str]:
     focus = [
-        f"Comparar videos de {team_name} para separar posse, pressao, transicoes e ultimo terco.",
-        "Separar videos por jogo: saida de bola, pressao, transicoes, bola parada e ultimo terco.",
-        "Priorizar trechos com camera aberta para melhorar tracking, homografia e leitura coletiva.",
+        f"Comparar vídeos de {team_name} para separar posse, pressão, transições e último terço.",
+        "Separar vídeos por jogo: saída de bola, pressão, transições, bola parada e último terço.",
+        "Priorizar trechos com câmera aberta para melhorar tracking, homografia e leitura coletiva.",
     ]
     if groups.get("analysis_videos"):
-        focus.append("Priorizar videos de analise tatica para validar padroes observados no rastreamento.")
+        focus.append("Priorizar vídeos de análise tática para validar padrões observados no rastreamento.")
     return focus
 
 
@@ -405,21 +405,21 @@ def _collection_plan(team_name: str) -> list[dict]:
         },
         {
             "stage": "Analise visual",
-            "action": "Subir os videos no painel para extrair trilhas, heatmap, conexoes e eventos taticos.",
+            "action": "Subir os vídeos no painel para extrair trilhas, heatmap, conexões e eventos táticos.",
         },
         {
-            "stage": "Decisao",
-            "action": "Combinar grafo, visao computacional e explicacao tatica do video.",
+            "stage": "Decisão",
+            "action": "Combinar grafo, visão computacional e explicação tática do vídeo.",
         },
     ]
 
 
 def _build_note(status: str, live_count: int, errors: list[dict]) -> str:
     if status == "available":
-        return "Busca publica restrita a material tatico e videos analisaveis."
+        return "Busca pública restrita a material tático e vídeos analisáveis."
     if status == "partial":
         failed = ", ".join(error["source"] for error in errors[:3])
-        return f"Busca tatica parcial: {live_count} fonte(s) ao vivo; falhas tratadas em {failed}."
+        return f"Busca tática parcial: {live_count} fonte(s) ao vivo; falhas tratadas em {failed}."
     return "Busca direta bloqueada ou sem resposta; links estruturados foram gerados para coleta manual."
 
 

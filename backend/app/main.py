@@ -22,7 +22,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="E3I Tactical Intelligence",
-    description="API para inteligencia tatica com busca publica, grafos e leitura visual de videos.",
+    description="API para inteligência tática com busca pública, grafos e leitura visual de vídeos.",
     version="0.1.0",
     lifespan=lifespan,
 )

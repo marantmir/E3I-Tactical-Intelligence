@@ -45,9 +45,9 @@ def tactical_search_queries(team_name: str) -> list[dict]:
 
     response = _call_llm_json(
         system=(
-            "Voce e um analista de desempenho de futebol. Gere consultas de busca somente para material "
-            "tatico e visual: videos de jogos, melhores momentos, jogo completo, analise tatica, modelo de "
-            "jogo, pressao, saida de bola, transicoes, movimentacao coletiva. Evite historia, noticias "
+            "Você é um analista de desempenho de futebol. Gere consultas de busca somente para material "
+            "tático e visual: vídeos de jogos, melhores momentos, jogo completo, análise tática, modelo de "
+            "jogo, pressão, saída de bola, transições, movimentação coletiva. Evite história, notícias "
             "institucionais, mercado e resultados isolados."
         ),
         user=json.dumps({"team_name": team_name}, ensure_ascii=False),
@@ -94,9 +94,9 @@ def enrich_team_search(team_name: str, online_payload: dict) -> dict:
     }
     response = _call_llm_json(
         system=(
-            "Voce apoia uma ferramenta de visao computacional para futebol. Transforme fontes coletadas em "
-            "hipoteses taticas e prioridades de coleta. Nunca invente dados institucionais. Se as fontes forem "
-            "fracas, diga que a proxima evidencia deve vir do video."
+            "Você apoia uma ferramenta de visão computacional para futebol. Transforme fontes coletadas em "
+            "hipóteses táticas e prioridades de coleta. Nunca invente dados institucionais. Se as fontes forem "
+            "fracas, diga que a próxima evidência deve vir do vídeo."
         ),
         user=json.dumps(compact_payload, ensure_ascii=False),
         fallback=base,
@@ -133,9 +133,9 @@ def analyze_video_tactics(team_name: str, vision_result: dict) -> dict:
     }
     response = _call_llm_json(
         system=(
-            "Voce e um analista tatico de futebol usando apenas evidencias visuais extraidas do video. "
-            "Explique o que esta acontecendo, quais padroes aparecem, quais duvidas permanecem e quais "
-            "decisoes o analista pode tomar. Nao invente nomes de jogadores, placar ou contexto externo."
+            "Você é um analista tático de futebol usando apenas evidências visuais extraídas do vídeo. "
+            "Explique o que está acontecendo, quais padrões aparecem, quais dúvidas permanecem e quais "
+            "decisões o analista pode tomar. Não invente nomes de jogadores, placar ou contexto externo."
         ),
         user=json.dumps(compact_payload, ensure_ascii=False),
         fallback=base,
@@ -183,13 +183,13 @@ def enrich_pre_analysis(team_name: str, objective: str, online_payload: dict, pr
         "status": "local_fallback",
         "provider": "deterministic_rules",
         "summary": (
-            f"Use a pre-analise de {team_name} como hipotese inicial e confirme com videos recentes antes "
-            "de fechar conclusoes taticas."
+            f"Use a pré-análise de {team_name} como hipótese inicial e confirme com vídeos recentes antes "
+            "de fechar conclusões táticas."
         ),
         "questions": [
-            "O time mantem a mesma altura de bloco contra adversarios fortes e fracos?",
-            "A saida de bola ocorre por dentro, pelos lados ou por ligacao direta?",
-            "Quais jogadores sustentam as conexoes mais repetidas no grafo de passes?",
+            "O time mantém a mesma altura de bloco contra adversários fortes e fracos?",
+            "A saída de bola ocorre por dentro, pelos lados ou por ligação direta?",
+            "Quais jogadores sustentam as conexões mais repetidas no grafo de passes?",
         ],
         "next_actions": [
             "Enviar video com camera aberta para tracking da equipe selecionada.",
@@ -202,8 +202,8 @@ def enrich_pre_analysis(team_name: str, objective: str, online_payload: dict, pr
 
     response = _call_llm_json(
         system=(
-            "Voce gera pre-analise tatica acessivel para uma ferramenta de futebol. Use objetivo do usuario, "
-            "fontes taticas e o preview existente. Nao use historia do clube nem noticia institucional."
+            "Você gera pré-análise tática acessível para uma ferramenta de futebol. Use objetivo do usuário, "
+            "fontes táticas e o preview existente. Não use história do clube nem notícia institucional."
         ),
         user=json.dumps(
             {
@@ -221,10 +221,10 @@ def enrich_pre_analysis(team_name: str, objective: str, online_payload: dict, pr
 
 
 def _call_llm_json(system: str, user: str, fallback: dict) -> dict:
-    """Chama o provedor de LLM configurado (nao mais fixo em um so) e devolve
-    um dict JSON. Cada provedor tem sua propria API/autenticacao/formato de
-    resposta; o dispatch abaixo isola essa diferenca dos 5 pontos do app que
-    consomem esta funcao (busca, pre-analise, video, identidade, etc.)."""
+    """Chama o provedor de LLM configurado (não mais fixo em um só) e devolve
+    um dict JSON. Cada provedor tem sua própria API/autenticação/formato de
+    resposta; o dispatch abaixo isola essa diferença dos 5 pontos do app que
+    consomem esta função (busca, pré-análise, vídeo, identidade, etc.)."""
     config = get_llm_runtime_config()
     api_key = _api_key()
     if not api_key:
@@ -389,24 +389,24 @@ def _fallback_search_queries(team_name: str) -> list[dict]:
     cleaned = _clean_text(team_name) or "time"
     return [
         {
-            "label": "Videos de jogos",
+            "label": "Vídeos de jogos",
             "category": "match_videos",
-            "query": f"{cleaned} futebol melhores momentos jogo completo analise de jogo",
+            "query": f"{cleaned} futebol melhores momentos jogo completo análise de jogo",
         },
         {
-            "label": "Analises taticas",
+            "label": "Análises táticas",
             "category": "analysis_videos",
-            "query": f"{cleaned} futebol analise tatica como joga saida de bola pressao transicao",
+            "query": f"{cleaned} futebol análise tática como joga saída de bola pressão transição",
         },
         {
-            "label": "Padroes de jogo",
+            "label": "Padrões de jogo",
             "category": "team_form",
-            "query": f"{cleaned} futebol estilo de jogo movimentacao coletiva posicionamento",
+            "query": f"{cleaned} futebol estilo de jogo movimentação coletiva posicionamento",
         },
         {
-            "label": "Videos sobre modelo de jogo",
+            "label": "Vídeos sobre modelo de jogo",
             "category": "analysis_videos",
-            "query": f"{cleaned} modelo de jogo futebol video analise movimentacao",
+            "query": f"{cleaned} modelo de jogo futebol vídeo análise movimentação",
         },
     ]
 
@@ -417,19 +417,19 @@ def _fallback_team_search_enrichment(team_name: str, online_payload: dict) -> di
         "status": "local_fallback",
         "provider": "deterministic_rules",
         "summary": (
-            f"Coleta de {team_name} organizada para alimentar analise visual: priorize videos de jogo, "
-            "analises taticas e trechos com camera aberta."
+            f"Coleta de {team_name} organizada para alimentar análise visual: priorize vídeos de jogo, "
+            "análises táticas e trechos com câmera aberta."
         ),
         "generated_queries": _fallback_search_queries(team_name),
         "priority_sources": [
-            "Jogo completo ou melhores momentos com camera aberta",
-            "Analise tatica em video sobre modelo de jogo atual",
-            "Recortes de saida de bola, pressao, transicao e bola parada",
+            "Jogo completo ou melhores momentos com câmera aberta",
+            "Análise tática em vídeo sobre modelo de jogo atual",
+            "Recortes de saída de bola, pressão, transição e bola parada",
         ],
         "tactical_hypotheses": [
-            f"Ha {coverage.get('match_videos', 0)} fonte(s) de video para validar comportamento real.",
-            "O tracking deve confirmar amplitude, compactacao e conexoes recorrentes antes da decisao.",
-            "As conclusoes ficam condicionadas a qualidade do video enviado.",
+            f"Há {coverage.get('match_videos', 0)} fonte(s) de vídeo para validar comportamento real.",
+            "O tracking deve confirmar amplitude, compactação e conexões recorrentes antes da decisão.",
+            "As conclusões ficam condicionadas à qualidade do vídeo enviado.",
         ],
         "questions_for_video": [
             "Qual equipe deve ser rastreada e qual camisa identifica o time?",
@@ -474,9 +474,9 @@ def _fallback_identity_analysis(team_name: str, vision_result: dict) -> dict:
         {
             "track_id": track.get("id"),
             "team": team_name,
-            "player": "nao identificado",
-            "number": "nao identificado",
-            "role_hint": track.get("role_hint") or "funcao a revisar",
+            "player": "não identificado",
+            "number": "não identificado",
+            "role_hint": track.get("role_hint") or "função a revisar",
             "confidence": track.get("team_confidence") or "Baixa",
             "evidence": track.get("team_label") or "rastro filtrado pela equipe selecionada",
         }
@@ -520,12 +520,12 @@ def _api_key() -> str:
 def _system_with_preferences(system: str, config: dict) -> str:
     return (
         f"{system}\n\n"
-        "Parametros da aplicacao:\n"
+        "Parâmetros da aplicação:\n"
         f"- idioma: {config.get('language', 'pt-BR')}\n"
-        f"- profundidade da analise: {config.get('analysis_depth', 'profunda')}\n"
+        f"- profundidade da análise: {config.get('analysis_depth', 'profunda')}\n"
         f"- escopo de busca: {config.get('search_scope', 'tactical_visual_only')}\n"
         f"- modo de identidade: {config.get('identity_mode', 'strict_visual_evidence')}\n"
-        "Responda sempre em JSON valido e mantenha inferencias separadas das evidencias visuais."
+        "Responda sempre em JSON válido e mantenha inferências separadas das evidências visuais."
     )
 
 
@@ -535,7 +535,7 @@ def _clean_text(value) -> str:
 
 def _category_label(category: str) -> str:
     return {
-        "match_videos": "Videos de jogos",
-        "analysis_videos": "Analises taticas",
-        "team_form": "Padroes de jogo",
-    }.get(category, "Busca tatica")
+        "match_videos": "Vídeos de jogos",
+        "analysis_videos": "Análises táticas",
+        "team_form": "Padrões de jogo",
+    }.get(category, "Busca tática")

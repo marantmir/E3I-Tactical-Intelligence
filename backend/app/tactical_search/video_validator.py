@@ -249,7 +249,7 @@ def validate_youtube_video(video: dict) -> dict:
 
     # Best-effort: detectar se é match (jogo) vs análise
     title_lower = video.get("title", "").lower()
-    content_type = "analysis" if any(kw in title_lower for kw in ["análise", "analise", "tática", "tatica", "scout", "comentário"]) else "match"
+    content_type = "analysis" if any(kw in title_lower for kw in ["análise", "tática", "scout", "comentário"]) else "match"
 
     validator = VideoQualityScore(
         duration_seconds=duration_seconds,

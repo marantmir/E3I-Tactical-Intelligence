@@ -38,7 +38,7 @@ export async function registerTeamFromOnlineSearch(name, online) {
     base_formation: profile.base_formation,
     style: profile.style,
     confidence: profile.confidence,
-    status: "Fonte tatica salva",
+    status: "Fonte tática salva",
     online_search: online?.online_search
   });
   return { ref: `online-${saved.online_profile_id}`, name: saved.name };
