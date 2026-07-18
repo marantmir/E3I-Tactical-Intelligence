@@ -1,5 +1,15 @@
 # Registro do Agente
 
+## Entrega - Leitura visual direta por LLM multimodal (18/07/2026)
+
+Ate aqui, a "analise por LLM" do video (`analyze_video_tactics`, `identify_players_from_tracks`) so recebia numeros e resumos produzidos pela visao computacional (OpenCV) - o LLM nunca via de fato uma imagem do jogo, apesar do pipeline ja gerar um video anotado. O pedido era usar visao computacional de forma eficiente para viabilizar uma leitura **visual** real por LLM, entao a mudanca fecha essa lacuna sem duplicar o pipeline de CV:
+
+- **Captura de key frames reais** (`backend/app/video_vision.py`): durante o loop principal de `process_video`, o frame anotado (com caixas/trilhas/overlay tatico) e comprimido e guardado em base64 nos poucos instantes de maior sinal ja detectados pela propria CV - abertura, mudanca de padrao tatico, disputa/desarme e conducao em alta velocidade - alem do fechamento. Limitado a 6 frames (`MAX_VISUAL_KEY_FRAMES`), redimensionados para 480px de largura e JPEG qualidade 65 (`_encode_key_frame`/`_maybe_capture_key_frame`) para manter baixo o custo/latencia de uma chamada de visao. Exposto no resultado como `visual_key_frames`.
+- **Suporte multimodal nos 4 provedores** (`backend/app/llm_assistant.py`): `_call_llm_json` e os quatro `_call_*` (OpenAI Responses, Anthropic Messages, Google Gemini, xAI Grok) ganharam um parametro `images` opcional, cada um no formato nativo do provedor (`input_image` com data URI, bloco `image` base64, `inlineData`, `image_url`). Nova funcao `analyze_video_visually()` manda os key frames reais + contexto estruturado (team_focus, shape_analysis) pedindo que o LLM descreva o que efetivamente ve em cada imagem e cruze com as metricas de rastreamento, apontando concordancias/divergencias - sem API key ou sem frames capturados, cai no mesmo padrao de fallback deterministico do resto do app.
+- **Rota**: `_build_video_result` (`backend/app/routes/teams.py`) agora tambem retorna `llm_visual_analysis`.
+- **Frontend** (`VideoVisionPanel.jsx` + `styles.css`): nova secao "Leitura visual direta por LLM multimodal" mostra os thumbnails dos key frames reais (clicaveis, pulam para o instante no video) ao lado da observacao do LLM para cada um e do cross-check com as metricas.
+- Testes novos: captura/limite de key frames em `test_video_vision.py`; formato do payload de imagem para os 4 provedores e os caminhos de fallback/enriquecido de `analyze_video_visually` em `test_llm_assistant.py`.
+
 ## Entrega - Base de dados online real (Wikipedia) + progresso ao vivo na visao computacional (11/07/2026)
 
 Dois pedidos combinados: (1) uma base online de verdade alimentando a ferramenta, restrita a fontes gratuitas/publicas; (2) sensacao de "tempo real" no processamento de video, mantendo o modelo de upload em lote (nao streaming de camera ao vivo).

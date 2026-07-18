@@ -611,6 +611,51 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
             </section>
           ) : null}
 
+          {vision.llm_visual_analysis ? (
+            <section className="ai-insight-panel">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Leitura visual direta por LLM multimodal</p>
+                  <h3>O que a IA ve nos frames reais do video</h3>
+                </div>
+                <span className="badge badge-medium">
+                  {vision.llm_visual_analysis.provider || "IA"} - confianca{" "}
+                  {vision.llm_visual_analysis.confidence || "Baixa"}
+                </span>
+              </div>
+              <p>{vision.llm_visual_analysis.executive_summary_visual}</p>
+              {vision.llm_visual_analysis.cross_check ? (
+                <p className="video-caption">{vision.llm_visual_analysis.cross_check}</p>
+              ) : null}
+              {(vision.visual_key_frames?.frames?.length || 0) > 0 ? (
+                <div className="key-frame-grid">
+                  {vision.visual_key_frames.frames.map((frame, index) => {
+                    const observation = (vision.llm_visual_analysis.visual_observations || []).find(
+                      (item) => Number(item.time_s) === Number(frame.time_s)
+                    );
+                    return (
+                      <button
+                        className="key-frame-card"
+                        key={`${frame.frame}-${frame.trigger}-${index}`}
+                        onClick={() => seekTo(frame.time_s)}
+                        type="button"
+                      >
+                        <img
+                          alt={frame.label}
+                          src={`data:${frame.media_type || "image/jpeg"};base64,${frame.image_base64}`}
+                        />
+                        <strong>
+                          {frame.time_s}s - {frame.label}
+                        </strong>
+                        <p>{observation?.observation || "Aguardando leitura visual do LLM."}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
           {vision.llm_analysis ? (
             <section className="ai-insight-panel">
               <div className="section-heading">

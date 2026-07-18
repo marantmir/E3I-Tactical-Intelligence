@@ -949,6 +949,48 @@ tr:last-child td {
   margin-bottom: 0;
 }
 
+.key-frame-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.key-frame-card {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.key-frame-card:hover {
+  border-color: rgba(216, 162, 58, 0.6);
+}
+
+.key-frame-card img {
+  width: 100%;
+  border-radius: 6px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #0d1b2a;
+}
+
+.key-frame-card strong {
+  color: var(--green-strong);
+  font-size: 0.82rem;
+}
+
+.key-frame-card p {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
 .team-hero {
   display: flex;
   align-items: center;

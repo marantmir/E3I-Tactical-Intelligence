@@ -1,3 +1,4 @@
+import base64
 from pathlib import Path
 
 import cv2
@@ -61,6 +62,34 @@ def test_process_video_respects_max_frames(synthetic_video: Path):
     result = process_video(str(synthetic_video), max_frames=10, sample_every=1, team_filter="all")
 
     assert result["frames_analyzed"] <= 10
+
+
+def test_process_video_captures_visual_key_frames(synthetic_video: Path):
+    """Real frames (with overlay) must be extracted at high-signal moments so
+    they can later be sent to a multimodal LLM for a genuine visual read of
+    the match, not just structured tracking numbers."""
+    result = process_video(str(synthetic_video), max_frames=60, sample_every=1, team_filter="all")
+
+    key_frames = result["visual_key_frames"]
+    assert key_frames["count"] == len(key_frames["frames"])
+    assert key_frames["count"] <= key_frames["max_frames"]
+    assert key_frames["frames"], "expected at least the opening frame to be captured"
+
+    opening = key_frames["frames"][0]
+    assert opening["trigger"] == "abertura"
+    assert opening["media_type"] == "image/jpeg"
+    decoded = base64.b64decode(opening["image_base64"])
+    assert decoded[:2] == b"\xff\xd8"  # JPEG magic bytes
+
+
+def test_process_video_never_exceeds_key_frame_cap(tmp_path: Path):
+    video_path = tmp_path / "long_synthetic_match.mp4"
+    _write_synthetic_match_clip(video_path, frames=200, fps=25.0)
+
+    result = process_video(str(video_path), max_frames=200, sample_every=1, team_filter="all")
+
+    key_frames = result["visual_key_frames"]
+    assert key_frames["count"] <= key_frames["max_frames"]
 
 
 def test_process_video_samples_the_full_duration_of_long_clips(tmp_path: Path):
