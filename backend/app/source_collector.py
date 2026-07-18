@@ -17,6 +17,7 @@ import html
 import ipaddress
 import json
 import re
+import unicodedata
 import urllib.parse
 from datetime import datetime, timezone
 
@@ -47,6 +48,15 @@ ANALYSIS_HINTS = (
     # Español
     "táctica", "scout", "rendimiento", "formación", "presión",
 )
+
+
+def _fold_accents(value: str) -> str:
+    """Remove acentos para comparacao robusta: paginas raspadas da web nem
+    sempre preservam a acentuacao correta do titulo/descricao original."""
+    return "".join(char for char in unicodedata.normalize("NFKD", value) if not unicodedata.combining(char))
+
+
+_ANALYSIS_HINTS_FOLDED = tuple(_fold_accents(hint).casefold() for hint in ANALYSIS_HINTS)
 
 _BLOCKED_HOSTNAMES = {"localhost", "localhost.localdomain", "0.0.0.0", "metadata.google.internal"}
 
@@ -261,8 +271,8 @@ def _validate_public_url(url: str) -> None:
 
 def _categorize_link(url: str, text: str) -> str:
     lowered_url = url.casefold()
-    lowered_text = text.casefold()
-    if any(hint in lowered_text for hint in ANALYSIS_HINTS):
+    folded_text = _fold_accents(text).casefold()
+    if any(hint in folded_text for hint in _ANALYSIS_HINTS_FOLDED):
         return "analysis_videos"
     if any(domain in lowered_url for domain in VIDEO_DOMAINS):
         return "match_videos"

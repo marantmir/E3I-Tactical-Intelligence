@@ -23,7 +23,7 @@ sem depender de modelo pre-treinado baixado da internet.
 """
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, defaultdict
 from collections.abc import Callable
 import math
 import time
@@ -428,6 +428,7 @@ def process_video(
                             "frame": frame_idx,
                             "time_s": round(frame_idx / fps, 1),
                             "track_id": id_a,
+                            "track_id_secondary": id_b,
                             "type": "tackle_or_duel",
                             "label": "Desarme/disputa",
                             "confidence": "Baixa",
@@ -537,6 +538,8 @@ def process_video(
     heatmap = _grid_to_points(heat_grid)
     ball_heatmap = _grid_to_points(ball_grid)
     events.extend(_infer_ball_events(ball_track, valid_tracks))
+    events.extend(_infer_foul_events(events, valid_tracks, fps))
+    events.extend(_infer_counter_press_events(events))
     events = [event for event in events if event.get("track_id") in valid_tracks or event.get("track_id") is None]
     graph = _build_proximity_graph(valid_tracks, proximity_counts)
     shape_analysis = _build_shape_analysis(valid_tracks)
@@ -1193,6 +1196,81 @@ def _nearest_pitch_point(track: _Track, frame: int) -> tuple[int, float, float] 
     if not track.pitch_points:
         return None
     return min(track.pitch_points, key=lambda point: abs(point[0] - frame))
+
+
+def _infer_foul_events(events: list[dict], tracks: dict[int, _Track], fps: float) -> list[dict]:
+    """A disputa vira falta potencial quando o rastro envolvido quase para
+    logo em seguida - queda brusca de movimento e indicio indireto de falta,
+    queda ou paralisacao do lance, na ausencia de deteccao de arbitragem."""
+    inferred = []
+    duel_events = [event for event in events if event.get("type") == "tackle_or_duel"]
+    window_frames = max(1, int(fps * 1.5))
+    for duel in duel_events:
+        track = tracks.get(duel.get("track_id"))
+        if not track:
+            continue
+        duel_frame = duel["frame"]
+        window_points = [point for point in track.points if duel_frame <= point[0] <= duel_frame + window_frames]
+        if len(window_points) < 4:
+            continue
+        movement = sum(
+            math.hypot(window_points[i][1] - window_points[i - 1][1], window_points[i][2] - window_points[i - 1][2])
+            for i in range(1, len(window_points))
+        )
+        avg_movement = movement / max(1, len(window_points) - 1)
+        if avg_movement < 3.5:
+            inferred.append(
+                {
+                    "frame": duel_frame,
+                    "time_s": duel["time_s"],
+                    "track_id": duel.get("track_id"),
+                    "track_id_secondary": duel.get("track_id_secondary"),
+                    "type": "potential_foul",
+                    "label": "Falta potencial",
+                    "confidence": "Baixa",
+                    "explanation": (
+                        "Disputa seguida de queda brusca de movimento no rastro; pode indicar falta, "
+                        "queda ou interrupcao do lance."
+                    ),
+                }
+            )
+    return inferred[:20]
+
+
+def _infer_counter_press_events(events: list[dict]) -> list[dict]:
+    """Varios rastros acelerando (conducao/drible) na mesma janela curta de
+    tempo, logo apos disputa ou troca de posse, e assinatura de pressao
+    coletiva imediata (contra-ataque ou pressao pos-perda)."""
+    dribble_events = [event for event in events if event.get("type") == "carry_or_dribble"]
+    if len(dribble_events) < 3:
+        return []
+    buckets: dict[int, set] = defaultdict(set)
+    bucket_frame: dict[int, int] = {}
+    for event in dribble_events:
+        bucket = int(event["time_s"])
+        if event.get("track_id") is not None:
+            buckets[bucket].add(event["track_id"])
+        bucket_frame[bucket] = min(bucket_frame.get(bucket, event["frame"]), event["frame"])
+
+    inferred = []
+    for bucket, track_ids in buckets.items():
+        if len(track_ids) >= 3:
+            inferred.append(
+                {
+                    "frame": bucket_frame[bucket],
+                    "time_s": float(bucket),
+                    "track_id": None,
+                    "type": "counter_press",
+                    "label": "Pressao pos-perda",
+                    "confidence": "Media",
+                    "explanation": (
+                        f"{len(track_ids)} rastros aceleraram juntos no mesmo intervalo; padrao compativel "
+                        "com pressao coletiva imediata apos perda ou recuperacao de bola."
+                    ),
+                    "active_track_ids": sorted(track_ids),
+                }
+            )
+    return inferred[:15]
 
 
 def _build_shape_analysis(tracks: dict[int, _Track]) -> dict:
