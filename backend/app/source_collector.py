@@ -37,7 +37,16 @@ COLLECT_MODES = ("link", "keyword", "api")
 TIMEOUT_SECONDS = 6
 MAX_HTML_BYTES = 512 * 1024
 VIDEO_DOMAINS = ("youtube.com", "youtu.be", "vimeo.com", "dailymotion.com")
-ANALYSIS_HINTS = ("análise", "tátic", "tactic", "scout", "como joga")
+ANALYSIS_HINTS = (
+    # Português
+    "análise", "tátic", "scout", "como joga", "desempenho", "formação",
+    "saída de bola", "pressão", "defesa", "ataque", "transição",
+    # English
+    "tactic", "tactical", "scout", "scouting", "performance", "formation",
+    "build-up", "pressure", "defense", "attack", "transition",
+    # Español
+    "táctica", "scout", "rendimiento", "formación", "presión",
+)
 
 _BLOCKED_HOSTNAMES = {"localhost", "localhost.localdomain", "0.0.0.0", "metadata.google.internal"}
 

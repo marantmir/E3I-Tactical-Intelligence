@@ -31,6 +31,20 @@ NON_FOOTBALL_KEYWORDS = (
     "nfl", "futebol americano", "american football",
     "beisebol", "baseball", "mlb",
     "atletismo", "ciclismo", "cycling", "natacao", "natação", "swimming", "golfe", "golf",
+    # Localização - filtros adicionais para evitar cidades/estados
+    "história", "turismo", "cidade", "município", "região", "estado",
+    "população", "clima", "economia", "cultura", "arquitetura", "gastronomia",
+    "mapa", "distância", "viagem", "transportes", "cartografia",
+)
+
+# Keywords that confirm a result is about football/soccer
+FOOTBALL_KEYWORDS = (
+    "futebol", "football", "soccer", "time", "equipe", "jogador", "jogo",
+    "gol", "gols", "pênalti", "escanteio", "falta", "cartão", "vermelho",
+    "formação", "tática", "estratégia", "defesa", "ataque", "meia",
+    "zagueiro", "lateral", "volante", "meia", "ponta", "atacante",
+    "técnico", "treinador", "técnica", "scouting", "análise tática",
+    "performance", "velocidade", "resistência", "passes", "chutes",
 )
 
 # Keywords that indicate the team/club is from women's football, used as a
@@ -43,10 +57,21 @@ FEMALE_FOOTBALL_KEYWORDS = (
 
 def _looks_like_football(*texts: str) -> bool:
     """Best-effort filter: reject scraped results that are clearly about a
-    different sport, so "sempre considerar times de futebol" holds even when
-    the underlying search engine returns loosely-matched results."""
+    different sport or location/city, ensuring only football/soccer content
+    is returned. Verifies it's NOT about other sports AND contains football context."""
     combined = " ".join(text or "" for text in texts).casefold()
-    return not any(keyword in combined for keyword in NON_FOOTBALL_KEYWORDS)
+
+    # Reject if it's clearly about another sport or location
+    if any(keyword in combined for keyword in NON_FOOTBALL_KEYWORDS):
+        return False
+
+    # Accept if contains strong football/soccer indicators
+    if any(keyword in combined for keyword in FOOTBALL_KEYWORDS):
+        return True
+
+    # If ambiguous (e.g., just team name), require football context or reject
+    # to avoid false positives for cities/places
+    return False
 
 
 def detect_team_category(*texts: str) -> str:

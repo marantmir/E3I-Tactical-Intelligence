@@ -45,10 +45,12 @@ def tactical_search_queries(team_name: str) -> list[dict]:
 
     response = _call_llm_json(
         system=(
-            "Você é um analista de desempenho de futebol. Gere consultas de busca somente para material "
-            "tático e visual: vídeos de jogos, melhores momentos, jogo completo, análise tática, modelo de "
-            "jogo, pressão, saída de bola, transições, movimentação coletiva. Evite história, notícias "
-            "institucionais, mercado e resultados isolados."
+            "Você é um analista de desempenho de futebol. Gere APENAS consultas de busca sobre futebol, "
+            "focando em material tático e visual: vídeos de jogos, melhores momentos, jogo completo, análise tática. "
+            "Inclua buscas específicas por: formação (4-3-3, 4-2-3-1, etc), tática defensiva, saída de bola, "
+            "transições rápidas, pressão alta, movimentação coletiva e posicionamento de jogadores. "
+            "Evite completamente: história, notícias institucionais, mercado, resultados isolados, "
+            "informações sobre cidades ou regiões. Garanta que cada query seja EXPLICITAMENTE sobre futebol."
         ),
         user=json.dumps({"team_name": team_name}, ensure_ascii=False),
         fallback={"queries": fallback},
@@ -133,9 +135,17 @@ def analyze_video_tactics(team_name: str, vision_result: dict) -> dict:
     }
     response = _call_llm_json(
         system=(
-            "Você é um analista tático de futebol usando apenas evidências visuais extraídas do vídeo. "
-            "Explique o que está acontecendo, quais padrões aparecem, quais dúvidas permanecem e quais "
-            "decisões o analista pode tomar. Não invente nomes de jogadores, placar ou contexto externo."
+            "Você é um analista tático de futebol experiente. Analise APENAS evidências visuais do vídeo e identifique:\n"
+            "1. FORMAÇÃO: Detecte e descreva a formação do time (ex: 4-3-3, 4-2-3-1, 5-3-2)\n"
+            "2. POSICIONAMENTO: Localização espacial dos jogadores em linhas defensivas, meio-campo e ataque\n"
+            "3. TÁTICA DEFENSIVA: Pressão alta vs média vs baixa, marcação por homem vs zona, compactação\n"
+            "4. TÁTICA OFENSIVA: Tipo de saída de bola, direcionamento de passes, velocidade de transição, profundidade\n"
+            "5. MOVIMENTAÇÃO COLETIVA: Padrões de movimento, deslocamentos, ocupação de espaços\n"
+            "6. PERFORMANCE INDIVIDUAL: Dinâmica, intensidade, passes bem executados, erros, tomadas de decisão\n"
+            "7. JOGADORES CHAVE: Identifique números de camisa e posições dos jogadores mais influentes\n"
+            "\n"
+            "Seja específico com números de formação, posições exatas, sequências de movimentação.\n"
+            "Não invente nomes de jogadores, placar ou dados externos. Use apenas rastreamento visual."
         ),
         user=json.dumps(compact_payload, ensure_ascii=False),
         fallback=base,
@@ -168,9 +178,18 @@ def identify_players_from_tracks(team_name: str, vision_result: dict) -> dict:
     }
     response = _call_llm_json(
         system=(
-            "Voce ajuda a identificar time, jogador e numero em video de futebol. Use apenas evidencias "
-            "presentes no tracking e na camisa de referencia. Quando nao houver OCR/crop suficiente, retorne "
-            "candidato como 'nao identificado' e explique como confirmar com crop frontal/dorsal multi-frame."
+            "Você é um especialista em identificação de jogadores em vídeos de futebol. Para CADA jogador rastreado:\n"
+            "1. NÚMERO DA CAMISA: Extraia o número observável (1-99)\n"
+            "2. TIME: Classifique como time próprio, adversário ou árbitro baseado em padrão/cor da camisa\n"
+            "3. POSIÇÃO TÁTICA: Infira a posição (goleiro, lateral, zagueiro, volante, meia, ponta, atacante)\n"
+            "4. PERFORMANCE: Registre comportamento tático (agressividade, cobertura, posicionamento, velocidade)\n"
+            "5. NÚMERO DE FRAMES: Quantos frames o jogador aparece (continuidade)\n"
+            "6. DISTÂNCIA PERCORRIDA: Métrica de mobilidade em pixels\n"
+            "\n"
+            "Use APENAS evidências de tracking visual e referência de camisa. Se número de camisa não for legível:\n"
+            "- Registre como 'número não legível'\n"
+            "- Sugira cortes frontal/dorsal para confirmação\n"
+            "Classifique confiança: alta (número claro + posição confirmada), média, ou baixa (rastreamento incerto)."
         ),
         user=json.dumps(compact_payload, ensure_ascii=False),
         fallback=base,
@@ -202,8 +221,18 @@ def enrich_pre_analysis(team_name: str, objective: str, online_payload: dict, pr
 
     response = _call_llm_json(
         system=(
-            "Você gera pré-análise tática acessível para uma ferramenta de futebol. Use objetivo do usuário, "
-            "fontes táticas e o preview existente. Não use história do clube nem notícia institucional."
+            "Você é um analista tático de futebol que gera pré-análise profunda. Com base no objetivo do usuário "
+            "e fontes táticas disponíveis, identifique e analise:\n"
+            "1. FORMAÇÃO PRINCIPAL: Qual formação o time geralmente utiliza (ex: 4-3-3)\n"
+            "2. VARIAÇÕES TÁTICAS: Como muda em diferentes situações de jogo\n"
+            "3. JOGADORES-CHAVE: Quem lidera o jogo, quem marca, quem organiza\n"
+            "4. PADRÕES DE MOVIMENTO: Comportamento coletivo, fluxo de passes, transições\n"
+            "5. PONTOS FORTES: O que o time faz bem (defesa, transição, posse, etc)\n"
+            "6. PONTOS FRACOS: Vulnerabilidades táticas exploráveis\n"
+            "7. HIPÓTESES DE PERFORMANCE: Qual é o nível atual (em forma, em crise, volatilidade)\n"
+            "\n"
+            "Nunca use história do clube, notícias institucionais ou especulação. Baseie-se em fontes de "
+            "vídeo tático e análise visual."
         ),
         user=json.dumps(
             {
