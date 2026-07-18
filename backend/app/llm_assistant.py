@@ -129,7 +129,8 @@ def analyze_video_tactics(team_name: str, vision_result: dict) -> dict:
             for track in (vision_result.get("movement_tracks") or [])[:12]
         ],
         "shape_analysis": vision_result.get("shape_analysis"),
-        "graph_metrics": (vision_result.get("graph") or {}).get("metrics"),
+        "movement_network": vision_result.get("graph"),
+        "pass_network": vision_result.get("pass_network"),
         "events": (vision_result.get("events") or [])[:12],
         "tactical_events": (vision_result.get("tactical_events") or [])[:10],
         "pattern_explanations": vision_result.get("pattern_explanations") or [],
@@ -148,6 +149,13 @@ def analyze_video_tactics(team_name: str, vision_result: dict) -> dict:
             "'identified_plays' com objetos {type, label, time_s, description, confidence}, nomeando jogadas "
             "específicas (ex: contra-ataque, pressão pós-perda, disputa seguida de falta, condução progressiva, "
             "finalização) realmente presentes nos dados. Nunca crie jogadas sem evidência nos eventos recebidos.\n"
+            "9. REDE DE PASSES E DE MOVIMENTAÇÃO: 'pass_network' traz nós (jogadores) e arestas direcionadas "
+            "(quem passou para quem, com peso = quantidade de passes prováveis detectados pela visão "
+            "computacional); 'movement_network' traz a rede de proximidade espacial recorrente entre os "
+            "rastros ao longo do vídeo. Retorne um objeto 'network_analysis' com "
+            "{pass_network_summary, movement_network_summary, key_connectors (array de strings), "
+            "isolated_players (array de strings)}, interpretando essas duas redes reais - nunca invente "
+            "conexões que não estejam em 'pass_network' ou 'movement_network'.\n"
             "\n"
             "Seja específico com números de formação, posições exatas, sequências de movimentação.\n"
             "Não invente nomes de jogadores, placar ou dados externos. Use apenas rastreamento visual."
@@ -625,6 +633,46 @@ def _build_identified_plays(vision_result: dict) -> list[dict]:
     return plays[:15]
 
 
+def _build_network_analysis(vision_result: dict) -> dict:
+    movement_metrics = (vision_result.get("graph") or {}).get("metrics") or {}
+    pass_metrics = (vision_result.get("pass_network") or {}).get("metrics") or {}
+    pass_edges = (vision_result.get("pass_network") or {}).get("edges") or []
+    movement_edges = (vision_result.get("graph") or {}).get("edges") or []
+
+    if pass_metrics.get("total_probable_passes"):
+        pass_summary = (
+            f"{pass_metrics['total_probable_passes']} passe(s) provavel(is) detectados em "
+            f"{pass_metrics.get('distinct_connections', 0)} conexao(oes) distinta(s); principal distribuidor: "
+            f"{pass_metrics.get('main_distributor') or 'a confirmar'}."
+        )
+    else:
+        pass_summary = "Sem trocas de posse suficientes para montar a rede de passes neste trecho."
+
+    if movement_metrics.get("total_proximity_events"):
+        movement_summary = (
+            f"Densidade da rede de movimentacao: {movement_metrics.get('network_density', 0)}%; "
+            f"lider de centralidade: {movement_metrics.get('centrality_leader') or 'a confirmar'}."
+        )
+    else:
+        movement_summary = "Sem proximidade recorrente suficiente para caracterizar a rede de movimentacao."
+
+    key_connectors = sorted(
+        {
+            label
+            for edge in (pass_edges[:5] + movement_edges[:5])
+            for label in (f"Jogador/objeto {edge.get('source')}", f"Jogador/objeto {edge.get('target')}")
+        }
+    )[:6]
+    isolated_players = [f"{pass_metrics.get('players_without_probable_pass', 0)} rastro(s) sem passe provavel"] if pass_metrics.get("players_without_probable_pass") else []
+
+    return {
+        "pass_network_summary": pass_summary,
+        "movement_network_summary": movement_summary,
+        "key_connectors": key_connectors,
+        "isolated_players": isolated_players,
+    }
+
+
 def _fallback_video_analysis(team_name: str, vision_result: dict) -> dict:
     shape = vision_result.get("shape_analysis") or {}
     metrics = (vision_result.get("graph") or {}).get("metrics") or {}
@@ -652,6 +700,7 @@ def _fallback_video_analysis(team_name: str, vision_result: dict) -> dict:
             "OCR de nome/numero depende de crops nitidos da camisa em multiplos frames.",
         ],
         "identified_plays": _build_identified_plays(vision_result),
+        "network_analysis": _build_network_analysis(vision_result),
     }
 
 

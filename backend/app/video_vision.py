@@ -565,6 +565,7 @@ def process_video(
     events.extend(_infer_counter_press_events(events))
     events = [event for event in events if event.get("track_id") in valid_tracks or event.get("track_id") is None]
     graph = _build_proximity_graph(valid_tracks, proximity_counts)
+    pass_network = _build_pass_network(events, valid_tracks)
     shape_analysis = _build_shape_analysis(valid_tracks)
     team_focus = _build_team_focus(
         requested_team_filter,
@@ -637,6 +638,7 @@ def process_video(
         "ball_heatmap": ball_heatmap,
         "events": sorted(events, key=lambda e: e["time_s"])[:50],
         "graph": graph,
+        "pass_network": pass_network,
         "field_model": {
             **last_field_model,
             "samples_detected": field_samples,
@@ -1183,6 +1185,8 @@ def _infer_ball_events(ball_track: list[dict], tracks: dict[int, _Track]) -> lis
                     "frame": ball["frame"],
                     "time_s": ball["time_s"],
                     "track_id": owner,
+                    "from_track_id": previous_owner,
+                    "to_track_id": owner,
                     "type": "probable_pass",
                     "label": "Passe provavel",
                     "confidence": "Baixa",
@@ -1603,5 +1607,75 @@ def _build_proximity_graph(tracks: dict[int, _Track], proximity_counts: dict[tup
             "network_density": round(density * 100, 1),
             "centrality_leader": leader["label"] if leader else None,
             "total_proximity_events": sum(proximity_counts.values()),
+        },
+    }
+
+
+def _build_pass_network(events: list[dict], tracks: dict[int, _Track]) -> dict:
+    """Rede de passes real: nos = jogadores/rastros que trocaram a posse
+    provavel da bola entre si (visao computacional: transicao de proprietario
+    mais proximo da bola), arestas direcionadas = quem passou para quem,
+    peso = quantidade de passes provaveis detectados na mesma direcao."""
+    graph = nx.DiGraph()
+    for tid in tracks:
+        graph.add_node(tid)
+
+    edge_weights: dict[tuple[int, int], int] = {}
+    for event in events:
+        if event.get("type") != "probable_pass":
+            continue
+        source = event.get("from_track_id")
+        target = event.get("to_track_id")
+        if source is None or target is None or source == target:
+            continue
+        if source not in tracks or target not in tracks:
+            continue
+        key = (source, target)
+        edge_weights[key] = edge_weights.get(key, 0) + 1
+
+    for (source, target), weight in edge_weights.items():
+        graph.add_edge(source, target, weight=weight)
+
+    if not edge_weights:
+        return {"nodes": [], "edges": [], "metrics": {}}
+
+    passes_given = dict(graph.out_degree(weight="weight"))
+    passes_received = dict(graph.in_degree(weight="weight"))
+
+    nodes = sorted(
+        [
+            {
+                "id": tid,
+                "label": f"Jogador/objeto {tid}",
+                "passes_given": passes_given.get(tid, 0),
+                "passes_received": passes_received.get(tid, 0),
+            }
+            for tid in tracks
+            if passes_given.get(tid, 0) or passes_received.get(tid, 0)
+        ],
+        key=lambda node: node["passes_given"] + node["passes_received"],
+        reverse=True,
+    )
+    edges = sorted(
+        [
+            {"source": source, "target": target, "weight": weight, "label": "passe provavel"}
+            for (source, target), weight in edge_weights.items()
+        ],
+        key=lambda edge: edge["weight"],
+        reverse=True,
+    )
+    main_distributor = max(nodes, key=lambda node: node["passes_given"]) if nodes else None
+    main_receiver = max(nodes, key=lambda node: node["passes_received"]) if nodes else None
+    isolated_tracks = [tid for tid in tracks if tid not in passes_given and tid not in passes_received]
+
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "metrics": {
+            "total_probable_passes": sum(edge_weights.values()),
+            "distinct_connections": len(edge_weights),
+            "main_distributor": main_distributor["label"] if main_distributor else None,
+            "main_receiver": main_receiver["label"] if main_receiver else None,
+            "players_without_probable_pass": len(isolated_tracks),
         },
     }

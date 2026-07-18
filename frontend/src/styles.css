@@ -1690,6 +1690,17 @@ tr:last-child td {
   filter: drop-shadow(0 0 3px rgba(7, 18, 37, 0.4));
 }
 
+.pass-edge {
+  stroke: rgba(120, 210, 255, 0.9);
+  stroke-linecap: round;
+  stroke-width: var(--edge-weight);
+  filter: drop-shadow(0 0 3px rgba(7, 18, 37, 0.4));
+}
+
+.pass-arrow-head {
+  fill: rgba(120, 210, 255, 0.9);
+}
+
 .ball-track {
   fill: none;
   stroke: rgba(255, 255, 255, 0.9);

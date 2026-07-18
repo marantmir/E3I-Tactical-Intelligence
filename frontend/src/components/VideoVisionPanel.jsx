@@ -51,7 +51,8 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
     heatmap: true,
     tracks: true,
     connections: true,
-    ball: true
+    ball: true,
+    passes: true
   });
   const [eventTypeFilter, setEventTypeFilter] = useState({});
   const [displayMode, setDisplayMode] = useState("both");
@@ -70,8 +71,13 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
     .filter((edge) => visibleTrackIds.has(Number(edge.source)) && visibleTrackIds.has(Number(edge.target)))
     .sort((a, b) => b.weight - a.weight)
     .slice(0, connectionLimit);
+  const passEdges = (vision?.pass_network?.edges || [])
+    .filter((edge) => visibleTrackIds.has(Number(edge.source)) && visibleTrackIds.has(Number(edge.target)))
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, connectionLimit);
   const selectedTrack = selectedTrackId === "all" ? null : selectedTracks[0];
   const strongestConnection = connectionEdges[0];
+  const strongestPass = passEdges[0];
   const heatmapPoints = viewMode === "events" ? vision?.ball_heatmap || [] : vision?.heatmap || [];
   const ballTrack = vision?.ball_track || [];
   const isLocalTeam = /^\d+$/.test(String(teamRef));
@@ -369,6 +375,14 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
                 />
                 Bola
               </label>
+              <label>
+                <input
+                  checked={layers.passes}
+                  onChange={() => setLayers((current) => ({ ...current, passes: !current.passes }))}
+                  type="checkbox"
+                />
+                Rede de passes
+              </label>
             </div>
 
             <label className="track-select">
@@ -475,6 +489,11 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
                 ))}
 
               <svg viewBox="0 0 100 100" role="img">
+                <defs>
+                  <marker id="pass-arrow" markerHeight="4.5" markerWidth="4.5" orient="auto-start-reverse" refX="4" refY="2.25">
+                    <path className="pass-arrow-head" d="M0,0 L4.5,2.25 L0,4.5 Z" />
+                  </marker>
+                </defs>
                 <FieldLines />
                 {layers.connections &&
                   connectionEdges.map((edge) => {
@@ -486,6 +505,24 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
                         className="proximity-edge"
                         key={`${edge.source}-${edge.target}`}
                         style={{ "--edge-weight": Math.min(3.8, 0.9 + edge.weight / 24) }}
+                        x1={source.x}
+                        x2={target.x}
+                        y1={source.y}
+                        y2={target.y}
+                      />
+                    );
+                  })}
+                {layers.passes &&
+                  passEdges.map((edge) => {
+                    const source = lastPoint(trackLookup.get(Number(edge.source)));
+                    const target = lastPoint(trackLookup.get(Number(edge.target)));
+                    if (!source || !target) return null;
+                    return (
+                      <line
+                        className="pass-edge"
+                        key={`pass-${edge.source}-${edge.target}`}
+                        markerEnd="url(#pass-arrow)"
+                        style={{ "--edge-weight": Math.min(3.2, 0.7 + edge.weight / 4) }}
                         x1={source.x}
                         x2={target.x}
                         y1={source.y}
@@ -557,6 +594,46 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
               <p>{trackSummary(selectedTrack, movementTracks)}</p>
               <strong>{selectedTrack ? `${selectedTrack.total_samples} amostras` : "Todas as trilhas principais"}</strong>
             </article>
+          </div>
+
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Redes construidas por visao computacional</p>
+              <h3>Rede de passes e rede de movimentacao</h3>
+            </div>
+          </div>
+          <div className="vision-analysis-grid">
+            <article>
+              <GitBranch size={17} />
+              <h3>Rede de passes</h3>
+              <p>{passSummary(strongestPass, trackLookup, vision.pass_network)}</p>
+              <strong>
+                {vision.pass_network?.metrics?.total_probable_passes || 0} passe(s) provavel(is) -{" "}
+                {vision.pass_network?.metrics?.distinct_connections || 0} conexao(oes)
+              </strong>
+            </article>
+            <article>
+              <Route size={17} />
+              <h3>Rede de movimentacao</h3>
+              <p>{connectionSummary(strongestConnection, trackLookup)}</p>
+              <strong>
+                Densidade {vision.graph?.metrics?.network_density || 0}% - lider{" "}
+                {vision.graph?.metrics?.centrality_leader || "a confirmar"}
+              </strong>
+            </article>
+            {vision.llm_analysis?.network_analysis ? (
+              <article>
+                <ScanLine size={17} />
+                <h3>Leitura da LLM sobre as redes</h3>
+                <p>{vision.llm_analysis.network_analysis.pass_network_summary}</p>
+                <p>{vision.llm_analysis.network_analysis.movement_network_summary}</p>
+                {vision.llm_analysis.network_analysis.key_connectors?.length > 0 ? (
+                  <strong>
+                    Conectores-chave: {vision.llm_analysis.network_analysis.key_connectors.join(", ")}
+                  </strong>
+                ) : null}
+              </article>
+            ) : null}
           </div>
 
           <div className="vision-analysis-grid">
@@ -906,6 +983,18 @@ function connectionSummary(edge, trackLookup) {
   const target = trackLookup.get(Number(edge.target));
   if (!source || !target) return "Conexao sem trilhas visiveis no filtro atual.";
   return `${source.label} conectado a ${target.label}; relacao espacial recorrente com peso ${edge.weight}.`;
+}
+
+function passSummary(edge, trackLookup, passNetwork) {
+  if (!edge) {
+    return passNetwork?.metrics?.total_probable_passes
+      ? "Nenhum passe provavel dentro do filtro de trilhas atual."
+      : "Sem trocas de posse suficientes para montar a rede de passes neste trecho.";
+  }
+  const source = trackLookup.get(Number(edge.source));
+  const target = trackLookup.get(Number(edge.target));
+  if (!source || !target) return "Conexao de passe sem trilhas visiveis no filtro atual.";
+  return `${source.label} passou para ${target.label} ${edge.weight}x (passe provavel por transicao de posse da bola).`;
 }
 
 function trackSummary(selectedTrack, tracks) {
