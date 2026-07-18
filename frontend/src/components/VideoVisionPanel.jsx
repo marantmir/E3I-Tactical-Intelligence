@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Activity,
   Circle,
@@ -51,6 +51,8 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
     connections: true,
     ball: true
   });
+  const [eventTypeFilter, setEventTypeFilter] = useState({});
+  const videoRef = useRef(null);
 
   const videoUrl = vision?.annotated_video_url ? `${API_BASE}${vision.annotated_video_url}` : "";
   const movementTracks = vision?.movement_tracks || [];
@@ -72,6 +74,15 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
   const isLocalTeam = /^\d+$/.test(String(teamRef));
   const shapeAnalysis = vision?.shape_analysis;
   const canSaveFormation = isLocalTeam && shapeAnalysis?.formation_guess && shapeAnalysis.formation_guess !== "Indefinida";
+  const visibleEvents = (vision?.events || []).filter((event) => eventTypeFilter[event.type] !== false);
+  const identifiedPlays = vision?.llm_analysis?.identified_plays || [];
+
+  function seekTo(timeSeconds) {
+    if (videoRef.current && typeof timeSeconds === "number") {
+      videoRef.current.currentTime = timeSeconds;
+      videoRef.current.play().catch(() => {});
+    }
+  }
 
   async function handleFileChange(event) {
     const file = event.target.files?.[0];
@@ -331,10 +342,31 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
             </label>
           </div>
 
+          {vision.event_targets?.length > 0 ? (
+            <div className="layer-toggles" aria-label="Filtrar jogadas exibidas por tipo">
+              {vision.event_targets.map((target) => (
+                <label key={target.key}>
+                  <input
+                    checked={eventTypeFilter[target.key] !== false}
+                    onChange={() =>
+                      setEventTypeFilter((current) => ({
+                        ...current,
+                        [target.key]: current[target.key] === false ? true : false
+                      }))
+                    }
+                    type="checkbox"
+                  />
+                  {target.label}
+                </label>
+              ))}
+            </div>
+          ) : null}
+
           <div className="vision-layout">
             <div>
               <video
                 key={vision.annotated_video_url}
+                ref={videoRef}
                 controls
                 autoPlay
                 muted
@@ -618,6 +650,34 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
             </section>
           ) : null}
 
+          {identifiedPlays.length > 0 && (
+            <>
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Jogadas identificadas</p>
+                  <h3>Leitura combinada de visao computacional e LLM</h3>
+                </div>
+              </div>
+              <div className="event-grid">
+                {identifiedPlays.map((play, index) => (
+                  <button
+                    className="event-card-button"
+                    key={`${play.type}-${play.time_s}-${index}`}
+                    onClick={() => seekTo(play.time_s)}
+                    type="button"
+                  >
+                    <ScanLine size={16} />
+                    <h3>
+                      {play.time_s}s - {play.label || play.type}
+                    </h3>
+                    <p>{play.description}</p>
+                    <strong>Confianca {play.confidence || "Baixa"} - clique para ir ao instante no video</strong>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
           {vision.pattern_explanations?.length > 0 && (
             <div className="event-grid">
               {vision.pattern_explanations.map((item) => (
@@ -670,31 +730,47 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
           {vision.tactical_events?.length > 0 && (
             <div className="event-grid">
               {vision.tactical_events.map((event) => (
-                <article key={`${event.time_s}-${event.type}`}>
+                <button
+                  className="event-card-button"
+                  key={`${event.time_s}-${event.type}`}
+                  onClick={() => seekTo(event.time_s)}
+                  type="button"
+                >
                   <ScanLine size={16} />
                   <h3>{event.time_s}s - {event.type}</h3>
                   <p>{event.finding}</p>
                   <strong>{event.active_tracks} rastros ativos no trecho</strong>
-                </article>
+                </button>
               ))}
             </div>
           )}
 
           {vision.events?.length > 0 && (
-            <div className="event-grid">
-              {vision.events.map((event, index) => (
-                <article key={`${event.frame}-${event.type}-${event.track_id}-${index}`}>
-                  <Video size={16} />
-                  <h3>
-                    {event.time_s}s - {event.label || event.type}
-                  </h3>
-                  <p>{event.explanation || "Evento visual inferido pelo comportamento dos rastros."}</p>
-                  <strong>
-                    Track {event.track_id ?? "N/A"} - confianca {event.confidence || "Baixa"}
-                  </strong>
-                </article>
-              ))}
-            </div>
+            <>
+              <p className="video-caption">
+                {visibleEvents.length} de {vision.events.length} jogada(s) exibidas com o filtro de tipo atual.
+                Clique em um evento para ir ao instante no video.
+              </p>
+              <div className="event-grid">
+                {visibleEvents.map((event, index) => (
+                  <button
+                    className="event-card-button"
+                    key={`${event.frame}-${event.type}-${event.track_id}-${index}`}
+                    onClick={() => seekTo(event.time_s)}
+                    type="button"
+                  >
+                    <Video size={16} />
+                    <h3>
+                      {event.time_s}s - {event.label || event.type}
+                    </h3>
+                    <p>{event.explanation || "Evento visual inferido pelo comportamento dos rastros."}</p>
+                    <strong>
+                      Track {event.track_id ?? "N/A"} - confianca {event.confidence || "Baixa"}
+                    </strong>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </>
       )}

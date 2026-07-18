@@ -1739,6 +1739,30 @@ tr:last-child td {
   line-height: 1.45;
 }
 
+.event-card-button {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.event-card-button:hover,
+.event-card-button:focus-visible {
+  border-color: var(--green-strong);
+  transform: translateY(-1px);
+}
+
+.event-card-button strong {
+  color: var(--green-strong);
+}
+
 .team-focus-groups {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

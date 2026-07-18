@@ -267,7 +267,7 @@ async def websocket_stream(websocket: WebSocket, video_id: str):
                     continue
 
                 # Simular detecção
-                from .video_analysis.video_processor import FrameData
+                from ..video_analysis.video_processor import FrameData
 
                 player_positions = processor._simulate_player_detection(frame, frame_idx)
 

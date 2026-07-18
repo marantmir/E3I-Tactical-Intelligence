@@ -143,6 +143,10 @@ def analyze_video_tactics(team_name: str, vision_result: dict) -> dict:
             "5. MOVIMENTAÇÃO COLETIVA: Padrões de movimento, deslocamentos, ocupação de espaços\n"
             "6. PERFORMANCE INDIVIDUAL: Dinâmica, intensidade, passes bem executados, erros, tomadas de decisão\n"
             "7. JOGADORES CHAVE: Identifique números de camisa e posições dos jogadores mais influentes\n"
+            "8. JOGADAS IDENTIFICADAS: A partir de 'events' e 'tactical_events' fornecidos, retorne um array "
+            "'identified_plays' com objetos {type, label, time_s, description, confidence}, nomeando jogadas "
+            "específicas (ex: contra-ataque, pressão pós-perda, disputa seguida de falta, condução progressiva, "
+            "finalização) realmente presentes nos dados. Nunca crie jogadas sem evidência nos eventos recebidos.\n"
             "\n"
             "Seja específico com números de formação, posições exatas, sequências de movimentação.\n"
             "Não invente nomes de jogadores, placar ou dados externos. Use apenas rastreamento visual."
@@ -468,6 +472,40 @@ def _fallback_team_search_enrichment(team_name: str, online_payload: dict) -> di
     }
 
 
+_PLAY_LABELS = {
+    "probable_pass": "Passe provavel",
+    "probable_shot": "Finalizacao provavel",
+    "carry_or_dribble": "Conducao/drible",
+    "tackle_or_duel": "Desarme/disputa",
+    "potential_foul": "Falta potencial",
+    "counter_press": "Pressao pos-perda",
+}
+
+
+def _build_identified_plays(vision_result: dict) -> list[dict]:
+    plays = []
+    for event in (vision_result.get("events") or [])[:30]:
+        event_type = event.get("type")
+        if event_type not in _PLAY_LABELS:
+            continue
+        track_ids = [
+            track_id
+            for track_id in (event.get("track_id"), event.get("track_id_secondary"))
+            if track_id is not None
+        ] or list(event.get("active_track_ids") or [])
+        plays.append(
+            {
+                "type": event_type,
+                "label": _PLAY_LABELS[event_type],
+                "time_s": event.get("time_s"),
+                "description": event.get("explanation") or "Jogada inferida por evidencia visual do video.",
+                "confidence": event.get("confidence", "Baixa"),
+                "track_ids": track_ids,
+            }
+        )
+    return plays[:15]
+
+
 def _fallback_video_analysis(team_name: str, vision_result: dict) -> dict:
     shape = vision_result.get("shape_analysis") or {}
     metrics = (vision_result.get("graph") or {}).get("metrics") or {}
@@ -494,6 +532,7 @@ def _fallback_video_analysis(team_name: str, vision_result: dict) -> dict:
             "Sem detector supervisionado de jogadores, alguns objetos podem permanecer como rastros genericos.",
             "OCR de nome/numero depende de crops nitidos da camisa em multiplos frames.",
         ],
+        "identified_plays": _build_identified_plays(vision_result),
     }
 
 
