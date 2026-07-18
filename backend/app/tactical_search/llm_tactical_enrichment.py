@@ -200,9 +200,9 @@ def _enrich_queries_with_llm(
 
     response = _call_llm_json(
         system=(
-            "Você gera variações semanticas de queries de busca tatica para futebol. "
-            "Cada variacao deve focar em um aspecto diferente: formacao, padroes defensivos, "
-            "saida de bola, transicoes ou analises comparativas. Mantenha queries concisas e "
+            "Você gera variações semânticas de queries de busca tática para futebol. "
+            "Cada variação deve focar em um aspecto diferente: formação, padrões defensivos, "
+            "saída de bola, transições ou análises comparativas. Mantenha queries concisas e "
             "em português natural."
         ),
         user=json.dumps(payload, ensure_ascii=False),
@@ -265,9 +265,9 @@ def _rerank_with_llm(
 
     response = _call_llm_json(
         system=(
-            "Você classifica fontes de futebol por relevancia tatica. Para cada fonte, explique "
-            "em 1-2 frases por que ela é útil para entender a formacao ou tatica solicitada. "
-            "Marque score 0-10 refletindo relevancia tatica combinada com qualidade visual."
+            "Você classifica fontes de futebol por relevância tática. Para cada fonte, explique "
+            "em 1-2 frases por que ela é útil para entender a formação ou tática solicitada. "
+            "Marque score 0-10 refletindo relevância tática combinada com qualidade visual."
         ),
         user=json.dumps(payload, ensure_ascii=False),
         fallback=fallback,
@@ -318,9 +318,9 @@ def _explain_with_llm(
 
     response = _call_llm_json(
         system=(
-            "Você explica resultados de busca tatica em português natural e acessível. "
-            "Identifique padroes, gaps, proximas acoes. Seja conciso, específico e baseado "
-            "nas evidencias fornecidas."
+            "Você explica resultados de busca tática em português natural e acessível. "
+            "Identifique padrões, gaps, próximas ações. Seja conciso, específico e baseado "
+            "nas evidências fornecidas."
         ),
         user=json.dumps(payload, ensure_ascii=False),
         fallback={},
@@ -437,8 +437,8 @@ def _fallback_explanation(
                 "Os resultados incluem vídeos de jogo, análises táticas e padrões de movimento."
             ),
             "highlights": [
-                "Videos com resolução clara para rastreamento",
-                "Análises tática de formação e posicionamento",
+                "Vídeos com resolução clara para rastreamento",
+                "Análises táticas de formação e posicionamento",
                 "Padrões de movimento e transição visíveis",
             ],
             "next_actions": [

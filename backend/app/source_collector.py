@@ -1,6 +1,6 @@
-"""Coleta manual de fontes taticas: link direto, palavra-chave e APIs publicas.
+"""Coleta manual de fontes táticas: link direto, palavra-chave e APIs públicas.
 
-Tres modos, todos devolvendo cartoes de fonte no mesmo formato usado pela busca
+Três modos, todos devolvendo cartões de fonte no mesmo formato usado pela busca
 online (`online_search`), para que o material colete-se uma vez e apareca em
 todas as telas:
 
@@ -37,7 +37,16 @@ COLLECT_MODES = ("link", "keyword", "api")
 TIMEOUT_SECONDS = 6
 MAX_HTML_BYTES = 512 * 1024
 VIDEO_DOMAINS = ("youtube.com", "youtu.be", "vimeo.com", "dailymotion.com")
-ANALYSIS_HINTS = ("analise", "análise", "tatic", "tátic", "tactic", "scout", "como joga")
+ANALYSIS_HINTS = (
+    # Português
+    "análise", "tátic", "scout", "como joga", "desempenho", "formação",
+    "saída de bola", "pressão", "defesa", "ataque", "transição",
+    # English
+    "tactic", "tactical", "scout", "scouting", "performance", "formation",
+    "build-up", "pressure", "defense", "attack", "transition",
+    # Español
+    "táctica", "scout", "rendimiento", "formación", "presión",
+)
 
 _BLOCKED_HOSTNAMES = {"localhost", "localhost.localdomain", "0.0.0.0", "metadata.google.internal"}
 
@@ -128,7 +137,7 @@ def _collect_from_keyword(keyword: str, team_name: str, errors: list[dict]) -> l
         raise ValueError("Informe a palavra-chave para a busca de fontes.")
     query = f"{team_name} {keyword}".strip()
     sources: list[dict] = []
-    # Videos reais do YouTube pela palavra-chave, prontos para subir na analise.
+    # Vídeos reais do YouTube pela palavra-chave, prontos para subir na análise.
     try:
         for video in search_youtube_videos(f"{query} futebol", limit=5):
             meta = " · ".join(
@@ -149,7 +158,7 @@ def _collect_from_keyword(keyword: str, team_name: str, errors: list[dict]) -> l
         errors.append({"source": "YouTube (palavra-chave)", "error": error.__class__.__name__})
 
     for category, suffix in (
-        ("analysis_videos", "analise tatica"),
+        ("analysis_videos", "análise tática"),
         ("team_form", ""),
     ):
         try:

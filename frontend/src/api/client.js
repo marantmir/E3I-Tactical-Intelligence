@@ -102,7 +102,7 @@ export const api = {
   uploadVideoVision: async (teamRef, file, options = {}) => {
     const maxUploadBytes = 300 * 1024 * 1024;
     if (file.size > maxUploadBytes) {
-      throw new Error("Video excede o limite de 300MB. Envie um recorte menor para a analise visual.");
+      throw new Error("Vídeo excede o limite de 300MB. Envie um recorte menor para a análise visual.");
     }
     const formData = new FormData();
     formData.append("file", file);
@@ -132,7 +132,7 @@ export const api = {
   uploadVideoVisionWithProgress: async (teamRef, file, options = {}, onProgress) => {
     const maxUploadBytes = 300 * 1024 * 1024;
     if (file.size > maxUploadBytes) {
-      throw new Error("Video excede o limite de 300MB. Envie um recorte menor para a analise visual.");
+      throw new Error("Vídeo excede o limite de 300MB. Envie um recorte menor para a análise visual.");
     }
     const formData = new FormData();
     formData.append("file", file);
