@@ -2,8 +2,10 @@ import { useRef, useState } from "react";
 import {
   Activity,
   Circle,
+  Eye,
   Flame,
   GitBranch,
+  Images,
   ListFilter,
   Route,
   ScanLine,
@@ -52,6 +54,7 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
     ball: true
   });
   const [eventTypeFilter, setEventTypeFilter] = useState({});
+  const [displayMode, setDisplayMode] = useState("both");
   const videoRef = useRef(null);
 
   const videoUrl = vision?.annotated_video_url ? `${API_BASE}${vision.annotated_video_url}` : "";
@@ -76,6 +79,9 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
   const canSaveFormation = isLocalTeam && shapeAnalysis?.formation_guess && shapeAnalysis.formation_guess !== "Indefinida";
   const visibleEvents = (vision?.events || []).filter((event) => eventTypeFilter[event.type] !== false);
   const identifiedPlays = vision?.llm_analysis?.identified_plays || [];
+  const keyframes = vision?.keyframes || [];
+  const frameFindings = vision?.llm_vision_expert?.frame_findings || [];
+  const frameFindingByNumber = new Map(frameFindings.map((finding) => [finding.frame_number, finding]));
 
   function seekTo(timeSeconds) {
     if (videoRef.current && typeof timeSeconds === "number") {
@@ -259,6 +265,42 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
           ) : null}
 
           <div className="vision-controls">
+            <div className="segmented-control" aria-label="Modo de exibicao">
+              <button
+                className={displayMode === "both" ? "active" : ""}
+                type="button"
+                onClick={() => setDisplayMode("both")}
+              >
+                <SlidersHorizontal size={15} />
+                Video + Mapa 2D
+              </button>
+              <button
+                className={displayMode === "video" ? "active" : ""}
+                type="button"
+                onClick={() => setDisplayMode("video")}
+              >
+                <Video size={15} />
+                So video
+              </button>
+              <button
+                className={displayMode === "field" ? "active" : ""}
+                type="button"
+                onClick={() => setDisplayMode("field")}
+              >
+                <ScanLine size={15} />
+                So mapa 2D
+              </button>
+              <button
+                className={displayMode === "keyframes" ? "active" : ""}
+                type="button"
+                onClick={() => setDisplayMode("keyframes")}
+                disabled={keyframes.length === 0}
+              >
+                <Images size={15} />
+                Galeria de frames
+              </button>
+            </div>
+
             <div className="segmented-control" aria-label="Modo de leitura visual">
               <button
                 className={viewMode === "overview" ? "active" : ""}
@@ -362,7 +404,27 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
             </div>
           ) : null}
 
-          <div className="vision-layout">
+          {displayMode === "keyframes" ? (
+            <div className="keyframe-gallery" aria-label="Galeria de frames-chave extraidos do video">
+              {keyframes.map((frame, index) => {
+                const finding = frameFindingByNumber.get(index + 1);
+                return (
+                  <button
+                    className="keyframe-card"
+                    key={frame.image_url}
+                    onClick={() => seekTo(frame.time_s)}
+                    type="button"
+                  >
+                    <img alt={`Frame em ${frame.time_s}s`} loading="lazy" src={`${API_BASE}${frame.image_url}`} />
+                    <strong>{frame.time_s}s - {frame.tactic}</strong>
+                    <span>{finding?.description || "Sem leitura da LLM multimodal para este frame."}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+          <div className={`vision-layout ${displayMode !== "both" ? "vision-layout-single" : ""}`}>
+            {displayMode !== "field" && (
             <div>
               <video
                 key={vision.annotated_video_url}
@@ -394,7 +456,9 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
                 {vision.output_fps || vision.source_fps} fps ({vision.annotated_video_codec || "codec automatico"}).
               </p>
             </div>
+            )}
 
+            {displayMode !== "video" && (
             <div className="vision-field" aria-label="Mapa 2D de campo com trilhas, bola e conexoes">
               {layers.heatmap &&
                 heatmapPoints.map((point, index) => (
@@ -470,7 +534,9 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
                   ))}
               </svg>
             </div>
+            )}
           </div>
+          )}
 
           <div className="vision-analysis-grid">
             <article>
@@ -577,6 +643,35 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
               ))}
             </div>
           </section>
+
+          {vision.llm_vision_expert ? (
+            <section className="ai-insight-panel">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">LLM como especialista em visao computacional</p>
+                  <h3>Leitura direta dos frames do video</h3>
+                </div>
+                <span className="badge badge-medium">{vision.llm_vision_expert.provider || "IA"}</span>
+              </div>
+              <p>{vision.llm_vision_expert.expert_summary}</p>
+              {vision.llm_vision_expert.discrepancies?.length > 0 ? (
+                <div>
+                  <h3>Divergencias em relacao ao rastreamento automatico</h3>
+                  <ul className="check-list">
+                    {vision.llm_vision_expert.discrepancies.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {keyframes.length > 0 ? (
+                <button className="button button-secondary" onClick={() => setDisplayMode("keyframes")} type="button">
+                  <Eye size={15} />
+                  Ver frames analisados pela LLM
+                </button>
+              ) : null}
+            </section>
+          ) : null}
 
           {vision.llm_identity ? (
             <section className="identity-technique-panel ai-insight-panel">

@@ -56,6 +56,10 @@ BALL_MAX_JUMP_PX_RATIO = 0.22
 BALL_MISS_TOLERANCE = 6
 PITCH_W, PITCH_H = 105, 68
 DEFAULT_PROCESSING_TIMEOUT_SECONDS = 35
+# Instantes (fracao do total de frames processados) onde um frame anotado e
+# salvo como imagem, para uma LLM multimodal revisar visualmente o video real
+# (nao apenas os dados numericos do tracking).
+KEYFRAME_CHECKPOINT_RATIOS = (0.08, 0.24, 0.4, 0.56, 0.72, 0.88)
 MAX_PLAYER_BOX_WIDTH_RATIO = 0.18
 MAX_PLAYER_BOX_HEIGHT_RATIO = 0.62
 MIN_PLAYER_BOX_HEIGHT_RATIO = 0.025
@@ -266,6 +270,11 @@ def process_video(
     uniform_counts: Counter[str] = Counter()
     candidate_rejections: Counter[str] = Counter()
     last_field_model = _default_field_model(width, height)
+    keyframes: list[dict] = []
+    keyframe_checkpoints = sorted(
+        {int(max_frames * ratio) for ratio in KEYFRAME_CHECKPOINT_RATIOS if int(max_frames * ratio) < max_frames}
+    )
+    next_keyframe_checkpoint = 0
 
     frame_idx = 0
     processed = 0
@@ -482,6 +491,20 @@ def process_video(
                 cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
 
         writer.write(frame)
+        if next_keyframe_checkpoint < len(keyframe_checkpoints) and processed >= keyframe_checkpoints[next_keyframe_checkpoint]:
+            keyframe_path, keyframe_bytes = _save_keyframe(frame)
+            if keyframe_path and keyframe_bytes:
+                keyframes.append(
+                    {
+                        "frame": frame_idx,
+                        "time_s": round(frame_idx / fps, 1),
+                        "image_url": f"/media/{keyframe_path.name}",
+                        "active_tracks": len(frame_target_tracks),
+                        "tactic": tactic,
+                        "_image_bytes": keyframe_bytes,
+                    }
+                )
+            next_keyframe_checkpoint += 1
         processed += 1
         frame_idx += sample_every if full_video_coverage else 1
         if on_progress:
@@ -620,6 +643,7 @@ def process_video(
             "detection_rate": round(field_samples / max(1, processed) * 100, 1),
         },
         "shape_analysis": shape_analysis,
+        "keyframes": keyframes,
         "visual_report": {
             "output_format": "dashboard_interativo_com_overlay_de_video_e_campo_2d",
             "scope": (
@@ -650,6 +674,16 @@ def process_video(
             + (" Analise parcial: limite seguro de processamento atingido." if stopped_by_timeout else "")
         ),
     }
+
+
+def _save_keyframe(frame) -> tuple[Path | None, bytes | None]:
+    ok, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 78])
+    if not ok:
+        return None, None
+    image_bytes = buffer.tobytes()
+    keyframe_path = MEDIA_DIR / f"keyframe_{uuid.uuid4().hex}.jpg"
+    keyframe_path.write_bytes(image_bytes)
+    return keyframe_path, image_bytes
 
 
 def _open_browser_video_writer(width: int, height: int, fps: float):

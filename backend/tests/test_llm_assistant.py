@@ -36,7 +36,7 @@ def test_call_llm_json_dispatches_to_openai_by_default(monkeypatch):
     monkeypatch.setattr(llm_assistant, "_api_key", lambda: "test-key")
     captured = {}
 
-    def fake_openai(system, user, config, api_key, model):
+    def fake_openai(system, user, config, api_key, model, images=None):
         captured["called"] = True
         return json.dumps({"summary": "ok"})
 
@@ -58,7 +58,7 @@ def test_call_llm_json_dispatches_to_anthropic(monkeypatch):
     monkeypatch.setattr(llm_assistant, "_api_key", lambda: "test-key")
     captured = {}
 
-    def fake_anthropic(system, user, config, api_key, model):
+    def fake_anthropic(system, user, config, api_key, model, images=None):
         captured["model"] = model
         return json.dumps({"summary": "claude ok"})
 
@@ -79,7 +79,7 @@ def test_call_llm_json_dispatches_to_gemini(monkeypatch):
     _enable("google_gemini", model="gemini-2.5-flash")
     monkeypatch.setattr(llm_assistant, "_api_key", lambda: "test-key")
 
-    def fake_gemini(system, user, config, api_key, model):
+    def fake_gemini(system, user, config, api_key, model, images=None):
         return json.dumps({"summary": "gemini ok"})
 
     monkeypatch.setattr(
@@ -98,7 +98,7 @@ def test_call_llm_json_dispatches_to_grok(monkeypatch):
     _enable("xai_grok", model="grok-4")
     monkeypatch.setattr(llm_assistant, "_api_key", lambda: "test-key")
 
-    def fake_grok(system, user, config, api_key, model):
+    def fake_grok(system, user, config, api_key, model, images=None):
         return json.dumps({"summary": "grok ok"})
 
     monkeypatch.setattr(
@@ -117,7 +117,7 @@ def test_call_llm_json_falls_back_on_network_error_regardless_of_provider(monkey
     _enable("anthropic_messages")
     monkeypatch.setattr(llm_assistant, "_api_key", lambda: "test-key")
 
-    def fake_fail(system, user, config, api_key, model):
+    def fake_fail(system, user, config, api_key, model, images=None):
         raise urllib.error.URLError("boom")
 
     monkeypatch.setattr(
