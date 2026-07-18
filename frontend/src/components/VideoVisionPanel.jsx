@@ -636,6 +636,65 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
             ) : null}
           </div>
 
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Os dois times do video</p>
+              <h3>Comparar como cada time joga</h3>
+            </div>
+          </div>
+          {vision.team_comparison?.available ? (
+            <div className="team-comparison-grid">
+              {(vision.llm_team_comparison?.teams?.length
+                ? vision.llm_team_comparison.teams
+                : vision.team_comparison.teams
+              ).map((team, index) => {
+                const cvTeam = vision.team_comparison.teams[index];
+                return (
+                  <article className="team-comparison-card" key={team.label}>
+                    <h3>{team.label}</h3>
+                    {cvTeam ? (
+                      <strong>
+                        {cvTeam.shape_analysis?.formation_guess || "Indefinida"} -{" "}
+                        {cvTeam.shape_analysis?.block || "bloco a revisar"} - {cvTeam.tracks_used} rastros
+                      </strong>
+                    ) : null}
+                    <p>{team.playing_style_summary}</p>
+                    {team.style_tags?.length > 0 ? (
+                      <div className="style-tag-list">
+                        {team.style_tags.map((tag) => (
+                          <span className="style-tag" key={tag}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    {cvTeam ? (
+                      <span>
+                        {cvTeam.pass_network?.metrics?.total_probable_passes || 0} passe(s) provavel(is) -{" "}
+                        {Math.round(cvTeam.avg_distance_px || 0)}px de deslocamento medio
+                      </span>
+                    ) : null}
+                  </article>
+                );
+              })}
+              {vision.llm_team_comparison?.key_difference ? (
+                <article className="team-comparison-card team-comparison-highlight">
+                  <ScanLine size={17} />
+                  <h3>Principal diferenca tatica</h3>
+                  <p>{vision.llm_team_comparison.key_difference}</p>
+                  {vision.llm_team_comparison?.comparative_summary ? (
+                    <span>{vision.llm_team_comparison.comparative_summary}</span>
+                  ) : null}
+                </article>
+              ) : null}
+            </div>
+          ) : (
+            <p className="video-caption">
+              {vision.team_comparison?.note ||
+                "Nao foi possivel isolar dois times distintos neste video para comparar o estilo de jogo."}
+            </p>
+          )}
+
           <div className="vision-analysis-grid">
             <article>
               <Target size={17} />

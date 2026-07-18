@@ -120,6 +120,11 @@ EVENT_TARGETS = [
         "label": "Pressao pos-perda",
         "description": "Aglomeracao e aceleracao coletiva imediatamente apos deslocamento da bola.",
     },
+    {
+        "key": "turnover_or_interception",
+        "label": "Troca de posse entre equipes",
+        "description": "A posse provavel da bola mudou para um rastro de uniforme diferente do anterior.",
+    },
 ]
 
 
@@ -560,12 +565,20 @@ def process_video(
 
     heatmap = _grid_to_points(heat_grid)
     ball_heatmap = _grid_to_points(ball_grid)
-    events.extend(_infer_ball_events(ball_track, valid_tracks))
+    # Posse da bola e checada contra TODOS os rastros validos (nao so a equipe
+    # filtrada): assim uma interceptacao/desarme do time adversario e
+    # reconhecida como troca de posse em vez de "roubar" um passe provavel do
+    # time acompanhado, e a comparacao entre os dois times consegue montar a
+    # rede de passes de cada lado a partir do mesmo evento bruto.
+    all_valid_tracks = {tid: track for tid, track, _ in track_stats}
+    events.extend(_infer_ball_events(ball_track, all_valid_tracks))
+    pass_candidate_events = list(events)
     events.extend(_infer_foul_events(events, valid_tracks, fps))
     events.extend(_infer_counter_press_events(events))
     events = [event for event in events if event.get("track_id") in valid_tracks or event.get("track_id") is None]
     graph = _build_proximity_graph(valid_tracks, proximity_counts)
     pass_network = _build_pass_network(events, valid_tracks)
+    team_comparison = _build_team_comparison(track_stats, pass_candidate_events)
     shape_analysis = _build_shape_analysis(valid_tracks)
     team_focus = _build_team_focus(
         requested_team_filter,
@@ -639,6 +652,7 @@ def process_video(
         "events": sorted(events, key=lambda e: e["time_s"])[:50],
         "graph": graph,
         "pass_network": pass_network,
+        "team_comparison": team_comparison,
         "field_model": {
             **last_field_model,
             "samples_detected": field_samples,
@@ -1180,22 +1194,41 @@ def _infer_ball_events(ball_track: list[dict], tracks: dict[int, _Track]) -> lis
         owner = _nearest_track_to_ball(ball, tracks)
         ball_speed = math.hypot(ball["x"] - previous_ball["x"], ball["y"] - previous_ball["y"])
         if owner is not None and previous_owner is not None and owner != previous_owner and ball_speed > 7:
-            inferred.append(
-                {
-                    "frame": ball["frame"],
-                    "time_s": ball["time_s"],
-                    "track_id": owner,
-                    "from_track_id": previous_owner,
-                    "to_track_id": owner,
-                    "type": "probable_pass",
-                    "label": "Passe provavel",
-                    "confidence": "Baixa",
-                    "explanation": (
-                        "A posse aparente mudou de um rastro para outro apos deslocamento da bola. "
-                        "Sem detector supervisionado, tratar como indicio de passe."
-                    ),
-                }
-            )
+            same_team = _track_team_key(tracks[owner]) == _track_team_key(tracks[previous_owner])
+            if same_team:
+                inferred.append(
+                    {
+                        "frame": ball["frame"],
+                        "time_s": ball["time_s"],
+                        "track_id": owner,
+                        "from_track_id": previous_owner,
+                        "to_track_id": owner,
+                        "type": "probable_pass",
+                        "label": "Passe provavel",
+                        "confidence": "Baixa",
+                        "explanation": (
+                            "A posse aparente mudou de um rastro para outro do mesmo uniforme apos "
+                            "deslocamento da bola. Sem detector supervisionado, tratar como indicio de passe."
+                        ),
+                    }
+                )
+            else:
+                inferred.append(
+                    {
+                        "frame": ball["frame"],
+                        "time_s": ball["time_s"],
+                        "track_id": owner,
+                        "from_track_id": previous_owner,
+                        "to_track_id": owner,
+                        "type": "turnover_or_interception",
+                        "label": "Troca de posse entre equipes",
+                        "confidence": "Baixa",
+                        "explanation": (
+                            "A posse aparente mudou para um rastro de uniforme diferente do anterior. Pode "
+                            "indicar interceptacao, desarme com recuperacao ou erro de saida de bola."
+                        ),
+                    }
+                )
         if ball_speed > 12 and (ball["y"] < 18 or ball["y"] > 82):
             inferred.append(
                 {
@@ -1678,4 +1711,62 @@ def _build_pass_network(events: list[dict], tracks: dict[int, _Track]) -> dict:
             "main_receiver": main_receiver["label"] if main_receiver else None,
             "players_without_probable_pass": len(isolated_tracks),
         },
+    }
+
+
+MIN_TEAM_COMPARISON_TRACKS = 4
+
+
+def _build_team_comparison(
+    track_stats: list[tuple[int, _Track, float]], pass_candidate_events: list[dict]
+) -> dict:
+    """Isola os dois grupos de uniforme com mais rastros validos no video (os
+    dois times) e monta, para cada um, a mesma leitura visual (formacao/bloco
+    estimados, rede de passes) usada para o time filtrado - permitindo
+    comparar visualmente como os dois times jogam dentro do mesmo video."""
+    groups: dict[str, list[tuple[int, _Track, float]]] = defaultdict(list)
+    for tid, track, distance in track_stats:
+        key = _track_team_key(track)
+        if key == "unknown":
+            continue
+        groups[key].append((tid, track, distance))
+
+    ranked_keys = sorted(groups, key=lambda key: len(groups[key]), reverse=True)
+    ranked_keys = [key for key in ranked_keys if len(groups[key]) >= MIN_TEAM_COMPARISON_TRACKS][:2]
+
+    if len(ranked_keys) < 2:
+        return {
+            "available": False,
+            "teams": [],
+            "note": (
+                "Nao foi possivel isolar dois grupos de uniforme com rastros suficientes para comparar os "
+                "times neste video. Uniformes muito parecidos, pouca visibilidade de campo ou video muito "
+                "curto reduzem a separacao por cor."
+            ),
+        }
+
+    teams = []
+    for key in ranked_keys:
+        group = groups[key]
+        group_tracks = {tid: track for tid, track, _ in group}
+        total_distance = sum(distance for _, _, distance in group)
+        teams.append(
+            {
+                "key": key,
+                "label": _team_filter_label(key),
+                "tracks_used": len(group),
+                "shape_analysis": _build_shape_analysis(group_tracks),
+                "pass_network": _build_pass_network(pass_candidate_events, group_tracks),
+                "avg_distance_px": round(total_distance / max(1, len(group)), 1),
+                "total_distance_px": round(total_distance, 1),
+            }
+        )
+
+    return {
+        "available": True,
+        "teams": teams,
+        "note": (
+            "Comparacao construida a partir dos dois grupos de uniforme com mais rastros validos no video; "
+            "times com uniformes muito parecidos ou pouca visibilidade podem nao ser separados com precisao."
+        ),
     }

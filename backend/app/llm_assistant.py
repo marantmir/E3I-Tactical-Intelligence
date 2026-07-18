@@ -166,6 +166,87 @@ def analyze_video_tactics(team_name: str, vision_result: dict) -> dict:
     return _merge_with_defaults(response, base)
 
 
+def compare_teams_playing_style(vision_result: dict) -> dict:
+    """Compara visualmente como os dois times do video jogam, a partir dos
+    dois grupos de uniforme isolados pela visao computacional (formacao/
+    bloco estimados e rede de passes de cada lado, ja calculados por
+    _build_team_comparison). Sem LLM, cai num resumo determinístico baseado
+    apenas nas metricas de cada time."""
+    comparison = vision_result.get("team_comparison") or {}
+    base = _fallback_team_comparison(comparison)
+    if not _api_key() or not comparison.get("available"):
+        return base
+
+    compact_payload = {
+        "teams": [
+            {
+                "label": team.get("label"),
+                "tracks_used": team.get("tracks_used"),
+                "shape_analysis": team.get("shape_analysis"),
+                "pass_network_metrics": (team.get("pass_network") or {}).get("metrics"),
+                "avg_distance_px": team.get("avg_distance_px"),
+            }
+            for team in comparison.get("teams", [])
+        ],
+    }
+    response = _call_llm_json(
+        system=(
+            "Você é um analista tático de futebol. O campo 'teams' traz sempre dois grupos de uniforme "
+            "detectados pela visão computacional no mesmo vídeo (os dois times em campo). Compare visualmente "
+            "como cada time joga a partir de 'shape_analysis' (formação/bloco estimados) e "
+            "'pass_network_metrics' (rede de passes real) de cada um. Responda em JSON com "
+            "{teams: [{label, playing_style_summary, style_tags}], comparative_summary, key_difference}. "
+            "'style_tags' é um array curto (2 a 4 itens, ex: 'posse curta', 'bloco baixo', 'transição rápida', "
+            "'jogo pelos lados'). 'key_difference' resume em uma frase a maior diferença tática visual entre "
+            "os dois times. Baseie-se apenas nos dados fornecidos; nunca invente nomes de jogadores, placar "
+            "ou dados fora do que foi enviado."
+        ),
+        user=json.dumps(compact_payload, ensure_ascii=False),
+        fallback=base,
+    )
+    return _merge_with_defaults(response, base)
+
+
+def _fallback_team_comparison(comparison: dict) -> dict:
+    if not comparison.get("available"):
+        return {
+            "status": "local_fallback",
+            "provider": "deterministic_rules",
+            "teams": [],
+            "comparative_summary": comparison.get("note")
+            or "Não foi possível isolar dois times distintos neste vídeo para comparar.",
+            "key_difference": "",
+        }
+
+    teams_summary = []
+    for team in comparison.get("teams", []):
+        shape = team.get("shape_analysis") or {}
+        pass_metrics = (team.get("pass_network") or {}).get("metrics") or {}
+        teams_summary.append(
+            {
+                "label": team.get("label"),
+                "playing_style_summary": (
+                    f"Estrutura estimada: {shape.get('formation_guess', 'indefinida')} "
+                    f"({shape.get('block', 'bloco a revisar')}). "
+                    f"{pass_metrics.get('total_probable_passes', 0)} passe(s) provável(is) detectado(s), "
+                    f"distribuidor principal: {pass_metrics.get('main_distributor') or 'a confirmar'}."
+                ),
+                "style_tags": [],
+            }
+        )
+
+    return {
+        "status": "local_fallback",
+        "provider": "deterministic_rules",
+        "teams": teams_summary,
+        "comparative_summary": (
+            "Leitura automática baseada apenas em rastreamento; configure uma LLM para uma comparação "
+            "qualitativa mais rica entre os dois times."
+        ),
+        "key_difference": "",
+    }
+
+
 MAX_VISION_EXPERT_KEYFRAMES = 6
 
 

@@ -32,7 +32,12 @@ from ..data_store import (
     teams,
 )
 from ..crud_store import create_record
-from ..llm_assistant import analyze_video_as_vision_expert, analyze_video_tactics, identify_players_from_tracks
+from ..llm_assistant import (
+    analyze_video_as_vision_expert,
+    analyze_video_tactics,
+    compare_teams_playing_style,
+    identify_players_from_tracks,
+)
 from ..online_search import search_public_team_info
 from ..operational_research import build_operational_research
 from ..rate_limit import enforce_video_upload_rate_limit
@@ -428,6 +433,7 @@ def _build_video_result(result: dict, team_name: str) -> dict:
     result["llm_analysis"] = analyze_video_tactics(team_name, result)
     result["llm_identity"] = identify_players_from_tracks(team_name, result)
     result["llm_vision_expert"] = analyze_video_as_vision_expert(team_name, result, keyframe_images)
+    result["llm_team_comparison"] = compare_teams_playing_style(result)
     return result
 
 
