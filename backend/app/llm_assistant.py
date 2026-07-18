@@ -106,6 +106,57 @@ def enrich_team_search(team_name: str, online_payload: dict) -> dict:
     return _merge_with_defaults(response, base)
 
 
+def analyze_video_visually(team_name: str, vision_result: dict) -> dict:
+    """Leitura visual DIRETA dos frames reais do video (multimodal), cruzada
+    com as metricas estruturadas do pipeline de CV. Diferente de
+    `analyze_video_tactics` (que so recebe numeros/resumos), aqui o LLM
+    efetivamente ve as imagens capturadas em `visual_key_frames`."""
+    key_frames_payload = vision_result.get("visual_key_frames") or {}
+    frames = [frame for frame in (key_frames_payload.get("frames") or []) if frame.get("image_base64")]
+    base = _fallback_visual_analysis(team_name, vision_result, frames)
+    if not _api_key() or not frames:
+        return base
+
+    images = [
+        {
+            "media_type": frame.get("media_type", "image/jpeg"),
+            "data": frame["image_base64"],
+            "caption": f"t={frame.get('time_s')}s - {frame.get('label')}",
+        }
+        for frame in frames
+    ]
+    compact_payload = {
+        "team_name": team_name,
+        "team_focus": vision_result.get("team_focus"),
+        "shape_analysis": vision_result.get("shape_analysis"),
+        "tactical_summary": vision_result.get("tactical_summary"),
+        "frames_context": [
+            {"time_s": frame.get("time_s"), "trigger": frame.get("trigger"), "label": frame.get("label")}
+            for frame in frames
+        ],
+    }
+    response = _call_llm_json(
+        system=(
+            "Voce e um analista tatico de futebol observando DIRETAMENTE os frames reais enviados do video "
+            "(nao apenas numeros). Cada imagem tem uma legenda com o instante e o motivo da captura pela visao "
+            "computacional (abertura, mudanca de padrao tatico, disputa/desarme ou conducao em alta velocidade). "
+            "Para CADA imagem, descreva o que voce efetivamente ve: posicionamento dos jogadores, uniformes/cores, "
+            "bola (quando visivel), aglomeracao ou espacamento entre jogadores. Depois cruze essas observacoes "
+            "visuais com as metricas de rastreamento fornecidas (team_focus, shape_analysis, tactical_summary) e "
+            "aponte concordancias e divergencias. Nunca invente jogadores, placar ou eventos que nao estejam "
+            "visiveis nas imagens recebidas.\n\n"
+            "Responda em JSON com os campos: visual_observations (lista de objetos {time_s, trigger, observation}), "
+            "cross_check (texto comparando o que foi visto nas imagens com as metricas do pipeline), "
+            "executive_summary_visual (resumo curto da leitura visual direta) e "
+            "confidence (Alta, Media ou Baixa, conforme nitidez e cobertura das imagens recebidas)."
+        ),
+        user=json.dumps(compact_payload, ensure_ascii=False),
+        fallback=base,
+        images=images,
+    )
+    return _merge_with_defaults(response, base)
+
+
 def analyze_video_tactics(team_name: str, vision_result: dict) -> dict:
     base = _fallback_video_analysis(team_name, vision_result)
     if not _api_key():
@@ -253,11 +304,13 @@ def enrich_pre_analysis(team_name: str, objective: str, online_payload: dict, pr
     return _merge_with_defaults(response, base)
 
 
-def _call_llm_json(system: str, user: str, fallback: dict) -> dict:
+def _call_llm_json(system: str, user: str, fallback: dict, images: list[dict] | None = None) -> dict:
     """Chama o provedor de LLM configurado (não mais fixo em um só) e devolve
     um dict JSON. Cada provedor tem sua própria API/autenticação/formato de
-    resposta; o dispatch abaixo isola essa diferença dos 5 pontos do app que
-    consomem esta função (busca, pré-análise, vídeo, identidade, etc.)."""
+    resposta; o dispatch abaixo isola essa diferença dos pontos do app que
+    consomem esta função (busca, pré-análise, vídeo, identidade, leitura
+    visual multimodal, etc.). `images` (opcional) leva frames reais em
+    base64 para os provedores que suportam entrada multimodal."""
     config = get_llm_runtime_config()
     api_key = _api_key()
     if not api_key:
@@ -267,7 +320,7 @@ def _call_llm_json(system: str, user: str, fallback: dict) -> dict:
     caller = _PROVIDER_CALLERS.get(provider, _call_openai_responses)
     model = config.get("model") or PROVIDER_DEFAULT_MODELS.get(provider, DEFAULT_MODEL)
     try:
-        text = caller(system, user, config, api_key, model)
+        text = caller(system, user, config, api_key, model, images)
         parsed = json.loads(_extract_json_object(text)) if text else {}
         if not isinstance(parsed, dict):
             return fallback
@@ -283,12 +336,21 @@ def _call_llm_json(system: str, user: str, fallback: dict) -> dict:
         return enriched
 
 
-def _call_openai_responses(system: str, user: str, config: dict, api_key: str, model: str) -> str:
+def _call_openai_responses(
+    system: str, user: str, config: dict, api_key: str, model: str, images: list[dict] | None = None
+) -> str:
+    user_content = [{"type": "input_text", "text": user}]
+    for image in images or []:
+        if not image.get("data"):
+            continue
+        media_type = image.get("media_type", "image/jpeg")
+        user_content.append({"type": "input_image", "image_url": f"data:{media_type};base64,{image['data']}"})
+
     body = {
         "model": model,
         "input": [
             {"role": "system", "content": [{"type": "input_text", "text": _system_with_preferences(system, config)}]},
-            {"role": "user", "content": [{"type": "input_text", "text": user}]},
+            {"role": "user", "content": user_content},
         ],
         "text": {"format": {"type": "json_object"}},
         "temperature": float(config.get("temperature", DEFAULT_LLM_CONFIG["temperature"])),
@@ -314,13 +376,32 @@ def _call_openai_responses(system: str, user: str, config: dict, api_key: str, m
     return "\n".join(chunks).strip()
 
 
-def _call_anthropic_messages(system: str, user: str, config: dict, api_key: str, model: str) -> str:
+def _call_anthropic_messages(
+    system: str, user: str, config: dict, api_key: str, model: str, images: list[dict] | None = None
+) -> str:
+    valid_images = [image for image in images or [] if image.get("data")]
+    if valid_images:
+        content = [
+            {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": image.get("media_type", "image/jpeg"),
+                    "data": image["data"],
+                },
+            }
+            for image in valid_images
+        ]
+        content.append({"type": "text", "text": user})
+    else:
+        content = user
+
     body = {
         "model": model,
         "max_tokens": int(config.get("max_output_tokens", DEFAULT_LLM_CONFIG["max_output_tokens"])),
         "temperature": float(config.get("temperature", DEFAULT_LLM_CONFIG["temperature"])),
         "system": _system_with_preferences(system, config),
-        "messages": [{"role": "user", "content": user}],
+        "messages": [{"role": "user", "content": content}],
     }
     request = urllib.request.Request(
         ANTHROPIC_MESSAGES_URL,
@@ -337,11 +418,19 @@ def _call_anthropic_messages(system: str, user: str, config: dict, api_key: str,
     return "\n".join(chunks).strip()
 
 
-def _call_google_gemini(system: str, user: str, config: dict, api_key: str, model: str) -> str:
+def _call_google_gemini(
+    system: str, user: str, config: dict, api_key: str, model: str, images: list[dict] | None = None
+) -> str:
     url = f"{GOOGLE_GEMINI_URL_TEMPLATE.format(model=model)}?key={urllib.parse.quote(api_key)}"
+    parts = [
+        {"inlineData": {"mimeType": image.get("media_type", "image/jpeg"), "data": image["data"]}}
+        for image in images or []
+        if image.get("data")
+    ]
+    parts.append({"text": user})
     body = {
         "systemInstruction": {"parts": [{"text": _system_with_preferences(system, config)}]},
-        "contents": [{"role": "user", "parts": [{"text": user}]}],
+        "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {
             "temperature": float(config.get("temperature", DEFAULT_LLM_CONFIG["temperature"])),
             "maxOutputTokens": int(config.get("max_output_tokens", DEFAULT_LLM_CONFIG["max_output_tokens"])),
@@ -362,13 +451,27 @@ def _call_google_gemini(system: str, user: str, config: dict, api_key: str, mode
     return "\n".join(str(part.get("text", "")) for part in parts).strip()
 
 
-def _call_xai_grok(system: str, user: str, config: dict, api_key: str, model: str) -> str:
+def _call_xai_grok(
+    system: str, user: str, config: dict, api_key: str, model: str, images: list[dict] | None = None
+) -> str:
     # API da xAI e compatível com o formato Chat Completions da OpenAI.
+    valid_images = [image for image in images or [] if image.get("data")]
+    if valid_images:
+        user_content = [{"type": "text", "text": user}] + [
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:{image.get('media_type', 'image/jpeg')};base64,{image['data']}"},
+            }
+            for image in valid_images
+        ]
+    else:
+        user_content = user
+
     body = {
         "model": model,
         "messages": [
             {"role": "system", "content": _system_with_preferences(system, config)},
-            {"role": "user", "content": user},
+            {"role": "user", "content": user_content},
         ],
         "response_format": {"type": "json_object"},
         "temperature": float(config.get("temperature", DEFAULT_LLM_CONFIG["temperature"])),
@@ -533,6 +636,42 @@ def _fallback_video_analysis(team_name: str, vision_result: dict) -> dict:
             "OCR de nome/numero depende de crops nitidos da camisa em multiplos frames.",
         ],
         "identified_plays": _build_identified_plays(vision_result),
+    }
+
+
+def _fallback_visual_analysis(team_name: str, vision_result: dict, frames: list[dict]) -> dict:
+    shape = vision_result.get("shape_analysis") or {}
+    if not frames:
+        summary = (
+            f"Nenhum frame-chave foi capturado para {team_name} neste processamento; a leitura visual direta "
+            "por LLM multimodal depende de eventos reais detectados pela visao computacional no video."
+        )
+    elif not _api_key():
+        summary = (
+            f"{len(frames)} frame(s)-chave capturado(s) para {team_name}, mas nenhum provedor de LLM com visao "
+            "esta habilitado. Ative um provedor (todos os suportados aceitam imagens) para cruzar os frames "
+            "reais com as metricas de rastreamento."
+        )
+    else:
+        summary = f"Leitura visual direta indisponivel para {team_name} nesta chamada; usando metricas do pipeline."
+    return {
+        "status": "local_fallback",
+        "provider": "deterministic_rules",
+        "executive_summary_visual": summary,
+        "visual_observations": [
+            {
+                "time_s": frame.get("time_s"),
+                "trigger": frame.get("trigger"),
+                "observation": frame.get("label"),
+            }
+            for frame in frames
+        ],
+        "cross_check": (
+            f"Estrutura estimada apenas por rastreamento: {shape.get('formation_guess', 'indefinida')} "
+            f"({shape.get('block', 'bloco a revisar')})."
+        ),
+        "confidence": "Baixa",
+        "frames_available": len(frames),
     }
 
 

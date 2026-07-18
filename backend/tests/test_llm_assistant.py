@@ -36,7 +36,7 @@ def test_call_llm_json_dispatches_to_openai_by_default(monkeypatch):
     monkeypatch.setattr(llm_assistant, "_api_key", lambda: "test-key")
     captured = {}
 
-    def fake_openai(system, user, config, api_key, model):
+    def fake_openai(system, user, config, api_key, model, images=None):
         captured["called"] = True
         return json.dumps({"summary": "ok"})
 
@@ -58,7 +58,7 @@ def test_call_llm_json_dispatches_to_anthropic(monkeypatch):
     monkeypatch.setattr(llm_assistant, "_api_key", lambda: "test-key")
     captured = {}
 
-    def fake_anthropic(system, user, config, api_key, model):
+    def fake_anthropic(system, user, config, api_key, model, images=None):
         captured["model"] = model
         return json.dumps({"summary": "claude ok"})
 
@@ -79,7 +79,7 @@ def test_call_llm_json_dispatches_to_gemini(monkeypatch):
     _enable("google_gemini", model="gemini-2.5-flash")
     monkeypatch.setattr(llm_assistant, "_api_key", lambda: "test-key")
 
-    def fake_gemini(system, user, config, api_key, model):
+    def fake_gemini(system, user, config, api_key, model, images=None):
         return json.dumps({"summary": "gemini ok"})
 
     monkeypatch.setattr(
@@ -98,7 +98,7 @@ def test_call_llm_json_dispatches_to_grok(monkeypatch):
     _enable("xai_grok", model="grok-4")
     monkeypatch.setattr(llm_assistant, "_api_key", lambda: "test-key")
 
-    def fake_grok(system, user, config, api_key, model):
+    def fake_grok(system, user, config, api_key, model, images=None):
         return json.dumps({"summary": "grok ok"})
 
     monkeypatch.setattr(
@@ -117,7 +117,7 @@ def test_call_llm_json_falls_back_on_network_error_regardless_of_provider(monkey
     _enable("anthropic_messages")
     monkeypatch.setattr(llm_assistant, "_api_key", lambda: "test-key")
 
-    def fake_fail(system, user, config, api_key, model):
+    def fake_fail(system, user, config, api_key, model, images=None):
         raise urllib.error.URLError("boom")
 
     monkeypatch.setattr(
@@ -243,6 +243,171 @@ def test_grok_request_returns_empty_text_when_no_choices(monkeypatch):
     text = llm_assistant._call_xai_grok("sys", "user", {}, "key", "grok-4")
 
     assert text == ""
+
+
+_SAMPLE_IMAGE = {"media_type": "image/jpeg", "data": "ZmFrZS1qcGVn"}
+
+
+def test_openai_request_embeds_images_as_data_uri(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout=None):
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return _FakeResponse({"output_text": json.dumps({"ok": True})})
+
+    monkeypatch.setattr(llm_assistant.urllib.request, "urlopen", fake_urlopen)
+
+    llm_assistant._call_openai_responses(
+        "sys", "user", {"temperature": 0.2, "max_output_tokens": 500}, "sk-test", "gpt-4.1-mini", [_SAMPLE_IMAGE]
+    )
+
+    user_content = captured["body"]["input"][1]["content"]
+    assert user_content[0] == {"type": "input_text", "text": "user"}
+    assert user_content[1] == {"type": "input_image", "image_url": "data:image/jpeg;base64,ZmFrZS1qcGVn"}
+
+
+def test_openai_request_without_images_keeps_text_only_content(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout=None):
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return _FakeResponse({"output_text": json.dumps({"ok": True})})
+
+    monkeypatch.setattr(llm_assistant.urllib.request, "urlopen", fake_urlopen)
+
+    llm_assistant._call_openai_responses(
+        "sys", "user", {"temperature": 0.2, "max_output_tokens": 500}, "sk-test", "gpt-4.1-mini"
+    )
+
+    assert captured["body"]["input"][1]["content"] == [{"type": "input_text", "text": "user"}]
+
+
+def test_anthropic_request_embeds_images_as_base64_blocks(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout=None):
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return _FakeResponse({"content": [{"type": "text", "text": json.dumps({"ok": True})}]})
+
+    monkeypatch.setattr(llm_assistant.urllib.request, "urlopen", fake_urlopen)
+
+    llm_assistant._call_anthropic_messages(
+        "sys", "user", {"temperature": 0.2, "max_output_tokens": 500}, "sk-ant-test", "claude-sonnet-5", [_SAMPLE_IMAGE]
+    )
+
+    content = captured["body"]["messages"][0]["content"]
+    assert content[0] == {
+        "type": "image",
+        "source": {"type": "base64", "media_type": "image/jpeg", "data": "ZmFrZS1qcGVn"},
+    }
+    assert content[1] == {"type": "text", "text": "user"}
+
+
+def test_anthropic_request_without_images_keeps_plain_string_content(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout=None):
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return _FakeResponse({"content": [{"type": "text", "text": json.dumps({"ok": True})}]})
+
+    monkeypatch.setattr(llm_assistant.urllib.request, "urlopen", fake_urlopen)
+
+    llm_assistant._call_anthropic_messages(
+        "sys", "user", {"temperature": 0.2, "max_output_tokens": 500}, "sk-ant-test", "claude-sonnet-5"
+    )
+
+    assert captured["body"]["messages"] == [{"role": "user", "content": "user"}]
+
+
+def test_gemini_request_embeds_images_as_inline_data(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout=None):
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return _FakeResponse({"candidates": [{"content": {"parts": [{"text": json.dumps({"ok": True})}]}}]})
+
+    monkeypatch.setattr(llm_assistant.urllib.request, "urlopen", fake_urlopen)
+
+    llm_assistant._call_google_gemini(
+        "sys", "user", {"temperature": 0.2, "max_output_tokens": 500}, "AIza-test", "gemini-2.5-flash", [_SAMPLE_IMAGE]
+    )
+
+    parts = captured["body"]["contents"][0]["parts"]
+    assert parts[0] == {"inlineData": {"mimeType": "image/jpeg", "data": "ZmFrZS1qcGVn"}}
+    assert parts[1] == {"text": "user"}
+
+
+def test_grok_request_embeds_images_as_image_url_blocks(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout=None):
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return _FakeResponse({"choices": [{"message": {"content": json.dumps({"ok": True})}}]})
+
+    monkeypatch.setattr(llm_assistant.urllib.request, "urlopen", fake_urlopen)
+
+    llm_assistant._call_xai_grok(
+        "sys", "user", {"temperature": 0.2, "max_output_tokens": 500}, "xai-test", "grok-4", [_SAMPLE_IMAGE]
+    )
+
+    content = captured["body"]["messages"][1]["content"]
+    assert content[0] == {"type": "text", "text": "user"}
+    assert content[1] == {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,ZmFrZS1qcGVn"}}
+
+
+def test_analyze_video_visually_falls_back_without_key_frames():
+    result = llm_assistant.analyze_video_visually("Time Teste", {"visual_key_frames": {"frames": []}})
+
+    assert result["status"] == "local_fallback"
+    assert result["frames_available"] == 0
+
+
+def test_analyze_video_visually_falls_back_without_api_key(monkeypatch):
+    monkeypatch.setattr(llm_assistant, "_api_key", lambda: "")
+    vision_result = {"visual_key_frames": {"frames": [{"time_s": 1.0, "trigger": "abertura", "label": "Abertura da analise", "media_type": "image/jpeg", "image_base64": "ZmFrZS1qcGVn"}]}}
+
+    result = llm_assistant.analyze_video_visually("Time Teste", vision_result)
+
+    assert result["status"] == "local_fallback"
+    assert result["frames_available"] == 1
+
+
+def test_analyze_video_visually_sends_captured_frames_as_images(monkeypatch):
+    _enable("anthropic_messages", model="claude-sonnet-5")
+    monkeypatch.setattr(llm_assistant, "_api_key", lambda: "test-key")
+    captured = {}
+
+    def fake_anthropic(system, user, config, api_key, model, images=None):
+        captured["images"] = images
+        return json.dumps({"executive_summary_visual": "leitura visual ok"})
+
+    monkeypatch.setattr(
+        llm_assistant,
+        "_PROVIDER_CALLERS",
+        {**llm_assistant._PROVIDER_CALLERS, "anthropic_messages": fake_anthropic},
+    )
+
+    vision_result = {
+        "visual_key_frames": {
+            "frames": [
+                {
+                    "time_s": 4.2,
+                    "trigger": "tackle_or_duel",
+                    "label": "Disputa/desarme entre rastros proximos",
+                    "media_type": "image/jpeg",
+                    "image_base64": "ZmFrZS1qcGVn",
+                }
+            ]
+        },
+        "shape_analysis": {"formation_guess": "4-3-3 aproximado"},
+    }
+
+    result = llm_assistant.analyze_video_visually("Time Teste", vision_result)
+
+    assert captured["images"] == [
+        {"media_type": "image/jpeg", "data": "ZmFrZS1qcGVn", "caption": "t=4.2s - Disputa/desarme entre rastros proximos"}
+    ]
+    assert result["executive_summary_visual"] == "leitura visual ok"
 
 
 def test_extract_json_object_returns_clean_json_unchanged():

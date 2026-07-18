@@ -25,6 +25,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from collections.abc import Callable
+import base64
 import math
 import time
 import uuid
@@ -56,6 +57,22 @@ BALL_MAX_JUMP_PX_RATIO = 0.22
 BALL_MISS_TOLERANCE = 6
 PITCH_W, PITCH_H = 105, 68
 DEFAULT_PROCESSING_TIMEOUT_SECONDS = 35
+# Frames reais (com overlay) extraidos para leitura visual direta por LLM
+# multimodal. Poucos, pequenos e escolhidos por sinal real de CV (nao
+# amostragem arbitraria) para manter o custo/latencia de visao baixos.
+MAX_VISUAL_KEY_FRAMES = 6
+MAX_DUEL_KEY_FRAMES = 2
+MAX_SPRINT_KEY_FRAMES = 2
+KEY_FRAME_MAX_WIDTH = 480
+KEY_FRAME_JPEG_QUALITY = 65
+KEY_FRAME_MIN_GAP_SECONDS = 2.5
+KEY_FRAME_TRIGGER_LABELS = {
+    "abertura": "Abertura da analise",
+    "tactic_change": "Mudanca de padrao tatico",
+    "tackle_or_duel": "Disputa/desarme entre rastros proximos",
+    "carry_or_dribble": "Conducao/drible em alta velocidade",
+    "fechamento": "Fechamento da analise",
+}
 MAX_PLAYER_BOX_WIDTH_RATIO = 0.18
 MAX_PLAYER_BOX_HEIGHT_RATIO = 0.62
 MIN_PLAYER_BOX_HEIGHT_RATIO = 0.025
@@ -272,6 +289,9 @@ def process_video(
     colors: dict[int, tuple[int, int, int]] = {}
     last_ball_px: tuple[float, float] | None = None
     ball_misses = 0
+    key_frames: list[dict] = []
+    key_frame_trigger_counts: Counter[str] = Counter()
+    key_frame_last_capture = [-10_000_000]
 
     while processed < max_frames:
         if max_processing_seconds and time.monotonic() - started_at >= max_processing_seconds:
@@ -289,6 +309,9 @@ def process_video(
         if not full_video_coverage and frame_idx % sample_every != 0:
             frame_idx += 1
             continue
+
+        duel_this_frame = False
+        sprint_this_frame = False
 
         field_model = _detect_field_model(frame, width, height) or last_field_model
         if field_model["detected"]:
@@ -388,6 +411,8 @@ def process_video(
                             ),
                         }
                     )
+                    if speed > 55:
+                        sprint_this_frame = True
                 tracks[best_id].points.append((frame_idx, cx, cy))
                 tracks[best_id].pitch_points.append((frame_idx, pitch_x, pitch_y))
                 tracks[best_id].boxes.append((x, y, w, h))
@@ -438,11 +463,13 @@ def process_video(
                             ),
                         }
                     )
+                    duel_this_frame = True
 
         tactic = _classify_tactic(frame_target_tracks, width, height)
+        tactic_just_changed = bool(frame_target_tracks) and tactic != last_tactic
         if frame_target_tracks:
             tactic_counts[tactic] += 1
-            if tactic != last_tactic or processed % 45 == 0:
+            if tactic_just_changed or processed % 45 == 0:
                 tactical_events.append(
                     {
                         "time_s": round(frame_idx / fps, 1),
@@ -481,11 +508,30 @@ def process_video(
                 _, x2, y2 = trail[k]
                 cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
 
+        frame_trigger = None
+        if processed == 0:
+            frame_trigger = "abertura"
+        elif tactic_just_changed:
+            frame_trigger = "tactic_change"
+        elif duel_this_frame:
+            frame_trigger = "tackle_or_duel"
+        elif sprint_this_frame:
+            frame_trigger = "carry_or_dribble"
+        if frame_trigger:
+            _maybe_capture_key_frame(
+                key_frames, key_frame_trigger_counts, key_frame_last_capture, frame, width, frame_idx, fps, frame_trigger
+            )
+
         writer.write(frame)
         processed += 1
         frame_idx += sample_every if full_video_coverage else 1
         if on_progress:
             on_progress(processed, max_frames)
+
+    if processed > 0 and len(key_frames) < MAX_VISUAL_KEY_FRAMES:
+        closing_frame = _encode_key_frame(frame, width, frame_idx, fps, "fechamento")
+        if closing_frame:
+            key_frames.append(closing_frame)
 
     capture.release()
     writer.release()
@@ -620,6 +666,16 @@ def process_video(
             "detection_rate": round(field_samples / max(1, processed) * 100, 1),
         },
         "shape_analysis": shape_analysis,
+        "visual_key_frames": {
+            "frames": key_frames,
+            "count": len(key_frames),
+            "max_frames": MAX_VISUAL_KEY_FRAMES,
+            "note": (
+                "Frames reais do video (com overlay) capturados nos momentos de maior sinal detectado pela "
+                "visao computacional - abertura, mudanca de padrao tatico, disputa/desarme e conducao em alta "
+                "velocidade - reduzidos e comprimidos para leitura direta por um LLM multimodal."
+            ),
+        },
         "visual_report": {
             "output_format": "dashboard_interativo_com_overlay_de_video_e_campo_2d",
             "scope": (
@@ -650,6 +706,56 @@ def process_video(
             + (" Analise parcial: limite seguro de processamento atingido." if stopped_by_timeout else "")
         ),
     }
+
+
+def _encode_key_frame(frame, width: int, frame_idx: int, fps: float, trigger: str) -> dict | None:
+    """Downscale + comprime o frame anotado atual para um key frame leve,
+    pronto para envio como imagem a um LLM multimodal (evita mandar frames
+    em resolucao total, o que encareceria e atrasaria a chamada de visao)."""
+    scale = min(1.0, KEY_FRAME_MAX_WIDTH / max(1, width))
+    target = frame
+    if scale < 1.0:
+        target_w = max(1, int(width * scale))
+        target_h = max(1, int(frame.shape[0] * scale))
+        target = cv2.resize(frame, (target_w, target_h), interpolation=cv2.INTER_AREA)
+    ok, buffer = cv2.imencode(".jpg", target, [int(cv2.IMWRITE_JPEG_QUALITY), KEY_FRAME_JPEG_QUALITY])
+    if not ok:
+        return None
+    return {
+        "frame": frame_idx,
+        "time_s": round(frame_idx / fps, 1),
+        "trigger": trigger,
+        "label": KEY_FRAME_TRIGGER_LABELS.get(trigger, trigger),
+        "media_type": "image/jpeg",
+        "image_base64": base64.b64encode(buffer).decode("ascii"),
+    }
+
+
+def _maybe_capture_key_frame(
+    key_frames: list[dict],
+    trigger_counts: Counter[str],
+    last_capture_frame: list[int],
+    frame,
+    width: int,
+    frame_idx: int,
+    fps: float,
+    trigger: str,
+) -> None:
+    if len(key_frames) >= MAX_VISUAL_KEY_FRAMES:
+        return
+    if trigger == "tackle_or_duel" and trigger_counts[trigger] >= MAX_DUEL_KEY_FRAMES:
+        return
+    if trigger == "carry_or_dribble" and trigger_counts[trigger] >= MAX_SPRINT_KEY_FRAMES:
+        return
+    min_gap_frames = max(1, int(fps * KEY_FRAME_MIN_GAP_SECONDS))
+    if trigger != "abertura" and frame_idx - last_capture_frame[0] < min_gap_frames:
+        return
+    encoded = _encode_key_frame(frame, width, frame_idx, fps, trigger)
+    if not encoded:
+        return
+    key_frames.append(encoded)
+    trigger_counts[trigger] += 1
+    last_capture_frame[0] = frame_idx
 
 
 def _open_browser_video_writer(width: int, height: int, fps: float):
