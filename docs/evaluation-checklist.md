@@ -33,6 +33,8 @@
 
 ## Validacao Tecnica
 
+- [x] Registro seguro de tools independente de provedor, com allowlist, validacao, timeout e limites de tamanho.
+- [x] Testes unitarios do nucleo de tools sem chamadas externas.
 - [x] Endpoints novos: `graph-analysis`, `video-vision`, `public-intelligence`.
 - [x] Frontend consome as novas rotas.
 - [x] Build Vite validado.
