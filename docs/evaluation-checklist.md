@@ -41,5 +41,16 @@
 - [x] Rate limiting nas rotas de upload de video (429 + `Retry-After`).
 - [x] Logging estruturado em JSON com `request_id`/`X-Request-ID`.
 - [x] Suite `pytest` cobrindo `graph_analysis`, `video_vision`, rate limiting, logging e rotas de `teams`/`analysis`.
+- [x] Registry e ciclo de tool calling cobertos sem rede: validação, timeout, erros seguros, limites e fallback.
+- [x] Contexto e duas tools sequenciais validados com adapters mockados.
 - [x] Fluxo analisado no navegador local.
 - [ ] Validar console no endpoint publicado.
+
+## Estado da Avaliacao LLM
+
+- [x] Prompt 5 — testes de tools e adapters concluídos.
+- [ ] Prompt 6 — prompting compacto e few-shot.
+- [ ] Prompt 7 — parâmetros e experimentos.
+- [ ] Prompt 8 — ADR e README.
+- [ ] Prompt 9 — agent log e apresentação.
+- [ ] Prompt 10 — validação final.
