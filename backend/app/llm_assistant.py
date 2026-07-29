@@ -32,6 +32,7 @@ def llm_status() -> dict:
         "api_key_source": config.get("api_key_source", "missing"),
         "timeout_seconds": config.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS),
         "temperature": config.get("temperature", DEFAULT_LLM_CONFIG["temperature"]),
+        "top_p": config.get("top_p", DEFAULT_LLM_CONFIG["top_p"]),
         "analysis_depth": config.get("analysis_depth", DEFAULT_LLM_CONFIG["analysis_depth"]),
         "identity_mode": config.get("identity_mode", DEFAULT_LLM_CONFIG["identity_mode"]),
         "retrieved_at": datetime.now(timezone.utc).isoformat(),
@@ -354,6 +355,7 @@ def _call_openai_responses(
         ],
         "text": {"format": {"type": "json_object"}},
         "temperature": float(config.get("temperature", DEFAULT_LLM_CONFIG["temperature"])),
+        "top_p": float(config.get("top_p", DEFAULT_LLM_CONFIG["top_p"])),
         "max_output_tokens": int(config.get("max_output_tokens", DEFAULT_LLM_CONFIG["max_output_tokens"])),
     }
     request = urllib.request.Request(
@@ -400,6 +402,7 @@ def _call_anthropic_messages(
         "model": model,
         "max_tokens": int(config.get("max_output_tokens", DEFAULT_LLM_CONFIG["max_output_tokens"])),
         "temperature": float(config.get("temperature", DEFAULT_LLM_CONFIG["temperature"])),
+        "top_p": float(config.get("top_p", DEFAULT_LLM_CONFIG["top_p"])),
         "system": _system_with_preferences(system, config),
         "messages": [{"role": "user", "content": content}],
     }
@@ -433,6 +436,7 @@ def _call_google_gemini(
         "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {
             "temperature": float(config.get("temperature", DEFAULT_LLM_CONFIG["temperature"])),
+            "topP": float(config.get("top_p", DEFAULT_LLM_CONFIG["top_p"])),
             "maxOutputTokens": int(config.get("max_output_tokens", DEFAULT_LLM_CONFIG["max_output_tokens"])),
             "responseMimeType": "application/json",
         },
@@ -475,6 +479,7 @@ def _call_xai_grok(
         ],
         "response_format": {"type": "json_object"},
         "temperature": float(config.get("temperature", DEFAULT_LLM_CONFIG["temperature"])),
+        "top_p": float(config.get("top_p", DEFAULT_LLM_CONFIG["top_p"])),
         "max_tokens": int(config.get("max_output_tokens", DEFAULT_LLM_CONFIG["max_output_tokens"])),
     }
     request = urllib.request.Request(

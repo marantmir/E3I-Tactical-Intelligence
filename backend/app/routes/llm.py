@@ -23,6 +23,7 @@ class LLMConfigUpdate(BaseModel):
     model: str | None = None
     timeout_seconds: int | None = Field(default=None, ge=3, le=90)
     temperature: float | None = Field(default=None, ge=0, le=1)
+    top_p: float | None = Field(default=None, ge=0, le=1)
     max_output_tokens: int | None = Field(default=None, ge=200, le=6000)
     language: str | None = None
     analysis_depth: str | None = None
