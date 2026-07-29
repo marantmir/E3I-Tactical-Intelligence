@@ -119,11 +119,22 @@ def _collect_from_link(url: str, errors: list[dict]) -> list[dict]:
     description = ""
     site_name = ""
     try:
-        page = _fetch_html_capped(normalized)
-        # og:title evita sufixos de plataforma (ex.: "Titulo do video - YouTube").
-        title = _extract_meta(page, "og:title") or _extract_title(page)
-        description = _extract_meta(page, "description") or _extract_meta(page, "og:description")
-        site_name = _extract_meta(page, "og:site_name")
+        if _is_youtube_url(normalized):
+            # A pagina de visualizacao bloqueia com frequencia IPs de datacenter.
+            # O endpoint oEmbed e a interface publica apropriada para obter os
+            # metadados basicos do video sem raspar a pagina inteira.
+            metadata = _fetch_youtube_oembed(normalized)
+            title = str(metadata.get("title") or "").strip()[:180]
+            author = str(metadata.get("author_name") or "").strip()
+            site_name = "YouTube"
+            if author:
+                description = f"Video publicado no YouTube pelo canal {author}."
+        else:
+            page = _fetch_html_capped(normalized)
+            # og:title evita sufixos de plataforma (ex.: "Titulo do video - YouTube").
+            title = _extract_meta(page, "og:title") or _extract_title(page)
+            description = _extract_meta(page, "description") or _extract_meta(page, "og:description")
+            site_name = _extract_meta(page, "og:site_name")
     except Exception as error:
         errors.append({"source": "Leitura da pagina", "error": error.__class__.__name__})
 
@@ -252,6 +263,23 @@ def _fetch_html_capped(url: str) -> str:
     # user-agent "de robo"; um UA de navegador comum e o que evita o bloqueio
     # (mesma solucao ja usada em web_search/youtube_search).
     return fetch_page(url, timeout=TIMEOUT_SECONDS)
+
+
+def _is_youtube_url(url: str) -> bool:
+    hostname = (urllib.parse.urlparse(url).hostname or "").casefold()
+    return hostname == "youtu.be" or hostname == "youtube.com" or hostname.endswith(".youtube.com")
+
+
+def _fetch_youtube_oembed(url: str) -> dict:
+    endpoint = "https://www.youtube.com/oembed?" + urllib.parse.urlencode(
+        {"url": url, "format": "json"}
+    )
+    # Mantem o user-agent de navegador usado pelo restante da coleta: alguns
+    # proxies rejeitam o identificador de automacao mesmo no endpoint oEmbed.
+    payload = json.loads(fetch_page(endpoint, timeout=TIMEOUT_SECONDS))
+    if not isinstance(payload, dict) or not payload.get("title"):
+        raise ValueError("Resposta oEmbed do YouTube sem titulo.")
+    return payload
 
 
 def _validate_public_url(url: str) -> None:

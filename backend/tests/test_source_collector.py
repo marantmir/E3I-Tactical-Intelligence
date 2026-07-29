@@ -1,4 +1,5 @@
 import urllib.error
+import urllib.parse
 
 import pytest
 
@@ -32,7 +33,7 @@ YOUTUBE_PAGE = """
 def test_collect_from_link_extracts_title_and_description(monkeypatch):
     monkeypatch.setattr(source_collector, "_fetch_html_capped", lambda _url: SAMPLE_PAGE)
 
-    result = source_collector.collect_sources("link", "https://youtube.com/watch?v=abc123")
+    result = source_collector.collect_sources("link", "https://vimeo.com/abc123")
 
     assert result["status"] == "collected"
     assert result["errors"] == []
@@ -71,14 +72,13 @@ def test_collect_from_link_registers_source_even_when_fetch_fails(monkeypatch):
     assert result["errors"][0]["error"] == "TimeoutError"
 
 
-def test_collect_from_link_registers_source_when_site_blocks_bot_user_agent(monkeypatch):
-    # Regressao: YouTube (e outros sites de video) devolvem 403 HTTPError
-    # para um user-agent "de robo"; o link ainda deve ser registrado, com o
-    # erro tratado reportado, em vez de deixar a excecao vazar.
+def test_collect_from_link_registers_source_when_youtube_oembed_fails(monkeypatch):
+    # Mesmo se o endpoint publico estiver indisponivel, o link deve continuar
+    # registrado e o erro tratado nao pode vazar para a interface.
     def fake_fetch(_url):
         raise urllib.error.HTTPError("https://youtu.be/CX91i5l296c", 403, "Forbidden", {}, None)
 
-    monkeypatch.setattr(source_collector, "_fetch_html_capped", fake_fetch)
+    monkeypatch.setattr(source_collector, "_fetch_youtube_oembed", fake_fetch)
 
     result = source_collector.collect_sources("link", "https://youtu.be/CX91i5l296c")
 
@@ -107,11 +107,52 @@ def test_fetch_html_capped_uses_browser_user_agent_not_bot_ua(monkeypatch):
     assert "E3I-Tactical-Intelligence" not in captured["user_agent"]
 
 
+def test_collect_from_youtube_uses_oembed_instead_of_scraping_watch_page(monkeypatch):
+    captured = {}
+
+    def fake_oembed(url):
+        captured["url"] = url
+        return {"title": "Palmeiras vence com gol no fim", "author_name": "Canal Tatico"}
+
+    monkeypatch.setattr(source_collector, "_fetch_youtube_oembed", fake_oembed)
+    monkeypatch.setattr(
+        source_collector,
+        "_fetch_html_capped",
+        lambda _url: pytest.fail("a pagina do YouTube nao deve ser raspada"),
+    )
+
+    result = source_collector.collect_sources("link", "https://www.youtube.com/watch?v=CX91i5l296c")
+
+    assert captured["url"] == "https://www.youtube.com/watch?v=CX91i5l296c"
+    assert result["errors"] == []
+    assert result["note"] == "Pagina lida com sucesso; titulo e resumo extraidos automaticamente."
+    assert result["sources"][0]["title"] == "Palmeiras vence com gol no fim"
+    assert result["sources"][0]["origin"] == "YouTube"
+    assert result["sources"][0]["summary"] == "Video publicado no YouTube pelo canal Canal Tatico."
+
+
+def test_fetch_youtube_oembed_encodes_original_url(monkeypatch):
+    captured = {}
+
+    def fake_fetch_page(url, timeout):
+        captured.update(url=url, timeout=timeout)
+        return '{"title": "Treino tatico", "author_name": "Canal"}'
+
+    monkeypatch.setattr(source_collector, "fetch_page", fake_fetch_page)
+
+    metadata = source_collector._fetch_youtube_oembed("https://youtu.be/abc123?t=30")
+
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(captured["url"]).query)
+    assert query == {"url": ["https://youtu.be/abc123?t=30"], "format": ["json"]}
+    assert captured["timeout"] == source_collector.TIMEOUT_SECONDS
+    assert metadata["title"] == "Treino tatico"
+
+
 def test_collect_from_link_prefers_og_title_over_page_title(monkeypatch):
     # og:title evita sufixos de plataforma (ex.: "... - YouTube").
     monkeypatch.setattr(source_collector, "_fetch_html_capped", lambda _url: YOUTUBE_PAGE)
 
-    result = source_collector.collect_sources("link", "https://youtu.be/CX91i5l296c")
+    result = source_collector.collect_sources("link", "https://vimeo.com/CX91i5l296c")
 
     source = result["sources"][0]
     assert source["title"] == "Palmeiras vence com gol no fim"
