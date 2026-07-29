@@ -344,6 +344,8 @@ def _call_openai_responses(
     for image in images or []:
         if not image.get("data"):
             continue
+        if image.get("caption"):
+            user_content.append({"type": "input_text", "text": image["caption"]})
         media_type = image.get("media_type", "image/jpeg")
         user_content.append({"type": "input_image", "image_url": f"data:{media_type};base64,{image['data']}"})
 
@@ -383,17 +385,18 @@ def _call_anthropic_messages(
 ) -> str:
     valid_images = [image for image in images or [] if image.get("data")]
     if valid_images:
-        content = [
-            {
+        content = []
+        for image in valid_images:
+            if image.get("caption"):
+                content.append({"type": "text", "text": image["caption"]})
+            content.append({
                 "type": "image",
                 "source": {
                     "type": "base64",
                     "media_type": image.get("media_type", "image/jpeg"),
                     "data": image["data"],
                 },
-            }
-            for image in valid_images
-        ]
+            })
         content.append({"type": "text", "text": user})
     else:
         content = user
@@ -425,11 +428,13 @@ def _call_google_gemini(
     system: str, user: str, config: dict, api_key: str, model: str, images: list[dict] | None = None
 ) -> str:
     url = f"{GOOGLE_GEMINI_URL_TEMPLATE.format(model=model)}?key={urllib.parse.quote(api_key)}"
-    parts = [
-        {"inlineData": {"mimeType": image.get("media_type", "image/jpeg"), "data": image["data"]}}
-        for image in images or []
-        if image.get("data")
-    ]
+    parts = []
+    for image in images or []:
+        if not image.get("data"):
+            continue
+        if image.get("caption"):
+            parts.append({"text": image["caption"]})
+        parts.append({"inlineData": {"mimeType": image.get("media_type", "image/jpeg"), "data": image["data"]}})
     parts.append({"text": user})
     body = {
         "systemInstruction": {"parts": [{"text": _system_with_preferences(system, config)}]},
@@ -461,13 +466,14 @@ def _call_xai_grok(
     # API da xAI e compatível com o formato Chat Completions da OpenAI.
     valid_images = [image for image in images or [] if image.get("data")]
     if valid_images:
-        user_content = [{"type": "text", "text": user}] + [
-            {
+        user_content = [{"type": "text", "text": user}]
+        for image in valid_images:
+            if image.get("caption"):
+                user_content.append({"type": "text", "text": image["caption"]})
+            user_content.append({
                 "type": "image_url",
                 "image_url": {"url": f"data:{image.get('media_type', 'image/jpeg')};base64,{image['data']}"},
-            }
-            for image in valid_images
-        ]
+            })
     else:
         user_content = user
 
