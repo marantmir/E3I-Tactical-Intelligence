@@ -246,6 +246,7 @@ def test_grok_request_returns_empty_text_when_no_choices(monkeypatch):
 
 
 _SAMPLE_IMAGE = {"media_type": "image/jpeg", "data": "ZmFrZS1qcGVn"}
+_CAPTIONED_IMAGE = {**_SAMPLE_IMAGE, "caption": "t=4.2s - Disputa/desarme"}
 
 
 def test_openai_request_embeds_images_as_data_uri(monkeypatch):
@@ -280,6 +281,23 @@ def test_openai_request_without_images_keeps_text_only_content(monkeypatch):
     )
 
     assert captured["body"]["input"][1]["content"] == [{"type": "input_text", "text": "user"}]
+
+
+def test_openai_request_places_caption_immediately_before_image(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        llm_assistant.urllib.request,
+        "urlopen",
+        lambda request, timeout=None: captured.update(body=json.loads(request.data))
+        or _FakeResponse({"output_text": "{}"}),
+    )
+
+    llm_assistant._call_openai_responses("sys", "user", {}, "key", "model", [_CAPTIONED_IMAGE])
+
+    assert captured["body"]["input"][1]["content"][1:] == [
+        {"type": "input_text", "text": "t=4.2s - Disputa/desarme"},
+        {"type": "input_image", "image_url": "data:image/jpeg;base64,ZmFrZS1qcGVn"},
+    ]
 
 
 def test_anthropic_request_embeds_images_as_base64_blocks(monkeypatch):
@@ -319,6 +337,22 @@ def test_anthropic_request_without_images_keeps_plain_string_content(monkeypatch
     assert captured["body"]["messages"] == [{"role": "user", "content": "user"}]
 
 
+def test_anthropic_request_associates_caption_with_image(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        llm_assistant.urllib.request,
+        "urlopen",
+        lambda request, timeout=None: captured.update(body=json.loads(request.data))
+        or _FakeResponse({"content": [{"type": "text", "text": "{}"}]}),
+    )
+
+    llm_assistant._call_anthropic_messages("sys", "user", {}, "key", "model", [_CAPTIONED_IMAGE])
+
+    content = captured["body"]["messages"][0]["content"]
+    assert content[0] == {"type": "text", "text": "t=4.2s - Disputa/desarme"}
+    assert content[1]["type"] == "image"
+
+
 def test_gemini_request_embeds_images_as_inline_data(monkeypatch):
     captured = {}
 
@@ -337,6 +371,22 @@ def test_gemini_request_embeds_images_as_inline_data(monkeypatch):
     assert parts[1] == {"text": "user"}
 
 
+def test_gemini_request_associates_caption_with_image(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        llm_assistant.urllib.request,
+        "urlopen",
+        lambda request, timeout=None: captured.update(body=json.loads(request.data))
+        or _FakeResponse({"candidates": [{"content": {"parts": [{"text": "{}"}]}}]}),
+    )
+
+    llm_assistant._call_google_gemini("sys", "user", {}, "key", "model", [_CAPTIONED_IMAGE])
+
+    parts = captured["body"]["contents"][0]["parts"]
+    assert parts[0] == {"text": "t=4.2s - Disputa/desarme"}
+    assert "inlineData" in parts[1]
+
+
 def test_grok_request_embeds_images_as_image_url_blocks(monkeypatch):
     captured = {}
 
@@ -353,6 +403,22 @@ def test_grok_request_embeds_images_as_image_url_blocks(monkeypatch):
     content = captured["body"]["messages"][1]["content"]
     assert content[0] == {"type": "text", "text": "user"}
     assert content[1] == {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,ZmFrZS1qcGVn"}}
+
+
+def test_grok_request_associates_caption_with_image(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(
+        llm_assistant.urllib.request,
+        "urlopen",
+        lambda request, timeout=None: captured.update(body=json.loads(request.data))
+        or _FakeResponse({"choices": [{"message": {"content": "{}"}}]}),
+    )
+
+    llm_assistant._call_xai_grok("sys", "user", {}, "key", "model", [_CAPTIONED_IMAGE])
+
+    content = captured["body"]["messages"][1]["content"]
+    assert content[1] == {"type": "text", "text": "t=4.2s - Disputa/desarme"}
+    assert content[2]["type"] == "image_url"
 
 
 def test_analyze_video_visually_falls_back_without_key_frames():
