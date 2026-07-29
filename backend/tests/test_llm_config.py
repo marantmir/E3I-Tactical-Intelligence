@@ -85,3 +85,8 @@ def test_default_max_output_tokens_is_a_valid_step_value():
     floor = 200
     step = 100
     assert (default - floor) % step == 0
+
+
+def test_save_llm_config_clamps_top_p():
+    assert llm_config.save_llm_config({"top_p": 2})["top_p"] == 1
+    assert llm_config.save_llm_config({"top_p": -1})["top_p"] == 0

@@ -19,6 +19,7 @@ const initialForm = {
   model: "gpt-4.1-mini",
   timeout_seconds: 18,
   temperature: 0.2,
+  top_p: 0.9,
   max_output_tokens: 1400,
   language: "pt-BR",
   analysis_depth: "profunda",
@@ -100,6 +101,7 @@ export default function FutureAI() {
         ...form,
         timeout_seconds: Number(form.timeout_seconds),
         temperature: Number(form.temperature),
+        top_p: Number(form.top_p),
         max_output_tokens: Number(form.max_output_tokens)
       };
       if (!payload.api_key) delete payload.api_key;
@@ -243,6 +245,20 @@ export default function FutureAI() {
             value={form.max_output_tokens}
             onChange={updateField}
           />
+        </label>
+
+        <label>
+          Top P
+          <input
+            max="1"
+            min="0"
+            name="top_p"
+            step="0.05"
+            type="number"
+            value={form.top_p}
+            onChange={updateField}
+          />
+          <small>0,9 preserva variedade limitada; reduza para respostas mais concentradas.</small>
         </label>
 
         <label>

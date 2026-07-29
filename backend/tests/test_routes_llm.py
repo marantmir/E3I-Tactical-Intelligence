@@ -14,6 +14,7 @@ def test_get_config_lists_all_supported_providers():
     provider_values = {item["value"] for item in payload["options"]["providers"]}
     assert provider_values == {"openai_responses", "anthropic_messages", "google_gemini", "xai_grok"}
     assert payload["config"]["provider"] == "openai_responses"  # default antes de qualquer troca
+    assert payload["config"]["top_p"] == 0.9
 
 
 def test_update_config_switches_to_anthropic_and_persists():

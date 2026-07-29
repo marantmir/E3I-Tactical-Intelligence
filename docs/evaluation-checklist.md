@@ -45,3 +45,23 @@
 - [x] Suite `pytest` cobrindo `graph_analysis`, `video_vision`, rate limiting, logging e rotas de `teams`/`analysis`.
 - [x] Fluxo analisado no navegador local.
 - [ ] Validar console no endpoint publicado.
+
+## Experimento LLM reproduzível
+
+Use o mesmo vídeo, `visual_key_frames` e JSON de métricas em todas as execuções. Não misture partidas nem altere prompt entre células. Execute cada célula três vezes e preserve as respostas (sem chaves) em um artefato datado.
+
+| Execução | Provedor/modelo | Temperatura | Top P | JSON válido | Afirmações sustentadas / total | Alucinações | Latência (ms) | Tokens/custo |
+|---|---|---:|---:|---|---:|---:|---:|---:|
+| A1–A3 | modelo sob teste | 0,2 | 0,9 |  |  |  |  |  |
+| B1–B3 | mesmo modelo | 0,0 | 0,9 |  |  |  |  |  |
+| C1–C3 | modelo alternativo | 0,2 | 0,9 |  |  |  |  |  |
+
+### Rubrica (0–2 por item)
+
+1. **Grounding:** cada afirmação aponta para quadro, evento ou métrica fornecida.
+2. **Calibração:** incerteza aumenta quando há poucos rastros/bola ausente.
+3. **Utilidade tática:** próxima ação é verificável pela comissão técnica.
+4. **Contrato:** JSON válido e campos esperados, sem prosa externa.
+5. **Segurança factual:** nenhum nome, número, placar ou jogada sem evidência.
+
+Antes de comparar modelos, defina o limiar: zero alucinações graves, JSON válido em 3/3 e pelo menos 8/10 na rubrica. Registre indisponibilidade de rede como “não executado”, nunca como resultado de qualidade. Esta tabela é um protocolo; o repositório não declara vencedor sem execuções reais e custos auditáveis.

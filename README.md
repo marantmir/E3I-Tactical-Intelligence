@@ -126,7 +126,7 @@ Pelo app, acesse `IA avançada` (`/future-ai`) para parametrizar:
 - habilitar/desabilitar uso da LLM;
 - informar API key;
 - selecionar modelo;
-- ajustar timeout, temperatura e limite de tokens;
+- ajustar `top_p` (amostragem por núcleo), além de timeout, temperatura e limite de tokens;
 - definir idioma, profundidade, escopo de busca e modo de identificação visual.
 
 As configurações locais ficam em `backend/data/llm_config.json`, arquivo ignorado pelo Git por poder conter chave de API.
@@ -140,3 +140,62 @@ $env:E3I_LLM_TIMEOUT_SECONDS="18"
 Também é possível configurar por variáveis de ambiente. O modelo nunca deve inventar nomes de jogadores: quando OCR/crops da camisa não forem suficientes, a interface mantém a identidade como "não identificado" e orienta a confirmação visual.
 
 Repositorio alvo: `https://github.com/marantmir/e3i-tactical-intelligence`
+
+## Processo de desenvolvimento e decisões
+
+### Escolhas e alternativas consideradas
+
+| Decisão | Alternativas avaliadas | Motivo e consequência |
+|---|---|---|
+| FastAPI + React/Vite | Next.js full-stack; Django | Preserva a separação do pipeline Python/OpenCV e uma UI leve. Em troca, deploy e contratos HTTP precisam ser mantidos em duas camadas. |
+| APIs HTTP diretas dos provedores | SDK de cada fornecedor; LangChain/LlamaIndex | Evita quatro SDKs pesados e deixa payload, timeout e fallback auditáveis. O custo é manter adaptadores próprios e não herdar automaticamente recursos novos dos SDKs. |
+| SQLite | PostgreSQL; somente JSON | É reproduzível sem serviço externo e suficiente para histórico local. Não é a escolha para escrita concorrente em escala; a migração para PostgreSQL fica indicada antes de uso multi-instância. |
+| OpenCV + heurísticas auditáveis | Detector supervisionado proprietário | Funciona sem GPU/modelo adicional e expõe limites. Perde precisão em oclusão, identidade e câmera fechada; portanto a saída é hipótese revisável, não verdade de campo. |
+| Até seis quadros JPEG anotados | Vídeo integral no modelo; um único frame | Distribui evidências relevantes pelo vídeo com custo/latência limitados. Pode omitir um lance entre amostras, mitigado pelo vídeo anotado e revisão humana. |
+| Fallback determinístico | Falhar a requisição sem chave/rede | Mantém o endpoint funcional e testável. A UI identifica o provedor e a confiança para não confundir fallback com inferência do modelo. |
+
+Não foi adotado um framework de agentes porque o fluxo é conhecido, curto e sensível a evidência: coleta → CV → contexto estruturado → uma síntese JSON → revisão humana. Uma camada de tool calling nativo seria apropriada quando o modelo precisar decidir dinamicamente entre fontes; no estado atual, as ferramentas são orquestradas pela aplicação antes da chamada. Essa distinção é deliberadamente explícita: **busca, OCR, CV e pesquisa operacional não são anunciados como functions/tools do provedor**.
+
+### Estratégia de prompting
+
+Os prompts ficam junto de cada caso de uso em `backend/app/llm_assistant.py`, e o histórico/contratos estão em `docs/prompts.md`. A estratégia é:
+
+1. delimitar o papel (analista de desempenho) e o universo permitido (futebol);
+2. enviar somente fontes, métricas e quadros selecionados pelo pipeline;
+3. exigir JSON e separar observação, inferência, confiança e próxima validação;
+4. proibir nomes, placar e jogadas sem evidência;
+5. cruzar a observação multimodal com métricas de CV e registrar divergências;
+6. preservar um resultado determinístico quando não há chave, imagem ou rede.
+
+O exemplo few-shot completo e os casos adversariais estão em `docs/prompts.md`; eles demonstram a diferença entre evidência observável e inferência aceitável.
+
+### Parâmetros e hipótese de configuração
+
+- `temperature=0.2`: baixa variância para relatório técnico e JSON estável.
+- `top_p=0.9`: remove a cauda menos provável sem tornar toda resposta idêntica. Em avaliação controlada, altere **temperatura ou top-p, não ambos**, para atribuir o efeito observado.
+- `max_output_tokens=1400`: comporta observações por quadro e resumo, evitando respostas abertas excessivas.
+- `timeout=18s`: compromisso para uma requisição multimodal pequena em deploy web; timeout aciona fallback explícito.
+- `gpt-4.1-mini` é o padrão por custo/latência, não uma alegação de superioridade. A tela permite repetir o mesmo caso nos quatro provedores.
+
+Para comparação reproduzível, use o protocolo e a planilha-modelo de `docs/evaluation-checklist.md`: congele entrada, quadros e rubric; rode três repetições por configuração; registre validade JSON, aderência às evidências, alucinações, latência e custo informado pelo provedor. Chaves reais não são versionadas, por isso resultados pagos não são fabricados neste repositório.
+
+## O que funcionou, o que falhou e como o agente foi usado
+
+### Funcionou
+
+- Iterações pequenas com testes de rota e unidade detectaram regressões de persistência, fallback e payload multiprovedor.
+- A separação entre CV e LLM permitiu corrigir a lacuna inicial em que o modelo recebia apenas números: agora os quadros reais anotados também são enviados.
+- Fallbacks locais e mocks tornaram build/testes reproduzíveis sem chaves ou egress.
+- A inspeção visual revelou problemas que testes HTTP não capturavam, como sobreposição de controles e falta de feedback no processamento.
+
+### Falhou ou teve resultado limitado
+
+- A primeira versão chamava de “análise visual por LLM” uma síntese baseada somente em métricas; o modelo **não via imagens**. A solução foi capturar e enviar quadros-chave reais e renomear/expor a etapa multimodal.
+- Buscas reais de Wikipedia/DuckDuckGo falharam em ambientes com egress bloqueado. Foram validadas com mocks e mantêm coleta guiada como fallback; isso não prova disponibilidade do serviço externo.
+- Tracking heurístico não identifica com segurança jogadores em oclusão ou camisa ilegível. O sistema mantém “não identificado” e solicita confirmação, em vez de completar nomes.
+- A tentativa de cobrir vídeo longo lendo apenas os primeiros `max_frames` enviesava a análise. A amostragem passou a distribuir seeks por toda a duração e ganhou testes para metadado ausente/incorreto.
+- Tool calling nativo ainda não foi implementado. As ferramentas alimentam o contexto pelo backend; documentar honestamente essa lacuna evita atribuir ao modelo uma autonomia que ele não tem.
+
+### Registro do agente
+
+`docs/agent-log.md` registra pedidos, hipótese, implementação, validação e limitações por entrega; `docs/prompts.md` preserva prompts representativos e evolução. O agente foi usado para implementar, escrever testes, executar `pytest`/build e revisar o diff. Decisões de produto (identidade sem evidência, custo de quadros e ausência de login) permaneceram explícitas e sujeitas a revisão humana.

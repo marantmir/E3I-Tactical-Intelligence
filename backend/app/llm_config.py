@@ -54,6 +54,7 @@ DEFAULT_LLM_CONFIG = {
     "model": PROVIDER_DEFAULT_MODELS["openai_responses"],
     "timeout_seconds": 18,
     "temperature": 0.2,
+    "top_p": 0.9,
     "max_output_tokens": 1400,
     "language": "pt-BR",
     "analysis_depth": "profunda",
@@ -96,6 +97,7 @@ def public_llm_config() -> dict:
         "model": config.get("model") or DEFAULT_LLM_CONFIG["model"],
         "timeout_seconds": config.get("timeout_seconds") or DEFAULT_LLM_CONFIG["timeout_seconds"],
         "temperature": config.get("temperature"),
+        "top_p": config.get("top_p"),
         "max_output_tokens": config.get("max_output_tokens"),
         "language": config.get("language"),
         "analysis_depth": config.get("analysis_depth"),
@@ -127,6 +129,8 @@ def save_llm_config(payload: dict) -> dict:
         next_config["timeout_seconds"] = _clamp_int(payload["timeout_seconds"], 3, 90)
     if "temperature" in payload and payload["temperature"] is not None:
         next_config["temperature"] = _clamp_float(payload["temperature"], 0, 1)
+    if "top_p" in payload and payload["top_p"] is not None:
+        next_config["top_p"] = _clamp_float(payload["top_p"], 0, 1)
     if "max_output_tokens" in payload and payload["max_output_tokens"] is not None:
         next_config["max_output_tokens"] = _clamp_int(payload["max_output_tokens"], 200, 6000)
 
