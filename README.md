@@ -141,6 +141,29 @@ Também é possível configurar por variáveis de ambiente. O modelo nunca deve 
 
 Repositorio alvo: `https://github.com/marantmir/e3i-tactical-intelligence`
 
+## Runtime de ferramentas LLM
+
+```mermaid
+flowchart LR
+    UI[React] --> API[FastAPI]
+    API --> L[Camada LLM opcional]
+    API --> R[Tool Registry]
+    R --> S[get_llm_status]
+    R --> T[Validação, limites e timeout]
+    T --> O[Logs sem credenciais]
+    API --> DB[(SQLite)]
+```
+
+O runtime em `backend/app/tool_registry.py` mantém um registro explícito de ferramentas com allowlist, validação de entrada por schema, limites de tamanho e timeout. Atualmente, a ferramenta registrada expõe somente o estado seguro da configuração LLM, sem retornar credenciais. O registro é uma base controlada para integrações futuras e **não significa que o provedor já faça tool calling nativo**.
+
+### Princípios do runtime
+
+- Ausência de evidência não equivale a zero; o fallback deve declarar suas limitações em vez de fabricar conteúdo.
+- Entradas e saídas de ferramentas são validadas e limitadas antes de serem usadas pela aplicação.
+- Erros internos e secrets não são incluídos nas respostas nem nos eventos de observabilidade.
+- A allowlist impede a execução de funções que não tenham sido registradas deliberadamente.
+- O fluxo permanece determinístico e testável sem chave de API ou acesso à rede.
+
 ## Processo de desenvolvimento e decisões
 
 ### Escolhas e alternativas consideradas
