@@ -140,3 +140,29 @@ $env:E3I_LLM_TIMEOUT_SECONDS="18"
 Também é possível configurar por variáveis de ambiente. O modelo nunca deve inventar nomes de jogadores: quando OCR/crops da camisa não forem suficientes, a interface mantém a identidade como "não identificado" e orienta a confirmação visual.
 
 Repositorio alvo: `https://github.com/marantmir/e3i-tactical-intelligence`
+
+## Runtime de Inteligência Tática
+
+```mermaid
+flowchart LR
+    UI[React] --> API[FastAPI]
+    API --> O[Tool Orchestrator]
+    O --> R[Tool Registry]
+    R --> S[Search adapter]
+    R --> C[OCR adapter]
+    R --> V[Video adapter]
+    R --> M[Metrics adapter]
+    S -. online only .-> EXT[Mock or external APIs]
+    O --> T[P-P-R-L traces + latency]
+    O --> L[Grounded LLM JSON]
+    API --> DB[(SQLite)]
+```
+
+O runtime em `backend/app/intelligence` registra ferramentas por contrato e recebe suas dependências por injeção. O modo padrão é `offline`: ferramentas de rede são ignoradas com anotação `DADO_AUSENTE`, enquanto OCR, vídeo e métricas locais continuam. Use `E3I_INTELLIGENCE_MODE=online` apenas com adaptadores e secrets configurados no ambiente. Consulte o [relatório de validação](docs/validation-report.md), o [índice de ADRs](docs/validation-report.md#adr-index) e a [apresentação técnica](docs/technical-presentation.md).
+
+### Lessons Learned
+
+- Ausência de evidência não equivale a zero; deve ser um estado explícito, com motivo e procedência.
+- Reparar envelopes JSON é seguro; “reparar” conteúdo tático ausente seria fabricação e permanece proibido.
+- Injeção de adaptadores torna APIs externas mockáveis e mantém CI offline determinístico.
+- Medir antes de paralelizar preserva rastros reproduzíveis e cria uma linha de base real de latência.

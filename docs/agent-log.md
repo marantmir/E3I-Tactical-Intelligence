@@ -92,3 +92,14 @@ O agente evoluiu o E3I Tactical Intelligence para uma plataforma de inteligencia
 - Build de frontend com `npm run build`.
 - Verificacao visual no navegador local.
 - Varredura de textos antigos no codigo e nos dados exibidos.
+
+## Entrega — Registry/Orchestrator e grounding auditável (28/07/2026)
+
+### P-P-R-L
+- **Perceive:** quatro classes de ferramenta tinham disponibilidade e falhas distintas; dados parciais e ruído JSON precisavam ficar visíveis.
+- **Plan:** introduzir contratos injetáveis, modo offline seguro, prompt único com três casos e telemetria monotônica, sem alterar rotas existentes.
+- **Reason:** uma falha isolada não deve invalidar o dossiê; o reparo pode remover wrappers, mas não criar evidência semântica.
+- **Learn:** execução sequencial oferece baseline reproduzível. Paralelismo fica parametrizado, porém adiado até os traces indicarem benefício e limites adequados.
+
+### Evidência de validação
+A suíte usa mocks puros para Search/OCR/Video/Metrics. Nenhuma credencial ou chamada externa é necessária. Resultados finais dos comandos são registrados na resposta da entrega e no relatório estruturado.

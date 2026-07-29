@@ -8,6 +8,7 @@ import urllib.parse
 import urllib.request
 
 from .llm_config import DEFAULT_LLM_CONFIG, PROVIDER_DEFAULT_MODELS, get_llm_runtime_config
+from .intelligence.prompts import repair_json_object
 
 
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
@@ -321,7 +322,7 @@ def _call_llm_json(system: str, user: str, fallback: dict, images: list[dict] | 
     model = config.get("model") or PROVIDER_DEFAULT_MODELS.get(provider, DEFAULT_MODEL)
     try:
         text = caller(system, user, config, api_key, model, images)
-        parsed = json.loads(_extract_json_object(text)) if text else {}
+        parsed = repair_json_object(text) if text else {}
         if not isinstance(parsed, dict):
             return fallback
         parsed.setdefault("status", "llm_enriched")
