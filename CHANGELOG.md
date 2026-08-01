@@ -8,3 +8,8 @@
 - Added reproducible Make targets, backend/frontend checks, and a complete GitHub Actions CI workflow.
 - Added a frontend baseline test and dependency-free lint checks.
 - Documented setup, validation, evidence, and remaining environment limitations.
+
+### Added
+
+- Added a provider-neutral native tool-calling orchestrator with normalized calls/results, correlated history, a bounded model loop, safe registry execution, sanitized failures, and deterministic fallback.
+- Added an offline end-to-end mock-provider test suite proving the initial `get_llm_status` flow and its safety limits.

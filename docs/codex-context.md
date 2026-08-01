@@ -13,3 +13,9 @@ Tests must remain offline and deterministic. The autouse fixtures isolate SQLite
 ## Scope boundary
 
 This baseline changes validation infrastructure only. It does not add provider tool calling, tools, paid calls, or product behavior.
+
+## Native tool orchestration core
+
+`backend/app/llm_tool_orchestrator.py` owns a provider-neutral, dependency-free loop. It receives normalized provider turns, limits the loop to 4 iterations by default (configurable from 1 through 8), executes only allowlisted `ToolRegistry` entries, correlates results by call ID, preserves caller history, and returns a deterministic fallback when the model fails or never completes. Tool definitions still own validation, timeout, and byte limits.
+
+This phase proves only `get_llm_status` with mock adapters. Do not describe the four production providers as native-tool-enabled yet; their adapters and the broader tactical tool catalog are follow-up work. Existing text and multimodal paths remain separate and unchanged.

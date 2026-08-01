@@ -1,5 +1,24 @@
 # Evidências de avaliação
 
+## Núcleo nativo de tool calling — 2026-08-01 (UTC)
+
+- **Branch:** `fix/final-evaluation-compliance`
+- **Pré-condição:** `8132e04 chore: establish reproducible validation baseline` confirmado no histórico antes das alterações.
+- **Escopo:** orquestrador neutro de provedor e prova offline somente com `get_llm_status`; nenhum provedor pago foi chamado.
+
+### Resultados produzidos nesta execução
+
+| Comando | Resultado |
+|---|---|
+| `python -m pytest -q backend/tests/test_llm_tool_orchestrator.py` | **15 aprovados em 0,50 s** |
+| `python -m pytest -q` | interrompido na coleta: 4 módulos requerem `httpx`, ausente no ambiente |
+| `python -m compileall -q backend/app` | aprovado, sem saída |
+| `npm --prefix frontend run build` | aprovado; 1.629 módulos transformados em 5,81 s |
+| `make validate` | interrompido na etapa pytest pela mesma ausência de `httpx` |
+| `python -m pip install -r backend/requirements-dev.txt` | não concluído: índice bloqueado pelo proxy (HTTP 403) |
+
+O teste isolado cobre o fluxo usuário → modelo mock → tool → resultado → mesmo modelo mock → resposta final, além de allowlist, validação, timeout, sequência, histórico, limite de loop/bytes, sanitização, ausência de credencial, logging mínimo e fallback. A suíte completa não é declarada aprovada: a limitação ambiental acima ocorreu antes da execução dos testes não isolados. O build e a compilação obrigatórios foram executados separadamente com sucesso.
+
 ## Baseline reproduzível — 2026-08-01 (UTC)
 
 - **Branch:** `fix/final-evaluation-compliance`
