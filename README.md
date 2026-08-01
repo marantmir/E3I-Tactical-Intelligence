@@ -32,6 +32,29 @@ Backend FastAPI
 
 ## Como Rodar
 
+### Ambiente reproduzível
+
+Pré-requisitos: Python 3.12 e Node.js 22. Execute a partir da raiz do repositório:
+
+```bash
+make install
+make validate
+```
+
+Os comandos equivalentes, úteis para diagnóstico individual, são:
+
+```bash
+python -m pip install -r backend/requirements-dev.txt
+python -m pytest -q
+python -m compileall -q backend/app
+npm --prefix frontend install
+npm --prefix frontend test
+npm --prefix frontend run build
+make lint
+```
+
+O pytest usa a configuração raiz em `pyproject.toml`; não é necessário definir `PYTHONPATH` nem mudar para `backend`. Os testes usam dados temporários, desabilitam credenciais LLM e não dependem de chamadas externas ou pagas. O mesmo processo é executado por `.github/workflows/ci.yml`.
+
 Backend:
 
 ```powershell
@@ -59,9 +82,8 @@ python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 Testes automatizados do backend:
 
 ```powershell
-cd backend
-pip install -r requirements-dev.txt
-pytest
+python -m pip install -r backend/requirements-dev.txt
+python -m pytest -q
 ```
 
 ## Deploy Web

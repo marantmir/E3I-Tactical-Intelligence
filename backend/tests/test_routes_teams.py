@@ -375,8 +375,8 @@ def test_collect_sources_by_link_via_route(monkeypatch):
 
     monkeypatch.setattr(
         source_collector,
-        "_fetch_html_capped",
-        lambda _url: "<title>Compacto do jogo</title>",
+        "_fetch_youtube_oembed",
+        lambda _url: {"title": "Compacto do jogo", "author_name": "Canal teste"},
     )
 
     response = client.post(
