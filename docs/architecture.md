@@ -64,3 +64,11 @@ As proximas evolucoes naturais sao:
 - Integracao com APIs esportivas premium.
 - Otimizacao numerica para formacao, estrategia e substituicoes.
 - Relatorios exportados em PDF com evidencias anexadas.
+
+## Orquestracao nativa de tools (nucleo)
+
+`llm_tool_orchestrator.py` separa o formato de cada provedor (`ProviderToolAdapter`) do loop seguro. Uma resposta normalizada pode encerrar com texto ou solicitar `NormalizedToolCall`; o orquestrador normaliza JSON, encaminha exclusivamente ao `ToolRegistry`, correlaciona `NormalizedToolResult` por `tool_call_id`, anexa ambos ao histórico e chama o mesmo adaptador novamente.
+
+O limite padrão é 4 iterações e a configuração aceita somente 1 a 8. Cada definição do registry conserva timeout e limites próprios de entrada/saída; o orquestrador também limita argumentos antes da validação. Tools desconhecidas nunca são resolvidas dinamicamente. Erros internos são convertidos em mensagens genéricas; logs contêm apenas provedor, nome, status e duração, sem payload integral.
+
+A prova inicial registra somente `get_llm_status`, segura, determinística e sem expor credenciais. O núcleo e a fronteira de adaptadores estão prontos, mas os formatos nativos de tool calling dos quatro provedores e o catálogo tático completo **ainda não estão integrados**. Chamadas textuais/multimodais existentes permanecem inalteradas.

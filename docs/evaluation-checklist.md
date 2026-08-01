@@ -69,3 +69,16 @@ Use o mesmo vídeo, `visual_key_frames` e JSON de métricas em todas as execuç�
 5. **Segurança factual:** nenhum nome, número, placar ou jogada sem evidência.
 
 Antes de comparar modelos, defina o limiar: zero alucinações graves, JSON válido em 3/3 e pelo menos 8/10 na rubrica. Registre indisponibilidade de rede como “não executado”, nunca como resultado de qualidade. Esta tabela é um protocolo; o repositório não declara vencedor sem execuções reais e custos auditáveis.
+
+## Núcleo de tool calling — Prompt 2
+
+- [x] Fluxo completo offline com o mesmo modelo mock antes e depois da tool.
+- [x] `get_llm_status` executada exclusivamente pelo `ToolRegistry`.
+- [x] Chamadas/resultados normalizados e correlacionados por `tool_call_id`.
+- [x] Histórico preservado e duas chamadas sequenciais cobertas.
+- [x] Limite padrão 4 e configuração restrita a 1–8.
+- [x] Tool desconhecida, argumentos inválidos/grandes, timeout e resultado grande tratados.
+- [x] Erro interno sanitizado e logs sem argumentos integrais.
+- [x] Ausência de credencial e falha do modelo usam fluxo seguro/fallback determinístico.
+- [ ] Implementar adaptadores nativos de tool calling para os quatro provedores.
+- [ ] Registrar o catálogo completo de tools táticas.

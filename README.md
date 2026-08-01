@@ -163,28 +163,32 @@ Também é possível configurar por variáveis de ambiente. O modelo nunca deve 
 
 Repositorio alvo: `https://github.com/marantmir/e3i-tactical-intelligence`
 
-## Runtime de ferramentas LLM
+## Runtime nativo de ferramentas LLM (núcleo)
 
 ```mermaid
 flowchart LR
-    UI[React] --> API[FastAPI]
-    API --> L[Camada LLM opcional]
-    API --> R[Tool Registry]
-    R --> S[get_llm_status]
-    R --> T[Validação, limites e timeout]
-    T --> O[Logs sem credenciais]
-    API --> DB[(SQLite)]
+    U[Usuário] --> M[ProviderToolAdapter / modelo]
+    M -->|NormalizedToolCall| N[Normalização + limites]
+    N --> R[ToolRegistry: allowlist + schema]
+    R -->|timeout individual| T[get_llm_status]
+    T --> X[NormalizedToolResult + tool_call_id]
+    X --> H[Histórico preservado]
+    H --> M
+    M -->|resposta final| U
+    M -. falha ou limite .-> F[Fallback determinístico]
 ```
 
-O runtime em `backend/app/tool_registry.py` mantém um registro explícito de ferramentas com allowlist, validação de entrada por schema, limites de tamanho e timeout. Atualmente, a ferramenta registrada expõe somente o estado seguro da configuração LLM, sem retornar credenciais. O registro é uma base controlada para integrações futuras e **não significa que o provedor já faça tool calling nativo**.
+`backend/app/llm_tool_orchestrator.py` implementa o loop independente de provedor. O máximo padrão é 4 iterações e somente valores entre 1 e 8 são aceitos. Chamadas JSON são normalizadas, validadas e executadas apenas pelo `ToolRegistry`; resultados retornam ao mesmo modelo correlacionados por `tool_call_id`. Timeout e limites de entrada/saída são individuais, erros internos são sanitizados e logs registram somente duração, tool, status e provedor — nunca o conteúdo integral dos argumentos. Falha ou loop sem resposta final termina no fallback determinístico.
+
+A prova offline inicial usa apenas `get_llm_status`, que não retorna a chave. **Esta etapa entrega o núcleo e o contrato de adaptador, não a integração nativa completa dos quatro provedores nem o catálogo tático.** Os fluxos textuais e multimodais existentes continuam preservados.
 
 ### Princípios do runtime
 
-- Ausência de evidência não equivale a zero; o fallback deve declarar suas limitações em vez de fabricar conteúdo.
-- Entradas e saídas de ferramentas são validadas e limitadas antes de serem usadas pela aplicação.
-- Erros internos e secrets não são incluídos nas respostas nem nos eventos de observabilidade.
-- A allowlist impede a execução de funções que não tenham sido registradas deliberadamente.
-- O fluxo permanece determinístico e testável sem chave de API ou acesso à rede.
+- Ausência de evidência não equivale a zero; o fallback declara limitações em vez de fabricar conteúdo.
+- Entrada e saída são limitadas antes de retornarem ao modelo.
+- Exceções e secrets não são incluídos nas respostas nem nos eventos de observabilidade.
+- A allowlist impede execução arbitrária, mesmo quando o modelo pede uma tool desconhecida.
+- Testes usam adaptadores mockados, nenhuma credencial e nenhuma chamada paga ou de rede.
 
 ## Processo de desenvolvimento e decisões
 
@@ -199,7 +203,7 @@ O runtime em `backend/app/tool_registry.py` mantém um registro explícito de fe
 | Até seis quadros JPEG anotados | Vídeo integral no modelo; um único frame | Distribui evidências relevantes pelo vídeo com custo/latência limitados. Pode omitir um lance entre amostras, mitigado pelo vídeo anotado e revisão humana. |
 | Fallback determinístico | Falhar a requisição sem chave/rede | Mantém o endpoint funcional e testável. A UI identifica o provedor e a confiança para não confundir fallback com inferência do modelo. |
 
-Não foi adotado um framework de agentes porque o fluxo é conhecido, curto e sensível a evidência: coleta → CV → contexto estruturado → uma síntese JSON → revisão humana. Uma camada de tool calling nativo seria apropriada quando o modelo precisar decidir dinamicamente entre fontes; no estado atual, as ferramentas são orquestradas pela aplicação antes da chamada. Essa distinção é deliberadamente explícita: **busca, OCR, CV e pesquisa operacional não são anunciados como functions/tools do provedor**.
+Não foi adotado um framework de agentes porque o fluxo é conhecido, curto e sensível a evidência: coleta → CV → contexto estruturado → uma síntese JSON → revisão humana. O núcleo de tool calling nativo agora permite que uma resposta normalizada solicite tools, mas os adaptadores reais dos provedores e o catálogo tático ainda não foram conectados. Essa distinção é deliberadamente explícita: **busca, OCR, CV e pesquisa operacional ainda não são anunciados como functions/tools do provedor**.
 
 ### Estratégia de prompting
 

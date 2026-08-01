@@ -103,3 +103,11 @@ O agente evoluiu o E3I Tactical Intelligence para uma plataforma de inteligencia
 - Build de frontend com `npm run build`.
 - Verificacao visual no navegador local.
 - Varredura de textos antigos no codigo e nos dados exibidos.
+
+## Entrega - Núcleo nativo de tool calling (01/08/2026)
+
+- **Pré-condição confirmada:** o commit `8132e04 chore: establish reproducible validation baseline` estava no histórico antes de qualquer alteração; a branch de trabalho foi criada como `fix/final-evaluation-compliance` a partir do merge que contém esse commit.
+- **Arquitetura:** adicionados chamadas, resultados, contexto e respostas normalizados, contrato `ProviderToolAdapter` e `LLMToolOrchestrator`, sem framework externo.
+- **Fluxo provado:** usuário → modelo mock → `get_llm_status` → resultado correlacionado → mesmo modelo mock → resposta final.
+- **Proteções:** allowlist do registry, schema Pydantic, JSON normalizado, limites de bytes, timeout individual, 1–8 iterações (padrão 4), histórico, sanitização e fallback determinístico. Logs registram metadados, não argumentos.
+- **Escopo:** não foram adicionadas tools táticas nem adaptadores nativos dos quatro provedores; os caminhos textuais e multimodais existentes não foram alterados.
