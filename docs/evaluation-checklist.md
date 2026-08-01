@@ -33,6 +33,10 @@
 
 ## Validacao Tecnica
 
+- [x] Pytest executável da raiz sem `PYTHONPATH` manual (405 testes).
+- [x] Dependências de desenvolvimento incluem `pytest` e `httpx`.
+- [x] Teste baseline, lint e build do frontend possuem scripts oficiais.
+- [x] CI executa instalação, testes, compileall, build e lint em Python 3.12/Node 22.
 - [x] Registro seguro de tools independente de provedor, com allowlist, validacao, timeout e limites de tamanho.
 - [x] Testes unitarios do nucleo de tools sem chamadas externas.
 - [x] Endpoints novos: `graph-analysis`, `video-vision`, `public-intelligence`.

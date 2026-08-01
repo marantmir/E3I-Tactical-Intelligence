@@ -1,5 +1,16 @@
 # Registro do Agente
 
+## Entrega - Baseline reproduzível, testes e CI (01/08/2026)
+
+- **Objetivo:** tornar instalação, suíte backend, compilação, teste/build frontend, lint e CI executáveis por comandos únicos a partir da raiz, sem mudanças funcionais.
+- **Diagnóstico:** pytest na raiz encontrou os testes, mas falhou ao coletar quatro módulos sem `httpx`; a configuração efetiva vivia em `backend`, e o `conftest` alterava `sys.path`; depois de disponibilizar a dependência, um mock de coleta de YouTube estava ligado à antiga fronteira HTML e permitia rede real; frontend e repositório não tinham teste, lint ou CI.
+- **Arquivos modificados:** configuração raiz (`pyproject.toml`, `Makefile`, `AGENTS.md`), workflow CI, scripts/teste frontend, mock backend, README, changelog e documentação de avaliação/contexto.
+- **Decisões:** usar `pythonpath` nativo do pytest em vez de exportação de ambiente; manter dependências fixadas; usar verificadores baseline sem novas dependências; testar o contrato mínimo do frontend com `node:test`; fixar CI em Python 3.12 e Node 22.
+- **Alternativas descartadas:** não foi introduzido `xfail`, exclusão ou remoção de teste; não foi adicionado mypy a um código sem cobertura de tipos; não foi adotado ESLint sem antes poder instalar e configurar a dependência; não se alterou o comportamento do coletor para satisfazer um mock antigo.
+- **Testes executados:** 405 testes pytest, compileall, instalação npm, 1 teste frontend, build Vite, lint Python/texto e lint frontend, além de `git diff --check`.
+- **Resultado:** 405 testes backend e 1 teste frontend aprovados; compileall, build de 1.629 módulos e ambos os lints aprovados.
+- **Pendências:** ampliar testes frontend para componentes/E2E e adotar type checking gradualmente após adicionar anotações. A instalação pip foi bloqueada pelo proxy do ambiente e deve ser repetida em CI/rede liberada.
+
 ## Entrega - Leitura visual direta por LLM multimodal (18/07/2026)
 
 Ate aqui, a "analise por LLM" do video (`analyze_video_tactics`, `identify_players_from_tracks`) so recebia numeros e resumos produzidos pela visao computacional (OpenCV) - o LLM nunca via de fato uma imagem do jogo, apesar do pipeline ja gerar um video anotado. O pedido era usar visao computacional de forma eficiente para viabilizar uma leitura **visual** real por LLM, entao a mudanca fecha essa lacuna sem duplicar o pipeline de CV:
