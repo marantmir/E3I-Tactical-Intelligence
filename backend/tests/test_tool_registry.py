@@ -99,11 +99,15 @@ def test_registry_sanitizes_service_errors_and_logs_no_arguments(caplog):
     assert "super-secret" not in logs
 
 
-def test_default_registry_exposes_only_safe_existing_status_service(monkeypatch):
+def test_default_registry_exposes_allowlisted_services(monkeypatch):
     monkeypatch.setattr("app.tool_registry.llm_status", lambda: {"enabled": False, "has_api_key": False})
     registry = create_default_tool_registry()
 
-    assert [item["name"] for item in registry.list_definitions()] == ["get_llm_status"]
+    assert {item["name"] for item in registry.list_definitions()} == {
+        "get_llm_status", "search_tactical_information", "extract_tactical_ocr",
+        "analyze_video_frames", "calculate_tactical_metrics",
+        "run_operational_research", "get_team_context",
+    }
     assert registry.execute("get_llm_status", {}) == {"enabled": False, "has_api_key": False}
     with pytest.raises(ToolValidationError):
         registry.execute("get_llm_status", {"api_key": "should-not-be-accepted"})
