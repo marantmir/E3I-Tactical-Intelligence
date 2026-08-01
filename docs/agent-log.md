@@ -111,3 +111,12 @@ O agente evoluiu o E3I Tactical Intelligence para uma plataforma de inteligencia
 - **Fluxo provado:** usuário → modelo mock → `get_llm_status` → resultado correlacionado → mesmo modelo mock → resposta final.
 - **Proteções:** allowlist do registry, schema Pydantic, JSON normalizado, limites de bytes, timeout individual, 1–8 iterações (padrão 4), histórico, sanitização e fallback determinístico. Logs registram metadados, não argumentos.
 - **Escopo:** não foram adicionadas tools táticas nem adaptadores nativos dos quatro provedores; os caminhos textuais e multimodais existentes não foram alterados.
+
+## Entrega — Registro das tools táticas (01/08/2026)
+
+- Confirmados no histórico os commits `8132e04` (baseline) e `9a6160a` (orquestração).
+- Mapeados e reutilizados os serviços reais de busca, leitura visual, síntese de CV, grafo, otimização e dados locais, sem copiar algoritmos para o registry.
+- Registradas seis tools com schemas Pydantic estritos, allowlist, limites, timeouts, JSON estrito, erro sanitizado e proveniência calibrada.
+- OCR/leitura visual, métricas e pesquisa operacional são explicitamente heurísticos; busca sem fontes é declarada indisponível externamente.
+- Testes herméticos usam mocks e cobrem validação, limite, timeout, falha, serialização e duas tools sequenciais com contexto preservado.
+- Pendente: adapters de wire protocol dos provedores de produção; nenhum deles é declarado integrado.

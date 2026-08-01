@@ -81,4 +81,7 @@ Antes de comparar modelos, defina o limiar: zero alucinações graves, JSON vál
 - [x] Erro interno sanitizado e logs sem argumentos integrais.
 - [x] Ausência de credencial e falha do modelo usam fluxo seguro/fallback determinístico.
 - [ ] Implementar adaptadores nativos de tool calling para os quatro provedores.
-- [ ] Registrar o catálogo completo de tools táticas.
+- [x] Registrar as seis tools táticas mínimas e o catálogo de proveniência.
+- [x] Validar schema estrito, limites, timeout, falha sanitizada e JSON para cada tool.
+- [x] Provar duas tools táticas sequenciais e preservação do primeiro resultado.
+- [ ] Implementar adapters nativos de wire protocol para os quatro provedores.

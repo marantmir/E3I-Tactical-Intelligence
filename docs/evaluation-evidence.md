@@ -58,3 +58,18 @@ O primeiro `python -m pytest -q` interrompeu a coleta com quatro erros porque `h
 O proxy deste ambiente rejeitou acesso ao índice Python, então a instalação pip completa não pôde ser repetida aqui. Para validar a suíte, `httpx` 0.28.1 foi disponibilizado a partir de outro ambiente Python já instalado no mesmo contêiner; nenhuma cópia foi adicionada ao repositório. Em CI ou em uma máquina com acesso ao índice, `python -m pip install -r backend/requirements-dev.txt` é o caminho oficial e instalará a versão fixada. O aviso npm sobre a configuração legada `http-proxy` pertence ao ambiente e não afetou instalação, testes ou build.
 
 O frontend ainda não possui testes de componentes ou navegador; o teste adicionado estabelece apenas o contrato mínimo reproduzível do projeto. A verificação estática Python é deliberadamente mínima (parse AST + `compileall`) porque o código existente não possui anotações suficientes para introduzir um type checker estrito sem uma migração fora do escopo.
+
+## Evidência corrente — tools táticas (01/08/2026)
+
+Resultados produzidos nesta execução, depois do registro e dos testes das seis tools:
+
+| Comando | Resultado corrente |
+|---|---|
+| `python -m pytest -q` | **434 aprovados** em 68,01 s |
+| `python -m compileall -q backend/app` | aprovado, sem saída |
+| `npm --prefix frontend run build` | aprovado; 1.629 módulos transformados em 5,65 s na execução isolada |
+| `python -m pytest -q backend/tests/test_tool_registry.py backend/tests/test_tactical_tools.py backend/tests/test_llm_tool_orchestrator.py` | **39 aprovados** em 2,80 s |
+| `make validate` | aprovado: 434 testes backend, compileall, 1 teste frontend, build e ambos os lints |
+| `git diff --check` | aprovado, sem saída |
+
+A primeira tentativa da suíte falhou na coleta porque `httpx` não estava instalado no Python ativo. O proxy bloqueou `pip install -r backend/requirements-dev.txt` (HTTP 403); para completar a validação sem alterar o repositório, foi reutilizado `httpx 0.28.1` já presente no contêiner. Nenhum teste fez download, usou credencial ou API paga. A busca e os serviços externos das tools foram substituídos por mocks nos testes específicos.

@@ -13,6 +13,11 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from .llm_assistant import llm_status
 from .logging_config import LOGGER_NAME, log_event
+from .tactical_tools import (
+    OperationalResearchInput, TacticalSearchInput, TeamInput, VisionInput,
+    analyze_video_frames, calculate_tactical_metrics, extract_tactical_ocr,
+    get_team_context, run_operational_research, search_tactical_information,
+)
 
 
 _TOOL_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -139,7 +144,7 @@ class ToolRegistry:
     @staticmethod
     def _check_size(value: Any, maximum: int, message: str) -> None:
         try:
-            encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"), default=str).encode("utf-8")
+            encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
         except (TypeError, ValueError, OverflowError) as exc:
             raise ToolValidationError("Tool data is not serializable") from exc
         if len(encoded) > maximum:
@@ -151,7 +156,11 @@ def _get_llm_status(_: EmptyToolInput) -> dict[str, Any]:
 
 
 def create_default_tool_registry() -> ToolRegistry:
-    registry = ToolRegistry(allowed_tools={"get_llm_status"})
+    registry = ToolRegistry(allowed_tools={
+        "get_llm_status", "search_tactical_information", "extract_tactical_ocr",
+        "analyze_video_frames", "calculate_tactical_metrics",
+        "run_operational_research", "get_team_context",
+    })
     registry.register(
         ToolDefinition(
             name="get_llm_status",
@@ -163,4 +172,14 @@ def create_default_tool_registry() -> ToolRegistry:
             max_output_bytes=4_096,
         )
     )
+    definitions = (
+        ("search_tactical_information", "Search and rank public tactical sources.", TacticalSearchInput, search_tactical_information, 15.0, 8_192, 65_536),
+        ("extract_tactical_ocr", "Interpret visible tactical text in supplied frame observations.", VisionInput, extract_tactical_ocr, 12.0, 131_072, 65_536),
+        ("analyze_video_frames", "Analyze supplied computer-vision frame observations.", VisionInput, analyze_video_frames, 12.0, 131_072, 65_536),
+        ("calculate_tactical_metrics", "Calculate projected graph metrics for a registered team.", TeamInput, calculate_tactical_metrics, 5.0, 512, 16_384),
+        ("run_operational_research", "Optimize a registered squad against formation scenarios.", OperationalResearchInput, run_operational_research, 8.0, 1_024, 131_072),
+        ("get_team_context", "Return sanitized context for a registered team.", TeamInput, get_team_context, 3.0, 512, 65_536),
+    )
+    for name, description, model, execute, timeout, max_input, max_output in definitions:
+        registry.register(ToolDefinition(name, description, model, execute, timeout, max_input, max_output))
     return registry

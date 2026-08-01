@@ -243,7 +243,11 @@ Para comparação reproduzível, use o protocolo e a planilha-modelo de `docs/ev
 - Buscas reais de Wikipedia/DuckDuckGo falharam em ambientes com egress bloqueado. Foram validadas com mocks e mantêm coleta guiada como fallback; isso não prova disponibilidade do serviço externo.
 - Tracking heurístico não identifica com segurança jogadores em oclusão ou camisa ilegível. O sistema mantém “não identificado” e solicita confirmação, em vez de completar nomes.
 - A tentativa de cobrir vídeo longo lendo apenas os primeiros `max_frames` enviesava a análise. A amostragem passou a distribuir seeks por toda a duração e ganhou testes para metadado ausente/incorreto.
-- Tool calling nativo ainda não foi implementado. As ferramentas alimentam o contexto pelo backend; documentar honestamente essa lacuna evita atribuir ao modelo uma autonomia que ele não tem.
+- O núcleo de tool calling e seis adapters táticos validados estão implementados e testados com modelo mockado. Os adapters nativos dos provedores de produção ainda não estão ligados; não se atribui autonomia multiprovedor ao estado atual.
+
+## Tools táticas validadas
+
+O registry expõe busca tática, OCR assistido, análise de quadros, métricas, pesquisa operacional e contexto do time como camadas finas sobre serviços existentes. Schemas estritos, allowlist, limites, timeout, serialização JSON e erros sanitizados são aplicados antes/depois da delegação. Todo resultado informa origem, natureza e confiabilidade. Consulte `docs/tool-catalog.md` para contratos e limitações.
 
 ### Registro do agente
 
