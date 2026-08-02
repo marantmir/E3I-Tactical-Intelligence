@@ -94,3 +94,12 @@ Antes de comparar modelos, defina o limiar: zero alucinações graves, JSON vál
 - [x] Timeout/rate limit/temporário têm retry limitado; erros não transitórios não têm retry.
 - [x] Fallback entre mocks, limite de tentativas, contexto preservado e fallback local.
 - [x] Nenhuma chamada paga; validação online dos provedores: não executada.
+
+## Prompt runtime e resposta estruturada
+
+- [x] Papel, grounding, não invenção, fato/inferência/hipótese, conflitos, confiança e limitações no runtime real.
+- [x] Três few-shots compactos no runtime; terceiro demonstra solicitação, retorno e uso fundamentado de tool.
+- [x] Schemas internos estritos e compatíveis com JSON: finding, evidence, confidence, limitation e recommendation.
+- [x] Parsing direto, bloco Markdown único, uma tentativa de reparo e fallback estruturado.
+- [x] Casos válido, parcial, ausente, tipo, tamanho, insuficiência, conflito, reparos e quatro adaptadores cobertos offline.
+- [ ] Qualidade semântica online com provedores reais (requer credenciais e não pertence à suíte hermética).

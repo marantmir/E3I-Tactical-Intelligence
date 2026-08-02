@@ -127,3 +127,10 @@ O agente evoluiu o E3I Tactical Intelligence para uma plataforma de inteligencia
 - Adicionados retry classificado, fallback configurável e último recurso determinístico.
 - Testes usam somente `MockTransport`; nenhuma chamada real ou paga.
 - Validação online dos provedores: não executada.
+
+## 2026-08-02 — Prompt runtime e validação semântica
+
+- Adicionado contrato runtime compartilhado com três few-shots (texto, conflito multimodal e tool), limites factuais e saída estruturada.
+- Adicionados modelos Pydantic fechados, referências de evidência, calibração de confiança e regra contra certeza sem evidência.
+- Implementado parsing JSON/Markdown, reparo único injetável e fallback estruturado de confiança zero.
+- Criados testes herméticos do contrato e serialização pelos quatro adaptadores; nenhuma credencial ou rede utilizada.

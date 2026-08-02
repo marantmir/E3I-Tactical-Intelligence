@@ -76,3 +76,7 @@ A allowlist registra `get_llm_status` e seis tools táticas. `tactical_tools.py`
 ## Fronteira multiprovedor de tools
 
 `provider_tool_adapters.py` separa quatro codecs de wire format do `LLMToolOrchestrator`. O orquestrador mantém allowlist, validação e limites; adaptadores filtram parâmetros pela matriz central, fazem retry transitório e normalizam respostas. `FallbackProviderAdapter` seleciona apenas provedores configurados, preserva o histórico normalizado, registra a rota e encerra no fallback determinístico.
+
+## Respostas semânticas estruturadas
+
+`structured_llm.py` concentra prompt runtime, modelos Pydantic fechados e pipeline parse → extração Markdown controlada → validação → um reparo opcional → fallback estruturado. Referências de findings/recomendações precisam apontar para evidências existentes; confiança deve concordar com sua faixa; evidência vazia não pode sustentar certeza. `_system_with_preferences` injeta o contrato comum junto da instrução específica em todos os quatro caminhos HTTP de provedor, preservando os formatos consumidos pelo frontend existente.
