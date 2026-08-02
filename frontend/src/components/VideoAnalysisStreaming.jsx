@@ -29,7 +29,7 @@ const VideoAnalysisStreaming = () => {
     proximities: 0,
   });
   const [error, setError] = useState(null);
-  const [uploadMode, setUploadMode] = useState('file'); // 'file' or 'url'
+  const [uploadMode, setUploadMode] = useState('youtube'); // 'file' or 'youtube'
   const [videoUrl, setVideoUrl] = useState('');
   const [teamNames, setTeamNames] = useState({ '0': 'Team A', '1': 'Team B' });
 
@@ -419,7 +419,7 @@ const VideoAnalysisStreaming = () => {
    */
   const handleUrlSubmit = async () => {
     if (!videoUrl.trim()) {
-      setError('Please enter a valid video URL');
+      setError('Informe a URL de um vídeo público do YouTube.');
       return;
     }
 
@@ -437,7 +437,8 @@ const VideoAnalysisStreaming = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.detail || `Não foi possível carregar o vídeo (${response.status}).`);
       }
 
       const data = await response.json();
@@ -632,7 +633,7 @@ const VideoAnalysisStreaming = () => {
     <div className="video-analysis-streaming">
       <div className="streaming-header">
         <h2>⚽ Real-time Video Analysis</h2>
-        <p>Upload a video via file or URL to visualize player movements in real-time</p>
+        <p>Envie um arquivo ou cole a URL de um vídeo do YouTube para analisar os movimentos em tempo real</p>
       </div>
 
       <div className="upload-section">
@@ -642,14 +643,14 @@ const VideoAnalysisStreaming = () => {
             onClick={() => setUploadMode('file')}
             disabled={isUploading || isStreaming}
           >
-            📁 File Upload
+            📁 Arquivo
           </button>
           <button
-            className={`mode-btn ${uploadMode === 'url' ? 'active' : ''}`}
-            onClick={() => setUploadMode('url')}
+            className={`mode-btn ${uploadMode === 'youtube' ? 'active' : ''}`}
+            onClick={() => setUploadMode('youtube')}
             disabled={isUploading || isStreaming}
           >
-            🔗 URL
+            ▶️ YouTube
           </button>
         </div>
 
@@ -665,33 +666,40 @@ const VideoAnalysisStreaming = () => {
               id="video-upload"
             />
             <label htmlFor="video-upload" className="upload-label">
-              {isUploading ? '📤 Uploading...' : '📁 Choose Video'}
+              {isUploading ? '📤 Enviando...' : '📁 Escolher vídeo'}
             </label>
           </div>
         )}
 
-        {uploadMode === 'url' && (
-          <div className="url-input-wrapper">
-            <input
-              type="text"
-              placeholder="Enter video URL (e.g., https://example.com/video.mp4)"
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              disabled={isUploading || isStreaming}
-              className="url-input"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleUrlSubmit();
-                }
-              }}
-            />
-            <button
-              onClick={handleUrlSubmit}
-              disabled={isUploading || isStreaming || !videoUrl.trim()}
-              className="upload-label"
-            >
-              {isUploading ? '📤 Loading...' : '🚀 Load'}
-            </button>
+        {uploadMode === 'youtube' && (
+          <div className="youtube-url-field">
+            <label htmlFor="youtube-video-url">URL do vídeo no YouTube</label>
+            <div className="url-input-wrapper">
+              <input
+                id="youtube-video-url"
+                type="url"
+                inputMode="url"
+                autoComplete="url"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                disabled={isUploading || isStreaming}
+                className="url-input"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleUrlSubmit();
+                  }
+                }}
+              />
+              <button
+                onClick={handleUrlSubmit}
+                disabled={isUploading || isStreaming || !videoUrl.trim()}
+                className="upload-label"
+              >
+                {isUploading ? '📥 Baixando...' : '⚽ Analisar vídeo'}
+              </button>
+            </div>
+            <small>O vídeo deve ser público, não exigir login e ter no máximo 300MB.</small>
           </div>
         )}
 
@@ -733,7 +741,7 @@ const VideoAnalysisStreaming = () => {
         <canvas ref={canvasRef} className="streaming-canvas" />
         {!videoId && (
           <div className="canvas-placeholder">
-            Upload a video to start visualization
+            Envie um arquivo ou informe uma URL do YouTube para iniciar a análise
           </div>
         )}
       </div>

@@ -213,6 +213,52 @@ class TestRealTimeGraphBuilder:
 
 
 class TestVideoAnalysisRoutes:
+    def test_upload_youtube_url_uses_youtube_downloader(self, tmp_path, monkeypatch):
+        """YouTube pages are resolved to a video file before streaming analysis."""
+        from fastapi.testclient import TestClient
+        from backend.app.main import app
+        from backend.app.routes import video_analysis as route_module
+
+        video_path = tmp_path / "youtube_match.mp4"
+        video_path.write_bytes(b"public match video")
+        metadata = VideoMetadata(
+            filepath=str(video_path), total_frames=300, fps=30.0,
+            width=1920, height=1080, duration_seconds=10.0,
+        )
+        downloader = Mock(return_value=(video_path, {
+            "type": "youtube",
+            "url": "https://www.youtube.com/watch?v=abc123",
+            "title": "Partida pública",
+            "video_id": "abc123",
+        }))
+        monkeypatch.setattr(route_module, "download_youtube_video", downloader)
+        monkeypatch.setattr(route_module.VideoStreamProcessor, "get_video_metadata", Mock(return_value=metadata))
+
+        response = TestClient(app).post(
+            "/api/videos/upload-url",
+            params={"video_url": "https://www.youtube.com/watch?v=abc123"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["source"] == "youtube"
+        assert payload["filename"] == "youtube_match.mp4"
+        downloader.assert_called_once()
+        active_processors.pop(payload["video_id"], None)
+
+    def test_upload_youtube_url_rejects_non_video_page_without_network(self):
+        """Invalid YouTube pages fail validation instead of becoming generic fetches."""
+        from fastapi.testclient import TestClient
+        from backend.app.main import app
+
+        response = TestClient(app).post(
+            "/api/videos/upload-url",
+            params={"video_url": "https://www.youtube.com/results?search_query=futebol"},
+        )
+
+        assert response.status_code == 400
+        assert "apontar para um vídeo" in response.json()["detail"]
+
     def test_upload_video_endpoint(self):
         """Test video upload endpoint."""
         from fastapi.testclient import TestClient
