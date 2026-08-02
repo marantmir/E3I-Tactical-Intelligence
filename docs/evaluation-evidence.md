@@ -120,3 +120,17 @@ A primeira tentativa da suíte falhou na coleta porque `httpx` não estava insta
 | `git diff --check` | aprovado, sem saída |
 
 O `PYTHONPATH` foi necessário porque `httpx` não está instalado no Python ativo, embora esteja declarado em `backend/requirements-dev.txt`; foi reutilizada a instalação do ambiente local do Poetry, sem alterar o repositório. Não foi possível produzir screenshot porque o contêiner não disponibiliza Chromium, Google Chrome, Playwright ou Puppeteer.
+## Download de vídeos públicos do YouTube — 2026-08-02 (UTC)
+
+- **Escopo:** seleção prévia de um formato progressivo (áudio e vídeo no mesmo arquivo), abaixo do limite configurado e sem depender de `ffmpeg`, que não faz parte da imagem de produção.
+- **Hermeticidade:** os testes simulam o catálogo e o download do `yt-dlp`; nenhum vídeo, credencial ou serviço externo foi usado na suíte.
+
+### Resultados produzidos nesta execução
+
+| Comando | Resultado corrente |
+|---|---|
+| `python -m pytest -q backend/tests/test_youtube_video.py` | **9 aprovados** em 0,26 s |
+| `PYTHONPATH=/root/.local/share/pipx/venvs/poetry/lib/python3.12/site-packages make validate` | aprovado: **445 testes backend** em 62,96 s, compileall, 1 teste frontend, build (1.629 módulos) e ambos os lints |
+| `git diff --check` | aprovado, sem saída |
+
+A consulta externa para localizar e confirmar links públicos de exemplo não pôde ser concluída: o proxy do ambiente respondeu HTTP 403 ao acesso ao YouTube e a ferramenta de pesquisa respondeu HTTP 401. Por isso, nenhum link foi declarado compatível sem verificação. O fluxo agora inspeciona os formatos do link fornecido antes de baixar e informa separadamente quando não existe uma variante com áudio e imagem abaixo do limite.
