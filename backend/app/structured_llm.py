@@ -71,6 +71,17 @@ class StructuredAnalysis(StrictModel):
             raise ValueError("all evidence references must exist")
         if not self.evidence and (self.findings or self.confidence.score >= 0.4):
             raise ValueError("empty evidence requires no findings and low confidence")
+        conflict_declared = (
+            "multimodal" in self.confidence.rationale.casefold()
+            or any("conflit" in finding.statement.casefold() for finding in self.findings)
+            and any(item.source in {"image", "metric"} for item in self.evidence)
+        )
+        if conflict_declared:
+            sources = {item.source for item in self.evidence}
+            if not {"image", "metric"}.issubset(sources):
+                raise ValueError("multimodal conflict requires image and metric evidence")
+            if self.confidence.score >= 0.4:
+                raise ValueError("multimodal conflict requires low confidence")
         return self
 
 
@@ -78,18 +89,18 @@ RUNTIME_SYSTEM_PROMPT = """PAPEL: Você é o analista tático responsável por u
 GROUNDING: use somente texto, imagens, métricas e resultados de tools presentes no contexto. Nunca invente nomes, eventos, placares ou medições. Classifique cada conclusão como fact, inference ou hypothesis e associe evidence_ids.
 CONFLITOS: quando imagem, texto e métricas divergirem, registre o conflito; não escolha uma versão sem suporte e reduza a confiança. Declare limitações e evidência ausente.
 TOOLS: solicite apenas tools disponibilizadas, somente quando necessárias; não simule chamadas ou resultados. Após a tool, fundamente a resposta no resultado retornado.
-SAÍDA: retorne somente JSON compatível com summary, findings, evidence, confidence {score 0..1, level, rationale}, limitations e recommendations. Sem evidência suficiente, use findings/evidence vazios, confiança baixa e recomende coleta verificável.
+SAÍDA: retorne somente um objeto JSON com todos os campos: summary (texto), findings [{statement, kind, evidence_ids}], evidence [{id, source, description, reference}], confidence {score 0..1, level, rationale}, limitations [{description, impact}] e recommendations [{action, priority, evidence_ids}]. Sem evidência suficiente, use findings/evidence vazios, confiança baixa e recomende coleta verificável.
 
 FEW-SHOT 1 — EVIDÊNCIA TEXTUAL SUFICIENTE
 Entrada: texto oficial: "bloco médio aos 60 min".
-Saída: {"evidence":[{"id":"e1","source":"text","description":"bloco médio aos 60 min","reference":"texto oficial"}],"findings":[{"statement":"Houve bloco médio aos 60 min","kind":"fact","evidence_ids":["e1"]}],"confidence":{"score":0.85,"level":"high","rationale":"fonte textual direta"},"limitations":[{"description":"sem vídeo para duração","impact":"medium"}]}
+Saída: {"summary":"Bloco médio registrado.","findings":[{"statement":"Houve bloco médio aos 60 min","kind":"fact","evidence_ids":["e1"]}],"evidence":[{"id":"e1","source":"text","description":"bloco médio aos 60 min","reference":"texto oficial"}],"confidence":{"score":0.85,"level":"high","rationale":"fonte textual direta"},"limitations":[{"description":"sem vídeo para duração","impact":"medium"}],"recommendations":[]}
 
 FEW-SHOT 2 — CONFLITO MULTIMODAL
 Entrada: imagem sugere linha alta; métrica registra bloco baixo.
-Saída: {"evidence":[{"id":"e1","source":"image","description":"possível linha alta","reference":"frame 12s"},{"id":"e2","source":"metric","description":"bloco baixo","reference":"shape.block"}],"findings":[{"statement":"Imagem e métrica estão em conflito; não há conclusão sobre a altura do bloco","kind":"fact","evidence_ids":["e1","e2"]}],"confidence":{"score":0.3,"level":"low","rationale":"conflito multimodal"},"limitations":[{"description":"um único frame","impact":"high"}]}
+Saída: {"summary":"Conflito impede conclusão.","findings":[{"statement":"Imagem e métrica estão em conflito; não há conclusão sobre a altura do bloco","kind":"fact","evidence_ids":["e1","e2"]}],"evidence":[{"id":"e1","source":"image","description":"possível linha alta","reference":"frame 12s"},{"id":"e2","source":"metric","description":"bloco baixo","reference":"shape.block"}],"confidence":{"score":0.3,"level":"low","rationale":"conflito multimodal"},"limitations":[{"description":"um único frame","impact":"high"}],"recommendations":[{"action":"coletar mais frames","priority":"high","evidence_ids":["e1","e2"]}]}
 
 FEW-SHOT 3 — USO DE TOOL
-Entrada: dados insuficientes para densidade. Ação: solicitar tool get_graph_analysis. Resultado da tool: {"density":0.42,"source":"tracking"}. Resposta final: evidence inclui source tool/reference get_graph_analysis; finding inference="densidade moderada", confidence medium; limitation="tracking heurístico". Nunca fabrique o resultado da tool.
+Entrada: dados insuficientes para densidade. Ação: solicitar tool get_graph_analysis. Resultado da tool: {"density":0.42,"source":"tracking"}. Resposta final: {"summary":"Densidade moderada.","findings":[{"statement":"A densidade parece moderada","kind":"inference","evidence_ids":["e1"]}],"evidence":[{"id":"e1","source":"tool","description":"density=0.42","reference":"get_graph_analysis"}],"confidence":{"score":0.6,"level":"medium","rationale":"resultado da tool"},"limitations":[{"description":"tracking heurístico","impact":"medium"}],"recommendations":[]}. Nunca fabrique o resultado da tool.
 """
 
 
@@ -107,10 +118,10 @@ def _decode(text: str) -> object:
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        blocks = re.findall(r"```(?:json)?\s*([\s\S]*?)\s*```", text, flags=re.IGNORECASE)
-        if len(blocks) != 1:
+        block = re.fullmatch(r"\s*```(?:json)?\s*([\s\S]*?)\s*```\s*", text, flags=re.IGNORECASE)
+        if block is None:
             raise
-        return json.loads(blocks[0])
+        return json.loads(block.group(1))
 
 
 def parse_structured_response(

@@ -133,4 +133,5 @@ O agente evoluiu o E3I Tactical Intelligence para uma plataforma de inteligencia
 - Adicionado contrato runtime compartilhado com três few-shots (texto, conflito multimodal e tool), limites factuais e saída estruturada.
 - Adicionados modelos Pydantic fechados, referências de evidência, calibração de confiança e regra contra certeza sem evidência.
 - Implementado parsing JSON/Markdown, reparo único injetável e fallback estruturado de confiança zero.
+- Endurecida a entrega final: few-shots completos e validáveis, fence Markdown exclusivo e invariável de conflito imagem/métrica com confiança reduzida.
 - Criados testes herméticos do contrato e serialização pelos quatro adaptadores; nenhuma credencial ou rede utilizada.

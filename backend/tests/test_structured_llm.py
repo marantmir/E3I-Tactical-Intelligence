@@ -24,6 +24,11 @@ def test_valid_json_and_markdown_json():
     assert parse_structured_response(f"```json\n{raw}\n```")[1] is False
 
 
+def test_markdown_extraction_rejects_surrounding_prose():
+    raw = json.dumps(valid_payload())
+    assert parse_structured_response(f"Here is the answer:\n```json\n{raw}\n```")[1] is True
+
+
 @pytest.mark.parametrize("mutation", [
     lambda p: p.pop("summary"),
     lambda p: p.update(summary=4),
@@ -47,10 +52,21 @@ def test_insufficient_evidence_cannot_claim_certainty():
 
 def test_multimodal_conflict_is_valid_at_reduced_confidence():
     payload = valid_payload()
+    payload["evidence"][0]["source"] = "image"
     payload["evidence"] += [{"id": "e2", "source": "metric", "description": "bloco baixo", "reference": "metric"}]
     payload["findings"][0] = {"statement": "Conflito sem conclusão", "kind": "fact", "evidence_ids": ["e1", "e2"]}
     payload["confidence"] = {"score": .3, "level": "low", "rationale": "conflito multimodal"}
     assert parse_structured_response(json.dumps(payload))[1] is False
+
+
+def test_declared_multimodal_conflict_requires_both_sources_and_low_confidence():
+    payload = valid_payload()
+    payload["findings"][0]["statement"] = "Conflito entre modalidades"
+    payload["confidence"]["rationale"] = "conflito multimodal"
+    assert parse_structured_response(json.dumps(payload))[1] is True
+    payload["evidence"] += [{"id": "e2", "source": "image", "description": "linha alta", "reference": "frame"}]
+    payload["findings"][0]["evidence_ids"].append("e2")
+    assert parse_structured_response(json.dumps(payload))[1] is True
 
 
 def test_single_successful_repair_and_single_failed_repair():
@@ -72,6 +88,12 @@ def test_runtime_contains_three_few_shots_and_controlled_tool_example():
     assert all(f"FEW-SHOT {number}" in RUNTIME_SYSTEM_PROMPT for number in range(1, 4))
     third = RUNTIME_SYSTEM_PROMPT.split("FEW-SHOT 3", 1)[1]
     assert "solicitar tool" in third and "Resultado da tool" in third and "Nunca fabrique" in third
+
+    for example in RUNTIME_SYSTEM_PROMPT.split("Saída: ")[1:3]:
+        payload = json.loads(example.split("\n", 1)[0])
+        StructuredAnalysis.model_validate(payload)
+    tool_payload = json.loads(third.split("Resposta final: ", 1)[1].split(". Nunca fabrique", 1)[0])
+    StructuredAnalysis.model_validate(tool_payload)
 
 
 class Transport:
