@@ -134,3 +134,18 @@ O `PYTHONPATH` foi necessário porque `httpx` não está instalado no Python ati
 | `git diff --check` | aprovado, sem saída |
 
 A consulta externa para localizar e confirmar links públicos de exemplo não pôde ser concluída: o proxy do ambiente respondeu HTTP 403 ao acesso ao YouTube e a ferramenta de pesquisa respondeu HTTP 401. Por isso, nenhum link foi declarado compatível sem verificação. O fluxo agora inspeciona os formatos do link fornecido antes de baixar e informa separadamente quando não existe uma variante com áudio e imagem abaixo do limite.
+
+## Filtragem preventiva das fontes do YouTube — 2026-08-02 (UTC)
+
+- **Escopo:** cada resultado individual do YouTube agora passa pela extração de metadados do `yt-dlp` antes de ser devolvido como fonte. Vídeos privados, com login, restrição de idade, transmissão ao vivo ou sem formato progressivo abaixo de 300 MB são descartados.
+- **Hermeticidade:** os testes simulam tanto a página de resultados quanto a inspeção do `yt-dlp`; nenhuma mídia, credencial ou chamada de rede foi usada na validação.
+
+### Resultados produzidos nesta execução
+
+| Comando | Resultado corrente |
+|---|---|
+| `python -m pytest -q backend/tests/test_youtube_search.py backend/tests/test_youtube_video.py` | **15 aprovados** em 0,44 s |
+| `make validate` | não concluído: `httpx` ausente no Python ativo durante a coleta |
+| `PYTHONPATH=/root/.local/share/pipx/venvs/poetry/lib/python3.12/site-packages make validate` | aprovado: **448 testes backend** em 67,97 s, compileall, 1 teste frontend, build (1.629 módulos) e ambos os lints |
+
+O `PYTHONPATH` reutiliza o `httpx` 0.28.1 já disponível no ambiente local do Poetry. A dependência continua declarada em `backend/requirements-dev.txt`; nenhuma dependência ou artefato externo foi adicionado ao repositório.

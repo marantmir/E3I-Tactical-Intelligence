@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.youtube_video import download_youtube_video, normalize_youtube_url
+from app.youtube_video import download_youtube_video, inspect_youtube_video, normalize_youtube_url
 
 
 @pytest.mark.parametrize(
@@ -113,3 +113,37 @@ def test_download_rejects_video_without_progressive_stream_below_limit(monkeypat
         download_youtube_video("https://youtu.be/public123", tmp_path, 300 * 1024 * 1024)
 
     assert calls == [(False, None)]
+
+
+def test_inspect_accepts_public_video_with_usable_progressive_stream(monkeypatch, tmp_path):
+    calls = _install_fake_ytdlp(
+        monkeypatch,
+        tmp_path,
+        [{"format_id": "ok", "vcodec": "avc1", "acodec": "mp4a", "height": 720, "filesize": 10_000}],
+    )
+
+    info = inspect_youtube_video("https://youtu.be/public123")
+
+    assert info["selected_format"] == "ok"
+    assert calls == [(False, None)]
+
+
+def test_inspect_rejects_age_restricted_video(monkeypatch):
+    class FakeDownloader:
+        def __init__(self, _options):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def extract_info(self, _url, download):
+            assert download is False
+            return {"availability": "public", "age_limit": 18, "formats": []}
+
+    monkeypatch.setitem(sys.modules, "yt_dlp", SimpleNamespace(YoutubeDL=FakeDownloader))
+
+    with pytest.raises(ValueError, match="restrição de idade"):
+        inspect_youtube_video("https://www.youtube.com/watch?v=restricted")

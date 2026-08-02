@@ -39,6 +39,11 @@ SAMPLE_DATA = {
 
 def test_search_youtube_videos_parses_real_video_metadata(monkeypatch):
     monkeypatch.setattr(youtube_search, "fetch_page", lambda url: _page_with_initial_data(SAMPLE_DATA))
+    monkeypatch.setattr(
+        youtube_search,
+        "inspect_youtube_video",
+        lambda url: {"selected_format": "progressive-360"},
+    )
 
     videos = youtube_search.search_youtube_videos("Flamengo jogo completo", limit=8)
 
@@ -49,15 +54,37 @@ def test_search_youtube_videos_parses_real_video_metadata(monkeypatch):
     assert first["channel"] == "Canal Futebol"
     assert first["duration"] == "1:52:30"
     assert first["views"].startswith("120 mil")
+    assert first["download_compatible"] is True
     assert videos[1]["title"] == "Análise tática do Flamengo"
 
 
 def test_search_youtube_videos_respects_limit(monkeypatch):
     monkeypatch.setattr(youtube_search, "fetch_page", lambda url: _page_with_initial_data(SAMPLE_DATA))
+    monkeypatch.setattr(
+        youtube_search,
+        "inspect_youtube_video",
+        lambda url: {"selected_format": "progressive-360"},
+    )
 
     videos = youtube_search.search_youtube_videos("Flamengo", limit=1)
 
     assert len(videos) == 1
+
+
+def test_search_youtube_videos_only_returns_downloadable_results(monkeypatch):
+    monkeypatch.setattr(youtube_search, "fetch_page", lambda url: _page_with_initial_data(SAMPLE_DATA))
+
+    def inspect(url):
+        if "abc123" in url:
+            raise ValueError("restrito")
+        return {"selected_format": "progressive-720"}
+
+    monkeypatch.setattr(youtube_search, "inspect_youtube_video", inspect)
+
+    videos = youtube_search.search_youtube_videos("Flamengo", limit=8)
+
+    assert [video["id"] for video in videos] == ["def456"]
+    assert videos[0]["selected_format"] == "progressive-720"
 
 
 def test_extract_yt_initial_data_raises_when_missing():

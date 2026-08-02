@@ -8,6 +8,7 @@ import uuid
 
 
 YOUTUBE_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}
+MAX_YOUTUBE_BYTES = 300 * 1024 * 1024
 logger = logging.getLogger(__name__)
 
 
@@ -84,6 +85,36 @@ def normalize_youtube_url(value: str) -> str:
     if not video_id:
         raise ValueError("O link precisa apontar para um vídeo do YouTube.")
     return url
+
+
+def inspect_youtube_video(url: str, max_bytes: int = MAX_YOUTUBE_BYTES) -> dict:
+    """Confirm that a YouTube URL can be ingested before presenting it.
+
+    A search-result page alone cannot tell whether a video is private, gated by
+    login/age/region, or missing the progressive stream required by the runtime
+    image.  yt-dlp performs the same metadata extraction and format selection
+    used by the real downloader, without downloading the media.
+    """
+    normalized = normalize_youtube_url(url)
+    import yt_dlp
+
+    options = {
+        "noplaylist": True,
+        "quiet": True,
+        "no_warnings": True,
+    }
+    with yt_dlp.YoutubeDL(options) as downloader:
+        info = downloader.extract_info(normalized, download=False)
+
+    availability = str(info.get("availability") or "public").lower()
+    if availability not in {"public", "unlisted"}:
+        raise ValueError("O vídeo exige autenticação ou não está disponível publicamente.")
+    if (info.get("age_limit") or 0) > 0:
+        raise ValueError("O vídeo possui restrição de idade.")
+    if info.get("is_live") or info.get("live_status") in {"is_live", "is_upcoming"}:
+        raise ValueError("Transmissões ao vivo não são aceitas para análise.")
+
+    return {**info, "selected_format": _select_progressive_format(info, max_bytes)}
 
 
 def download_youtube_video(url: str, destination: Path, max_bytes: int) -> tuple[Path, dict]:
