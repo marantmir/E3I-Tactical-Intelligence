@@ -16,3 +16,7 @@ As tools são adaptadores finos: validam com Pydantic (`strict`, `extra=forbid`)
 Nenhuma tool aceita URL ou caminho de arquivo; portanto a superfície atual não realiza download nem precisa resolver DNS/redirecionamentos. A busca delegada recebe texto e conserva os controles do serviço existente. Se futuramente uma URL entrar no schema, ela deverá ter HTTP(S), resolução e redirecionamentos revalidados contra loopback, redes privadas e link-local, além de allowlist quando possível, timeout e limite de bytes.
 
 O registry aplica allowlist explícita, limite de entrada/saída, timeout e serialização JSON estrita. Erros do serviço viram mensagem genérica, sem stack trace, segredo, configuração ou caminho interno. OCR assistido e análises derivadas nunca são rotulados como confirmação factual. Dependências de rede, dados locais desatualizados e credenciais opcionais são declaradas no campo `limitations`.
+
+## Fronteira de segurança comum
+
+Somente nomes registrados na allowlist podem executar. Todos os argumentos passam por modelo Pydantic fechado e limites serializados; cada execução tem timeout e limite de resposta. Exceções inesperadas viram `Tool execution failed`, enquanto logs contêm tool, status e duração — não argumentos, resultados nem credenciais. Esses controles reduzem risco de prompt injection virar execução arbitrária; conteúdo retornado ainda deve ser tratado como dado não confiável.

@@ -140,3 +140,10 @@ O agente evoluiu o E3I Tactical Intelligence para uma plataforma de inteligencia
 - Criados fixture estável, runner determinístico, schema e relatórios JSON/CSV/Markdown para 20 casos em dez comparações.
 - Adicionados testes de execução, formatos, contrato, métricas, mínimo de cenários, isolamento de rede, reprodutibilidade, fixture inválida e recusa do modo online.
 - `RUN_ONLINE_LLM_EXPERIMENTS=false`; experimentos online: não executados.
+
+## 2026-08-02 — hardening transversal e documentação as-built
+
+- Criados guard de saída HTTPS/SSRF e testes de DNS privado, authority, redirect e limite.
+- Ampliados `.gitignore`, contrato de ambiente e CI com Gitleaks, checks locais e auditorias.
+- Criado ADR 0001 e consolidados arquitetura, README, capacidades, prompts, FinOps, catálogo, checklist, evidências e contexto.
+- Escopo declarado: validação offline/local; provedores e integrações públicas não chamados com credenciais reais.

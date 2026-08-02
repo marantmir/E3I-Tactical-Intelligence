@@ -207,3 +207,19 @@ Escopo: few-shots compatíveis com o schema, extração Markdown estrita e semâ
 | `python -m pip install -r backend/requirements-dev.txt` | **Limitado pelo ambiente**: proxy retornou 403 ao índice; dependências ausentes não puderam ser instaladas |
 
 O teste focal é hermético e cobre os casos de parsing, reparo, fallback, few-shots, conflito e os quatro adaptadores. A qualidade completa não é declarada aprovada porque `make validate` não passou da coleta, embora compilação e build tenham sido executados separadamente.
+
+## Execução de hardening — 2026-08-02 (UTC)
+
+Escopo desta evidência: checkout local `fix/final-evaluation-compliance`, Python 3.12/Node 22, testes herméticos e auditoria baseada no ambiente/lockfile. Não houve credencial, chamada paga nem teste online de provedor. Os checks reduzem risco no escopo observado; **não demonstram ausência absoluta de vulnerabilidades**.
+
+| Verificação atual | Resultado |
+|---|---|
+| `PYTHONPATH=/tmp/e3i-vendor make validate` | aprovado: 535 pytest; compileall; 1 teste frontend; build Vite (1.629 módulos); lint Python/frontend; secrets, arquivos sensíveis e links locais; `pip check`; `npm audit --offline` sem advisory no cache/lockfile |
+| `RUN_ONLINE_LLM_EXPERIMENTS=false python experiments/runners/run_offline.py` | aprovado: 20 casos; JSON, CSV e Markdown regenerados; online não executado |
+| testes focados de saída segura | aprovado: 19 testes de SSRF/Wikipedia/busca, incluindo DNS privado e redirects |
+| instalação de dependências | limitada: índice Python retornou HTTP 403; `httpx 0.28.1` já disponível no ambiente de ferramentas foi isolado em `/tmp/e3i-vendor` para executar a suíte |
+| auditoria npm online | limitada: endpoint de advisories retornou HTTP 403; quality gate usou `npm audit --offline`; CI mantém auditoria online |
+
+### Controles inspecionados
+
+O scanner local examina conteúdo e nomes rastreados/não ignorados; o CI adiciona Gitleaks sobre o histórico completo. A auditoria Python local confirma consistência instalada (`pip check`), não uma base completa de CVEs; CI e revisão de atualização devem complementar. A proteção SSRF valida esquema/authority, todas as respostas DNS e cada redirect, mas deve ser combinada com firewall/proxy de egress contra races/rebinding e falhas futuras de aplicação.

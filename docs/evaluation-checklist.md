@@ -86,11 +86,11 @@ Antes de comparar modelos, defina o limiar: zero alucinações graves, JSON vál
 - [x] Tool desconhecida, argumentos inválidos/grandes, timeout e resultado grande tratados.
 - [x] Erro interno sanitizado e logs sem argumentos integrais.
 - [x] Ausência de credencial e falha do modelo usam fluxo seguro/fallback determinístico.
-- [ ] Implementar adaptadores nativos de tool calling para os quatro provedores.
+- [x] Adaptadores nativos de tool calling para os quatro provedores cobertos offline.
 - [x] Registrar as seis tools táticas mínimas e o catálogo de proveniência.
 - [x] Validar schema estrito, limites, timeout, falha sanitizada e JSON para cada tool.
 - [x] Provar duas tools táticas sequenciais e preservação do primeiro resultado.
-- [ ] Implementar adapters nativos de wire protocol para os quatro provedores.
+- [x] Wire protocols nativos dos quatro provedores cobertos offline com mocks.
 
 ## Tool calling multiprovedor
 
@@ -110,3 +110,16 @@ Antes de comparar modelos, defina o limiar: zero alucinações graves, JSON vál
 - [x] Few-shots validam contra o mesmo schema; prosa fora do fence e conflito multimodal sem ambas as fontes são rejeitados.
 - [x] Casos válido, parcial, ausente, tipo, tamanho, insuficiência, conflito, reparos e quatro adaptadores cobertos offline.
 - [ ] Qualidade semântica online com provedores reais (requer credenciais e não pertence à suíte hermética).
+
+## Hardening final — 2026-08-02
+
+- [x] `.env.example` vazio e regras para configurações, credenciais, bancos, uploads, vídeos, builds, caches, temporários e logs.
+- [x] Tool allowlist, schemas fechados, limites, timeout, erro sanitizado e logs sem payload.
+- [x] HTTPS de saída, validação DNS, redirects limitados/revalidados e bloqueio de endereços não globais.
+- [x] Scanner de segredos e busca de arquivos sensíveis no CI.
+- [x] Auditoria de dependências e verificação de links integradas ao quality gate.
+- [x] ADR de APIs diretas e documentação as-built.
+- [ ] Teste online dos quatro provedores (requer credenciais; não executado).
+- [ ] Firewall/proxy de egress e armazenamento externo para implantação multi-instância.
+
+As marcações refletem presença e execução dos controles no escopo registrado nas evidências; não representam garantia de ausência de vulnerabilidades.

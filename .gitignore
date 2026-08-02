@@ -1,15 +1,55 @@
+# Python / test caches
 __pycache__/
 *.py[cod]
-*.sqlite
-*.db
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 .venv/
 venv/
+
+# JavaScript / builds
 node_modules/
 dist/
+build/
+frontend/dist/
+
+# Secrets, private configuration and tokens
 .env
-.env.local
-.DS_Store
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.token
+*credentials*.json
+*secrets*.json
+backend/data/llm_config.json
+
+# Local databases and runtime data
+*.sqlite
+*.sqlite3
+*.db
 backend/e3i_tactical.db
 backend/media/
-backend/data/llm_config.json
+uploads/
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+
+# Logs and temporary results
+*.log
+logs/
+tmp/
+temp/
 work/
+experiments/results/*.tmp
+
+# OS/editor files
+.DS_Store
+.idea/
+.vscode/

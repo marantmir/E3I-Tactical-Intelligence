@@ -5,6 +5,17 @@ on:
   pull_request:
 
 jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan committed history for secrets
+        uses: gitleaks/gitleaks-action@v2
+      - name: Check tracked sensitive files
+        run: python scripts/check_repo.py sensitive
+
   validate:
     runs-on: ubuntu-latest
     steps:
@@ -33,3 +44,9 @@ jobs:
         run: npm --prefix frontend run build
       - name: Lint repository
         run: make lint
+      - name: Check documentation links and repository secrets
+        run: make security
+      - name: Audit Python environment
+        run: python -m pip check
+      - name: Audit npm dependencies
+        run: npm --prefix frontend audit --audit-level=high

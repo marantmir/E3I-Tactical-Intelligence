@@ -15,3 +15,7 @@ Cada adaptador repete somente `timeout`, falha `temporary` e `rate_limit`, com n
 A ordem é explícita e somente adaptadores com credencial entram na rota. `max_attempts` limita provedores consultados. O contexto normalizado é reutilizado sem inserir segredos ou mensagens de erro. Falhas transitórias permitem o próximo provedor; falhas não transitórias interrompem a cadeia. A causa de autenticação é registrada de forma sanitizada. Eventos registram provedor inicial/final e o último recurso é uma resposta determinística local.
 
 Não há fallback remoto quando a ordem não foi configurada. Não se simula sucesso para capacidades ausentes: a matriz documenta a limitação e o parâmetro incompatível é omitido.
+
+## Controles as-built
+
+O modo padrão/offline não gera custo de provedor. Limites de tokens, quadros, bytes, iterações, timeout e retry limitam exposição, mas não constituem orçamento financeiro garantido. Experimentos online ficam opt-in por `RUN_ONLINE_LLM_EXPERIMENTS=true`, exigem credencial e devem registrar modelo, tokens, latência e custo observado sem registrar chaves. Nesta rodada não houve medição paga; portanto não há comparação de preço real declarada.

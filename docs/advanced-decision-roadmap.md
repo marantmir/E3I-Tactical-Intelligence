@@ -1,26 +1,15 @@
-# Roadmap de Decisao Tatica Avancada
+# Roadmap de decisão tática avançada
 
-## Implementado
+O estado entregue (upload, CV/tracking heurístico, grafos, otimização de escalação, tools e fallback) está descrito na [arquitetura as-built](architecture.md), não como trabalho futuro.
 
-- Busca publica antes da criacao da analise.
-- Modo local quando a rede externa nao responde.
-- Pre-analise com revisao antes de salvar.
-- Grafo tatico com jogadores, conexoes, centralidade, densidade e zona de risco.
-- Leitura visual de videos com mapa de calor, trilhas de movimento, frames e eventos.
-- Pesquisa operacional aplicada ao comparativo de formacoes, riscos e ajustes por cenario.
+## Próximas evoluções ainda não implementadas
 
-## Proximas Evolucoes
+- Integração licenciada com API esportiva para estatísticas atualizadas, com contrato, orçamento e termos aprovados.
+- Exportação PDF acessível do relatório com anexos e cadeia de evidências.
+- Detector supervisionado calibrado em dataset autorizado, somente se superar a heurística em benchmark definido.
+- Persistência compartilhada, fila durável, rate limit distribuído e egress firewall antes de escala multi-instância.
+- Avaliação online dos quatro provedores com corpus congelado, orçamento e credenciais geridas fora do repositório.
 
-- Upload de videos reais.
-- Deteccao automatica de jogadores, bola, linhas e eventos.
-- Tracking posicional frame a frame.
-- Integracao com APIs esportivas de estatisticas atualizadas.
-- Otimizacao numerica para escalacao, substituicoes e plano de jogo.
-- Relatorio PDF com anexos de grafo, video e fontes.
+## Critérios de aceite
 
-## Criterios de Confianca
-
-- Separar fonte publica, base local e inferencia visual.
-- Exibir status de busca e nivel de confianca.
-- Manter revisao humana antes de decisao tecnica.
-- Registrar evidencias no relatorio final.
+Cada evolução deve separar observação/inferência, preservar revisão humana, registrar proveniência e limitações, incluir teste hermético e não introduzir segredo versionado. Componentes online também precisam de timeout, limite, política de retry/fallback, auditoria de custo e teste de segurança de saída.

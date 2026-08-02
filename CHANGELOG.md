@@ -24,3 +24,10 @@
 - Added capability-aware OpenAI, Anthropic, Gemini and Grok tool adapters.
 - Added bounded transient retries, credential-aware configurable provider fallback and deterministic local fallback.
 - Centralized FinOps limits and added hermetic provider contract tests.
+
+## 2026-08-02 — hardening e documentação as-built
+
+- Adicionada política de saída HTTPS com validação DNS, bloqueio de redes não públicas e redirects limitados/revalidados.
+- Consolidado controle de tools, limites, timeout, erros sanitizados e logs sem payloads.
+- Adicionados scanner de segredos, verificação de arquivos sensíveis/links e auditoria de dependências ao quality gate e CI.
+- Criados `.env.example` e ADR sobre APIs diretas; arquitetura, README e documentação transversal alinhados ao código atual.
