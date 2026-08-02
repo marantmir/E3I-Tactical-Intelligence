@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, HttpUrl
 
 from ..database import (
     get_online_profile_by_id,
@@ -40,6 +41,7 @@ from ..schemas import DetectedFormationSave, OnlineTeamProfileSave, OwnTeamSet, 
 from ..source_collector import collect_sources, merge_sources_into_payload
 from ..video_jobs import video_jobs
 from ..video_vision import process_video
+from ..youtube_video import download_youtube_video, normalize_youtube_url
 from ..wikipedia_lookup import fetch_team_wikipedia_profile
 
 
@@ -57,6 +59,14 @@ VIDEO_PROCESSING_TIMEOUT_SECONDS = 35
 # de travamento precisa ser bem maior que o timeout de visao computacional.
 VIDEO_JOB_STALL_SECONDS = 180
 VIDEO_JOB_KEEPALIVE_SECONDS = 10
+
+
+class YouTubeVideoAnalysisRequest(BaseModel):
+    url: HttpUrl
+    team_name: str | None = None
+    max_frames: int = DEFAULT_VIDEO_MAX_FRAMES
+    sample_every: int = DEFAULT_VIDEO_SAMPLE_EVERY
+    team_filter: str = "auto"
 
 
 @router.get("")
@@ -271,6 +281,14 @@ async def team_video_vision_start_job_by_name(
     )
 
 
+@router.post("/video-vision/youtube-jobs", dependencies=[Depends(enforce_video_upload_rate_limit)])
+async def team_youtube_vision_start_job_by_name(payload: YouTubeVideoAnalysisRequest):
+    """Baixa um vídeo público do YouTube e executa o mesmo pipeline visual."""
+    if not payload.team_name or not payload.team_name.strip():
+        raise HTTPException(status_code=422, detail="Informe o nome da equipe analisada.")
+    return _start_youtube_video_vision_job(payload=payload, team_name=payload.team_name.strip())
+
+
 @router.get("/video-vision/jobs/{job_id}/events")
 async def team_video_vision_job_events(job_id: str):
     return StreamingResponse(
@@ -391,6 +409,12 @@ async def team_video_vision_start_job(
         team_filter=team_filter,
         jersey_refs=jersey_refs,
     )
+
+
+@router.post("/{team_id}/video-vision/youtube-jobs", dependencies=[Depends(enforce_video_upload_rate_limit)])
+async def team_youtube_vision_start_job(team_id: int, payload: YouTubeVideoAnalysisRequest):
+    team = get_team(team_id)
+    return _start_youtube_video_vision_job(payload=payload, team_name=team["name"])
 
 
 async def _save_uploaded_video(file: UploadFile) -> tuple[Path, int, str]:
@@ -519,6 +543,55 @@ async def _start_video_vision_job(
 
     threading.Thread(target=run_job, daemon=True).start()
     return {"job_id": job.id, "upload_profile": upload_profile}
+
+
+def _start_youtube_video_vision_job(*, payload: YouTubeVideoAnalysisRequest, team_name: str) -> dict:
+    try:
+        normalized_url = normalize_youtube_url(str(payload.url))
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    if not 60 <= payload.max_frames <= MAX_VIDEO_FRAMES:
+        raise HTTPException(status_code=422, detail=f"max_frames deve estar entre 60 e {MAX_VIDEO_FRAMES}.")
+    if not 1 <= payload.sample_every <= 30:
+        raise HTTPException(status_code=422, detail="sample_every deve estar entre 1 e 30.")
+
+    job = video_jobs.create(max_frames=payload.max_frames)
+
+    def run_job() -> None:
+        video_path: Path | None = None
+        try:
+            video_path, source = download_youtube_video(normalized_url, MEDIA_DIR, MAX_UPLOAD_BYTES)
+            size = video_path.stat().st_size
+            effective_frames, effective_interval, upload_profile = _video_processing_profile(
+                video_path.suffix.lower(), size, payload.max_frames, payload.sample_every
+            )
+            result = process_video(
+                str(video_path),
+                max_frames=effective_frames,
+                sample_every=effective_interval,
+                team_filter=payload.team_filter,
+                max_processing_seconds=VIDEO_PROCESSING_TIMEOUT_SECONDS,
+                on_progress=lambda processed, _total: video_jobs.update_progress(job.id, processed),
+            )
+            result["upload_profile"] = upload_profile
+            result["source"] = source
+            result["computer_vision_techniques"] = {
+                "perspective_transform": "Homografia do plano da câmera para o mapa 2D do campo.",
+                "object_detection": "Detecção local de jogadores/árbitros por movimento e contornos; bola por aparência e continuidade.",
+                "tracking": "IDs persistentes com associação por centróide e predição de velocidade.",
+                "pose_estimation": "Não habilitada neste perfil CPU; os frames-chave ficam disponíveis para modelo multimodal.",
+            }
+            video_jobs.complete(job.id, _build_video_result(result, team_name))
+        except (ValueError, RuntimeError) as error:
+            video_jobs.fail(job.id, str(error))
+        except Exception:
+            video_jobs.fail(job.id, "Falha ao baixar ou analisar o vídeo do YouTube.")
+        finally:
+            if video_path is not None:
+                video_path.unlink(missing_ok=True)
+
+    threading.Thread(target=run_job, daemon=True).start()
+    return {"job_id": job.id, "source": {"type": "youtube", "url": normalized_url}}
 
 
 async def _video_job_event_stream(job_id: str):

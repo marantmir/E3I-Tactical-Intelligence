@@ -37,6 +37,7 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
   const [error, setError] = useState(null);
   const [videoError, setVideoError] = useState(null);
   const [fileName, setFileName] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [viewMode, setViewMode] = useState("connections");
   const [selectedTrackId, setSelectedTrackId] = useState("all");
   const [maxFrames, setMaxFrames] = useState(240);
@@ -105,6 +106,32 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
       setVision(result);
     } catch (uploadError) {
       setError(uploadError.message || "Falha ao processar o video.");
+    } finally {
+      setLoading(false);
+      setProgress(null);
+    }
+  }
+
+  async function handleYouTubeAnalysis(event) {
+    event.preventDefault();
+    if (!youtubeUrl.trim()) return;
+    setFileName("");
+    setLoading(true);
+    setProgress(null);
+    setError(null);
+    setVideoError(null);
+    setVision(null);
+    setFormationSaveMessage("");
+    try {
+      const result = await api.analyzeYouTubeVideoWithProgress(
+        teamRef,
+        youtubeUrl.trim(),
+        { maxFrames, sampleEvery, teamName, teamFilter },
+        (update) => setProgress(update)
+      );
+      setVision(result);
+    } catch (analysisError) {
+      setError(analysisError.message || "Falha ao analisar o vídeo do YouTube.");
     } finally {
       setLoading(false);
       setProgress(null);
@@ -217,12 +244,38 @@ export default function VideoVisionPanel({ teamRef, teamName }) {
         <input type="file" accept="video/*" onChange={handleFileChange} hidden />
       </label>
 
+      <div className="video-source-divider"><span>ou</span></div>
+      <form className="youtube-video-source" onSubmit={handleYouTubeAnalysis}>
+        <Video size={20} />
+        <label>
+          <span>Link público do YouTube</span>
+          <input
+            type="url"
+            value={youtubeUrl}
+            placeholder="https://www.youtube.com/watch?v=..."
+            onChange={(event) => setYoutubeUrl(event.target.value)}
+            disabled={loading}
+            required
+          />
+        </label>
+        <button className="button button-primary" type="submit" disabled={loading || !youtubeUrl.trim()}>
+          Analisar link
+        </button>
+      </form>
+      <p className="video-caption">
+        O vídeo público é baixado no servidor e analisado com transformação de perspectiva, detecção de objetos,
+        rastreamento por ID e mapa tático 2D. Vídeos privados ou que exigem login não são suportados.
+      </p>
+
       {loading ? <VideoProcessingProgress progress={progress} /> : null}
       {error && <p className="error-text">{error}</p>}
 
       {vision && (
         <>
           <p>{vision.summary}</p>
+          {vision.source?.type === "youtube" ? (
+            <div className="notice-strip">Fonte: YouTube — {vision.source.title || "vídeo público analisado"}.</div>
+          ) : null}
           {vision.team_focus ? (
             <div className="notice-strip">
               Acompanhando {teamName}: {vision.team_focus.selected_label}. {vision.team_focus.target_tracks} rastros
