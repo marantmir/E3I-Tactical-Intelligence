@@ -1,5 +1,19 @@
 # Evidências de avaliação
 
+## Revalidação do registro de tools táticas — 2026-08-02 (UTC)
+
+Esta execução confirmou no histórico o commit `5974b64` (`feat: expose tactical services as validated tools`) e revalidou, a partir da raiz, as seis tools táticas e o fluxo integrado do orquestrador. Os testes específicos permanecem herméticos: serviços externos são substituídos por mocks e nenhum download, credencial ou API paga é usado.
+
+| Comando | Resultado corrente |
+|---|---|
+| `python -m pytest -q backend/tests/test_tool_registry.py backend/tests/test_tactical_tools.py backend/tests/test_llm_tool_orchestrator.py` | **39 aprovados em 1,03 s** |
+| `python -m pytest -q` | coleta interrompida: `httpx` não está instalado no Python ativo |
+| `python -m compileall -q backend/app` | aprovado, sem saída |
+| `npm --prefix frontend run build` | aprovado; 1.629 módulos transformados em 4,22 s |
+| `PYTHONPATH=/root/.local/share/pipx/venvs/poetry/lib/python3.12/site-packages make validate` | aprovado: **443 testes backend em 64,07 s**, compileall, 1 teste frontend, build e ambos os lints |
+
+O comando completo sem ajuste de ambiente foi registrado como limitação, não como sucesso. Para executar o quality gate, foi reutilizado o `httpx` do ambiente local do Poetry pelo `PYTHONPATH`, sem instalar dependências, acessar a rede ou alterar o repositório. O resultado verde do `make validate` inclui novamente a suíte Python completa exigida.
+
 ## Ingestão de vídeo do YouTube — 2026-08-01 (UTC)
 
 Resultados produzidos nesta execução, a partir da raiz do repositório:
