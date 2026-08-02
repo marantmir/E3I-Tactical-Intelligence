@@ -72,3 +72,7 @@ As proximas evolucoes naturais sao:
 O limite padrão é 4 iterações e a configuração aceita somente 1 a 8. Cada definição do registry conserva timeout e limites próprios de entrada/saída; o orquestrador também limita argumentos antes da validação. Tools desconhecidas nunca são resolvidas dinamicamente. Erros internos são convertidos em mensagens genéricas; logs contêm apenas provedor, nome, status e duração, sem payload integral.
 
 A allowlist registra `get_llm_status` e seis tools táticas. `tactical_tools.py` contém somente schemas, delegação e envelope de proveniência; busca/ranking, visão, grafo, otimização e dados continuam nos serviços de domínio. O catálogo e a matriz serviço/input/output/natureza estão em `docs/tool-catalog.md`. Os formatos nativos de tool calling dos quatro provedores **ainda não estão integrados**; o fluxo integrado usa adaptador mockado hermético.
+
+## Fronteira multiprovedor de tools
+
+`provider_tool_adapters.py` separa quatro codecs de wire format do `LLMToolOrchestrator`. O orquestrador mantém allowlist, validação e limites; adaptadores filtram parâmetros pela matriz central, fazem retry transitório e normalizam respostas. `FallbackProviderAdapter` seleciona apenas provedores configurados, preserva o histórico normalizado, registra a rota e encerra no fallback determinístico.

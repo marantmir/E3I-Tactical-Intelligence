@@ -252,3 +252,7 @@ O registry expõe busca tática, OCR assistido, análise de quadros, métricas, 
 ### Registro do agente
 
 `docs/agent-log.md` registra pedidos, hipótese, implementação, validação e limitações por entrega; `docs/prompts.md` preserva prompts representativos e evolução. O agente foi usado para implementar, escrever testes, executar `pytest`/build e revisar o diff. Decisões de produto (identidade sem evidência, custo de quadros e ausência de login) permaneceram explícitas e sujeitas a revisão humana.
+
+## Tools multiprovedor e operação sem credenciais
+
+Os adaptadores OpenAI Responses, Anthropic Messages, Google Gemini e xAI Grok convertem texto, imagens, schemas, tool calls e tool results entre o modelo normalizado e o formato nativo. A [matriz de capacidades](docs/provider-capabilities.md) registra diferenças; a política de [FinOps e fallback](docs/finops.md) mantém fallback remoto opt-in e o modo determinístico como último recurso. A suíte é hermética e não efetua chamadas pagas.

@@ -120,3 +120,10 @@ O agente evoluiu o E3I Tactical Intelligence para uma plataforma de inteligencia
 - OCR/leitura visual, métricas e pesquisa operacional são explicitamente heurísticos; busca sem fontes é declarada indisponível externamente.
 - Testes herméticos usam mocks e cobrem validação, limite, timeout, falha, serialização e duas tools sequenciais com contexto preservado.
 - Pendente: adapters de wire protocol dos provedores de produção; nenhum deles é declarado integrado.
+
+## 2026-08-02 — Tool calling multiprovedor
+
+- Implementados formatos nativos e normalização para quatro provedores.
+- Adicionados retry classificado, fallback configurável e último recurso determinístico.
+- Testes usam somente `MockTransport`; nenhuma chamada real ou paga.
+- Validação online dos provedores: não executada.

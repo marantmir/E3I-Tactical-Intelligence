@@ -19,3 +19,7 @@ This baseline changes validation infrastructure only. It does not add provider t
 `backend/app/llm_tool_orchestrator.py` owns a provider-neutral, dependency-free loop. It receives normalized provider turns, limits the loop to 4 iterations by default (configurable from 1 through 8), executes only allowlisted `ToolRegistry` entries, correlates results by call ID, preserves caller history, and returns a deterministic fallback when the model fails or never completes. Tool definitions still own validation, timeout, and byte limits.
 
 The registry now also exposes six validated tactical adapters over existing search, visual analysis, graph, operational-research, and local-data services. Each returns explicit provenance/nature/limitations. Mock orchestration proves one and two sequential tactical calls. Do not describe the four production providers as native-tool-enabled yet: their wire adapters remain follow-up work.
+
+## Estado: adapters de tool calling
+
+Há codecs mockáveis para OpenAI Responses, Anthropic Messages, Google Gemini e xAI Grok, matriz central em `PROVIDER_CAPABILITIES`, limites em `FinOpsConfig` e fallback remoto opt-in. Não usar credenciais reais em testes. Validação online dos provedores: não executada.

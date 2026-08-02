@@ -85,3 +85,12 @@ Antes de comparar modelos, defina o limiar: zero alucinações graves, JSON vál
 - [x] Validar schema estrito, limites, timeout, falha sanitizada e JSON para cada tool.
 - [x] Provar duas tools táticas sequenciais e preservação do primeiro resultado.
 - [ ] Implementar adapters nativos de wire protocol para os quatro provedores.
+
+## Tool calling multiprovedor
+
+- [x] Texto, multimodal, tools, chamadas, resultados e resposta final nos quatro adaptadores.
+- [x] Parâmetros compatíveis enviados e incompatíveis omitidos.
+- [x] Ausência de credencial não inicia transporte.
+- [x] Timeout/rate limit/temporário têm retry limitado; erros não transitórios não têm retry.
+- [x] Fallback entre mocks, limite de tentativas, contexto preservado e fallback local.
+- [x] Nenhuma chamada paga; validação online dos provedores: não executada.
