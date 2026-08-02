@@ -43,6 +43,10 @@ multi-instância e apresentação gravada não foram verificados.
 - [ ] Push/PR remoto (ambiente sem `origin` e sem GitHub CLI).
 - [ ] Gravação e validação humana da apresentação.
 
+Os comandos e as evidências exigidas para concluir os itens pendentes estão na
+coluna **Ação para conclusão** do checklist de avaliação. Itens não são promovidos
+para `ATENDIDO` apenas porque possuem uma ação planejada.
+
 # Evidências
 
 Consultar [evidências finais](evaluation-evidence.md), [checklist de avaliação](evaluation-checklist.md)

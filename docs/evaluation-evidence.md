@@ -89,3 +89,7 @@ O GitHub CLI também não está instalado (`gh: command not found`), portanto o 
 real não é verificável neste ambiente. O corpo preparado está em
 `docs/pull-request-summary.md`. Status da apresentação: pendente de gravação e
 validação humana.
+
+As ações necessárias para fechar cada estado parcial, não atendido ou não
+verificável estão descritas, em ordem executável e sem promover estados sem
+evidência, em `docs/evaluation-checklist.md`.
