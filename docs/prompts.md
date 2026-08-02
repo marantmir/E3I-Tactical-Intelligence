@@ -55,3 +55,11 @@ Todo caso de análise deve: (1) usar apenas o contexto entregue; (2) distinguir 
 3. **Versão com few-shot:** explicita como recusar uma formação quando a cobertura de rastros é insuficiente e como declarar a evidência ausente.
 
 Os prompts originais de solicitação foram conversacionais e continham contexto do repositório; este documento preserva versões representativas, não transcrições literais integrais. A avaliação deve observar o diff, os testes e os artefatos produzidos, e não tratar este resumo como log bruto.
+
+## Prompt runtime estruturado
+
+O prompt realmente anexado por `_system_with_preferences` está em `structured_llm.RUNTIME_SYSTEM_PROMPT`; não é apenas documentação. Ele define papel, grounding exclusivo no contexto, separação `fact`/`inference`/`hypothesis`, conflitos multimodais, confiança calibrada, limitações, uso apenas de tools oferecidas e fallback por insuficiência. Preferências configuráveis e instruções específicas vêm depois, sem remover essas regras.
+
+Três few-shots compactos integram o runtime: texto suficiente com evidência e limitação; imagem versus métrica com conflito explícito e confiança baixa; e falta de dado → solicitação de tool → resultado retornado → resposta fundamentada. O terceiro proíbe simular resultado. O contrato completo exige `summary`, `findings`, `evidence`, `confidence`, `limitations` e `recommendations`; esta documentação descreve a estrutura, sem publicar configurações secretas.
+
+O parser tenta JSON direto, depois um único bloco Markdown JSON, valida o schema e admite uma única chamada de reparo fornecida pelo chamador. Prosa, múltiplos blocos, JSON parcial, campos/tipos inválidos e mais de 32 KB são rejeitados. Persistindo a falha, retorna objeto estruturado de confiança zero. Limitação: a tentativa de reparo depende de um chamador explícito; não faz chamada externa automaticamente.

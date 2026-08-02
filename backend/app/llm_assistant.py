@@ -8,6 +8,7 @@ import urllib.parse
 import urllib.request
 
 from .llm_config import DEFAULT_LLM_CONFIG, PROVIDER_DEFAULT_MODELS, get_llm_runtime_config
+from .structured_llm import RUNTIME_SYSTEM_PROMPT
 
 
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
@@ -737,7 +738,7 @@ def _api_key() -> str:
 
 def _system_with_preferences(system: str, config: dict) -> str:
     return (
-        f"{system}\n\n"
+        f"{system}\n\nCONTRATO RUNTIME OBRIGATÓRIO:\n{RUNTIME_SYSTEM_PROMPT}\n\n"
         "Parâmetros da aplicação:\n"
         f"- idioma: {config.get('language', 'pt-BR')}\n"
         f"- profundidade da análise: {config.get('analysis_depth', 'profunda')}\n"

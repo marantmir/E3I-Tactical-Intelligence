@@ -164,3 +164,17 @@ Ambiente: branch `fix/final-evaluation-compliance`, testes de provedores com tra
 | `PYTHONPATH=/root/.local/share/pipx/venvs/poetry/lib/python3.12/site-packages make validate` | **aprovado**: 504 testes backend em 123,04 s, compileall, teste e build frontend e ambos os lints |
 
 Todos os testes novos usam `MockTransport`; nenhuma chamada real ou paga foi realizada. **Validação online dos provedores: não executada.**
+
+## Execução atual — 2026-08-02 — prompt runtime e schema semântico
+
+Escopo: contrato runtime, três few-shots, schemas Pydantic, parsing/reparo/fallback e compatibilidade de serialização. Testes inteiramente locais, sem credenciais ou rede.
+
+| Verificação | Resultado atual |
+|---|---|
+| `python -m pytest -q backend/tests/test_structured_llm.py` | **16 aprovados** em 0,68 s |
+| `python -m pytest -q` | não concluído na primeira tentativa: `httpx` ausente no Python ativo |
+| `python -m compileall -q backend/app` | **aprovado**, sem saída |
+| `npm --prefix frontend run build` | **aprovado**, 1.629 módulos em 5,10 s na execução obrigatória isolada |
+| `PYTHONPATH=/root/.local/share/pipx/venvs/poetry/lib/python3.12/site-packages make validate` | **aprovado**: 520 testes backend em 68,50 s, compileall, 1 teste frontend, build (1.629 módulos em 5,37 s) e ambos os lints |
+
+O `PYTHONPATH` reutilizou o `httpx 0.28.1` já presente no ambiente Poetry, como nas execuções anteriores; nenhuma dependência foi copiada para o repositório. Uma execução intermediária do quality gate identificou e permitiu corrigir uma regressão de ordem no system prompt do Anthropic; o resultado da tabela é da repetição completa após a correção. Validação semântica online não foi executada porque exigiria credenciais e não seria hermética.

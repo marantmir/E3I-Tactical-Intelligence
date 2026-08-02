@@ -23,3 +23,7 @@ The registry now also exposes six validated tactical adapters over existing sear
 ## Estado: adapters de tool calling
 
 Há codecs mockáveis para OpenAI Responses, Anthropic Messages, Google Gemini e xAI Grok, matriz central em `PROVIDER_CAPABILITIES`, limites em `FinOpsConfig` e fallback remoto opt-in. Não usar credenciais reais em testes. Validação online dos provedores: não executada.
+
+## Estado: prompting e schema runtime
+
+`structured_llm.py` é a fonte real do contrato comum e dos três few-shots. O schema rejeita extras, incoerência de confiança, referências órfãs e certeza sem evidência. O reparo é opcional e ocorre uma vez; falha termina em resposta válida de confiança zero. Nunca registrar prompt do usuário, conteúdo de tool ou segredo nos documentos/evidências.

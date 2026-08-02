@@ -153,6 +153,8 @@ Pelo app, acesse `IA avançada` (`/future-ai`) para parametrizar:
 
 As configurações locais ficam em `backend/data/llm_config.json`, arquivo ignorado pelo Git por poder conter chave de API.
 
+As análises estruturadas dispõem de schema Pydantic estrito e prompt runtime com grounding, três few-shots, conflito multimodal, confiança/limitações e tools controladas. O parsing aceita JSON puro ou um único bloco `json`, permite no máximo um reparo e encerra em fallback JSON de confiança baixa; detalhes públicos do contrato estão em `docs/prompts.md`.
+
 ```powershell
 $env:OPENAI_API_KEY="sua_chave"
 $env:OPENAI_MODEL="gpt-4.1-mini"
