@@ -18,6 +18,7 @@ import urllib.parse
 
 from .tactical_search.retry_policy import retry_with_backoff
 from .web_search import fetch_page
+from .youtube_video import inspect_youtube_video
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,13 @@ def search_youtube_videos(query: str, limit: int = MAX_RESULTS) -> list[dict]:
         if not video or video["id"] in seen_ids:
             continue
         seen_ids.add(video["id"])
+        try:
+            inspection = inspect_youtube_video(video["url"])
+        except Exception as error:
+            logger.info("Ignoring unavailable YouTube result %s: %s", video["id"], error)
+            continue
+        video["download_compatible"] = True
+        video["selected_format"] = inspection["selected_format"]
         videos.append(video)
         if len(videos) >= limit:
             break
