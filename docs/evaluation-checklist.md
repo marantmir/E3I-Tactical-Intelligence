@@ -1,125 +1,47 @@
-# Checklist da Avaliacao
+# Checklist final de avaliação
 
-## Endpoint Funcional
+Auditoria executada em 2 de agosto de 2026. Os estados abaixo têm somente os
+valores permitidos e apontam para evidências produzidas nesta execução.
 
-- [x] Backend FastAPI responde em `/api/health`.
-- [x] Frontend React pode ser servido pelo build de producao.
-- [x] Rotas de API funcionam com modo local quando a rede externa falha.
-- [x] Dockerfile incluido para deploy.
-- [ ] Inserir link publico apos publicacao.
+| Critério | Estado | Evidência corrente | Ação para conclusão |
+|---|---|---|---|
+| Visão, arquitetura, instalação, execução e testes no README | ATENDIDO | Seções e comandos locais revisados; links relativos aprovados pelo quality gate. | Manter o verificador de links no gate. |
+| Tool calling modelo → tool → modelo | ATENDIDO | Suíte hermética e teste focal do orquestrador aprovados. | Manter os testes como proteção de regressão. |
+| Duas tools sequenciais e preservação do contexto | ATENDIDO | Casos do orquestrador e de tools táticas aprovados. | Manter os testes como proteção de regressão. |
+| Limite de iterações de 1 a 8, padrão 4 | ATENDIDO | Casos de configuração e interrupção do loop aprovados. | Manter os testes como proteção de regressão. |
+| Tool inexistente, argumentos inválidos, timeout e erro sanitizado | ATENDIDO | Casos negativos do registro/orquestrador aprovados. | Manter os testes como proteção de regressão. |
+| Seis tools táticas com schemas fechados e limites | ATENDIDO | Registro e wrappers cobertos pela suíte hermética. | Exigir registro e teste equivalente para qualquer tool nova. |
+| Quatro adaptadores nativos de provedor | ATENDIDO | OpenAI Responses, Anthropic Messages, Gemini e xAI cobertos com transporte mockado. | Manter os contratos mockados no gate. |
+| Fallback entre provedores mockados e fallback local | ATENDIDO | Rotas, limite de tentativas e ausência de credenciais cobertos offline. | Manter os casos de falha no gate. |
+| Prompt runtime com três few-shots | ATENDIDO | Teste estrutural do prompt aprovado. | Atualizar teste e documentação em qualquer mudança de prompt. |
+| Schema estruturado, parsing, reparo único e fallback | ATENDIDO | Casos válidos e inválidos aprovados offline. | Manter os casos de contrato no gate. |
+| Experimento offline em JSON, CSV e Markdown | ATENDIDO | 20 casos regenerados; três artefatos produzidos. | Regenerar artefatos com o runner oficial antes de cada entrega. |
+| Ausência de chamadas online na validação | ATENDIDO | Runner executado com `RUN_ONLINE_LLM_EXPERIMENTS=false`; transportes externos mockados. | Preservar a execução hermética no CI. |
+| Build frontend e compilação backend | ATENDIDO | Vite transformou 1.629 módulos; `compileall` terminou sem erro. | Manter ambos no `make validate`. |
+| Lint e verificação estática disponível | ATENDIDO | Parser AST/compileall e lint frontend aprovados. | Adotar mypy/pyright em etapa futura, com migração tipada dedicada. |
+| Auditoria de dependências local | PARCIAL | `pip check` e `npm audit --offline` aprovados; não houve consulta online de CVEs. | Em runner com rede, executar `python -m pip install pip-audit && python -m pip_audit -r backend/requirements.txt -r backend/requirements-dev.txt` e `npm --prefix frontend audit --audit-level=high`; anexar a saída atual. |
+| Scanner de segredos e arquivos sensíveis | ATENDIDO | Verificações locais aprovaram conteúdo e nomes; nenhum segredo conhecido versionado. | Manter checks locais e Gitleaks no histórico do CI. |
+| Links relativos | ATENDIDO | Verificador local aprovou todos os Markdown rastreados. | Manter o check no gate. |
+| Health check local | ATENDIDO | Requisição local isolada retornou HTTP 200; a rota também é coberta pela suíte FastAPI. | Repetir no ambiente de deploy antes da publicação. |
+| Experimentos com provedores reais | NÃO VERIFICÁVEL | Credenciais e rede são deliberadamente excluídas da validação hermética. | Em staging autorizado, configurar credenciais efêmeras, executar a matriz documentada três vezes por configuração, registrar custo/latência e remover as credenciais ao terminar. |
+| Endpoint público e console em produção | NÃO VERIFICÁVEL | Nenhum deploy público foi fornecido nesta execução. | Publicar em staging, executar health check, percorrer o fluxo em navegador e anexar URL, data, console e resultado. |
+| Firewall/proxy de egress e armazenamento multi-instância | NÃO ATENDIDO | São controles de infraestrutura fora do repositório atual. | Provisionar allowlist de egress e storage compartilhado, documentar a configuração e validar falha fechada em staging. |
+| Push da branch | NÃO ATENDIDO | Não há remote Git configurado. | Executar `git remote add origin <URL_DO_REPOSITORIO>` e `git push -u origin fix/final-evaluation-compliance`; registrar a saída real. |
+| Pull request | NÃO ATENDIDO | Não há remote `origin` e o GitHub CLI não está instalado. | Depois do push, executar `gh pr create --base main --head fix/final-evaluation-compliance --title "Final evaluation compliance and native tool calling" --body-file docs/pull-request-summary.md`; registrar a URL real, sem merge automático. |
+| Apresentação gravada e validada por pessoa | NÃO ATENDIDO | Status da apresentação: pendente de gravação e validação humana. | Seguir `presentation-checklist.md`, gravar 5–8 minutos, obter revisão humana e registrar o artefato aprovado. |
 
-## Complexidade e Ambicao
+O resultado do teste obrigatório sem adaptação de ambiente é **PARCIAL**: o
+Python ativo não contém `httpx`, apesar de a dependência estar declarada. O gate
+completo foi repetido reutilizando a instalação local isolada do Poetry e aprovou
+535 testes, sem rede ou alteração de dependências do projeto.
 
-- [x] Problema real de analise tatica.
-- [x] Mais de 5 telas navegaveis.
-- [x] Busca local e publica por time.
-- [x] Botao `Analisar` antes de salvar.
-- [x] Pre-analise com fontes, grafo, visao computacional e pesquisa operacional.
-- [x] Grafo visual de conexoes taticas.
-- [x] Mapa visual de videos com calor, trilhas e eventos.
-- [x] Plano de jogo e relatorio final.
-- [x] Historico persistido em SQLite.
-- [x] Nao e chatbot simples.
+## Ordem de fechamento
 
-## GitHub
+1. Configurar um remote válido e publicar a branch sem force push.
+2. Criar o pull request usando o resumo versionado e aguardar todos os checks.
+3. Executar auditorias online e validações de staging; atualizar estados somente
+   depois de anexar saídas produzidas nessa execução.
+4. Gravar a apresentação, aplicar a revisão humana e registrar o artefato.
 
-- [x] Estrutura clara de pastas.
-- [x] `.gitignore` adequado.
-- [x] README atualizado.
-- [x] Pasta `docs`.
-- [x] Repositorio Git local inicializado em `main`.
-- [x] Remote `origin` configurado.
-- [ ] Fazer push para o GitHub.
-
-## Validacao Tecnica
-
-- [x] Pytest executável da raiz sem `PYTHONPATH` manual (405 testes).
-- [x] Dependências de desenvolvimento incluem `pytest` e `httpx`.
-- [x] Teste baseline, lint e build do frontend possuem scripts oficiais.
-- [x] CI executa instalação, testes, compileall, build e lint em Python 3.12/Node 22.
-- [x] Registro seguro de tools independente de provedor, com allowlist, validacao, timeout e limites de tamanho.
-- [x] Testes unitarios do nucleo de tools sem chamadas externas.
-- [x] Endpoints novos: `graph-analysis`, `video-vision`, `public-intelligence`.
-- [x] Frontend consome as novas rotas.
-- [x] Build Vite validado.
-- [x] Code-splitting por rota (`React.lazy`/`Suspense`) no frontend.
-- [x] CORS do FastAPI restrito por `ALLOWED_ORIGINS` (nao mais `*`).
-- [x] Rate limiting nas rotas de upload de video (429 + `Retry-After`).
-- [x] Logging estruturado em JSON com `request_id`/`X-Request-ID`.
-- [x] Suite `pytest` cobrindo `graph_analysis`, `video_vision`, rate limiting, logging e rotas de `teams`/`analysis`.
-- [x] Fluxo analisado no navegador local.
-- [ ] Validar console no endpoint publicado.
-
-## Experimento LLM reproduzível
-
-- [x] Pacote offline com 20 casos fixos, IDs estáveis e resultados esperados documentados.
-- [x] Comparações de few-shot, schema, tools, evidência, timeout, fallback, configuração e completude.
-- [x] Relatórios determinísticos JSON, CSV e Markdown validados por testes herméticos.
-- [x] Métricas offline documentadas e calculadas sem credenciais ou rede.
-- [ ] Experimentos online (intencionalmente não executados).
-
-Use o mesmo vídeo, `visual_key_frames` e JSON de métricas em todas as execuções. Não misture partidas nem altere prompt entre células. Execute cada célula três vezes e preserve as respostas (sem chaves) em um artefato datado.
-
-| Execução | Provedor/modelo | Temperatura | Top P | JSON válido | Afirmações sustentadas / total | Alucinações | Latência (ms) | Tokens/custo |
-|---|---|---:|---:|---|---:|---:|---:|---:|
-| A1–A3 | modelo sob teste | 0,2 | 0,9 |  |  |  |  |  |
-| B1–B3 | mesmo modelo | 0,0 | 0,9 |  |  |  |  |  |
-| C1–C3 | modelo alternativo | 0,2 | 0,9 |  |  |  |  |  |
-
-### Rubrica (0–2 por item)
-
-1. **Grounding:** cada afirmação aponta para quadro, evento ou métrica fornecida.
-2. **Calibração:** incerteza aumenta quando há poucos rastros/bola ausente.
-3. **Utilidade tática:** próxima ação é verificável pela comissão técnica.
-4. **Contrato:** JSON válido e campos esperados, sem prosa externa.
-5. **Segurança factual:** nenhum nome, número, placar ou jogada sem evidência.
-
-Antes de comparar modelos, defina o limiar: zero alucinações graves, JSON válido em 3/3 e pelo menos 8/10 na rubrica. Registre indisponibilidade de rede como “não executado”, nunca como resultado de qualidade. Esta tabela é um protocolo; o repositório não declara vencedor sem execuções reais e custos auditáveis.
-
-## Núcleo de tool calling — Prompt 2
-
-- [x] Fluxo completo offline com o mesmo modelo mock antes e depois da tool.
-- [x] `get_llm_status` executada exclusivamente pelo `ToolRegistry`.
-- [x] Chamadas/resultados normalizados e correlacionados por `tool_call_id`.
-- [x] Histórico preservado e duas chamadas sequenciais cobertas.
-- [x] Limite padrão 4 e configuração restrita a 1–8.
-- [x] Tool desconhecida, argumentos inválidos/grandes, timeout e resultado grande tratados.
-- [x] Erro interno sanitizado e logs sem argumentos integrais.
-- [x] Ausência de credencial e falha do modelo usam fluxo seguro/fallback determinístico.
-- [x] Adaptadores nativos de tool calling para os quatro provedores cobertos offline.
-- [x] Registrar as seis tools táticas mínimas e o catálogo de proveniência.
-- [x] Validar schema estrito, limites, timeout, falha sanitizada e JSON para cada tool.
-- [x] Provar duas tools táticas sequenciais e preservação do primeiro resultado.
-- [x] Wire protocols nativos dos quatro provedores cobertos offline com mocks.
-
-## Tool calling multiprovedor
-
-- [x] Texto, multimodal, tools, chamadas, resultados e resposta final nos quatro adaptadores.
-- [x] Parâmetros compatíveis enviados e incompatíveis omitidos.
-- [x] Ausência de credencial não inicia transporte.
-- [x] Timeout/rate limit/temporário têm retry limitado; erros não transitórios não têm retry.
-- [x] Fallback entre mocks, limite de tentativas, contexto preservado e fallback local.
-- [x] Nenhuma chamada paga; validação online dos provedores: não executada.
-
-## Prompt runtime e resposta estruturada
-
-- [x] Papel, grounding, não invenção, fato/inferência/hipótese, conflitos, confiança e limitações no runtime real.
-- [x] Três few-shots compactos no runtime; terceiro demonstra solicitação, retorno e uso fundamentado de tool.
-- [x] Schemas internos estritos e compatíveis com JSON: finding, evidence, confidence, limitation e recommendation.
-- [x] Parsing direto, bloco Markdown único, uma tentativa de reparo e fallback estruturado.
-- [x] Few-shots validam contra o mesmo schema; prosa fora do fence e conflito multimodal sem ambas as fontes são rejeitados.
-- [x] Casos válido, parcial, ausente, tipo, tamanho, insuficiência, conflito, reparos e quatro adaptadores cobertos offline.
-- [ ] Qualidade semântica online com provedores reais (requer credenciais e não pertence à suíte hermética).
-
-## Hardening final — 2026-08-02
-
-- [x] `.env.example` vazio e regras para configurações, credenciais, bancos, uploads, vídeos, builds, caches, temporários e logs.
-- [x] Tool allowlist, schemas fechados, limites, timeout, erro sanitizado e logs sem payload.
-- [x] HTTPS de saída, validação DNS, redirects limitados/revalidados e bloqueio de endereços não globais.
-- [x] Scanner de segredos e busca de arquivos sensíveis no CI.
-- [x] Auditoria de dependências e verificação de links integradas ao quality gate.
-- [x] ADR de APIs diretas e documentação as-built.
-- [ ] Teste online dos quatro provedores (requer credenciais; não executado).
-- [ ] Firewall/proxy de egress e armazenamento externo para implantação multi-instância.
-
-As marcações refletem presença e execução dos controles no escopo registrado nas evidências; não representam garantia de ausência de vulnerabilidades.
+Um item só muda para **ATENDIDO** quando a evidência descrita na respectiva ação
+existir. A existência de uma ação planejada, isoladamente, não altera o estado.
