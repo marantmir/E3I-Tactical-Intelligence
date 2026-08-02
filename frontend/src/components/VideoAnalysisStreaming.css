@@ -93,6 +93,23 @@
   min-width: 300px;
 }
 
+.youtube-url-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.youtube-url-field > label {
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.youtube-url-field small {
+  color: #a0aec0;
+  font-size: 12px;
+}
+
 .upload-input-wrapper {
   flex: 0 0 auto;
   min-width: auto;
@@ -112,6 +129,8 @@
   font-weight: 600;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(230, 57, 70, 0.3);
+  border: 0;
+  white-space: nowrap;
 }
 
 .upload-label:hover {

@@ -91,3 +91,18 @@ Resultados produzidos nesta execução, depois do registro e dos testes das seis
 | `git diff --check` | aprovado, sem saída |
 
 A primeira tentativa da suíte falhou na coleta porque `httpx` não estava instalado no Python ativo. O proxy bloqueou `pip install -r backend/requirements-dev.txt` (HTTP 403); para completar a validação sem alterar o repositório, foi reutilizado `httpx 0.28.1` já presente no contêiner. Nenhum teste fez download, usou credencial ou API paga. A busca e os serviços externos das tools foram substituídos por mocks nos testes específicos.
+
+## Análise em tempo real por URL do YouTube — 2026-08-02 (UTC)
+
+- **Escopo:** a tela de análise de vídeo agora inicia no modo YouTube, aceita links públicos e usa o downloader seguro já disponível antes de abrir o streaming de movimentos.
+- **Hermeticidade:** os testes de rota substituem o downloader e os metadados por mocks; nenhum vídeo foi baixado e nenhuma rede foi acessada.
+
+### Resultados produzidos nesta execução
+
+| Comando | Resultado corrente |
+|---|---|
+| `PYTHONPATH=/root/.local/share/pipx/venvs/poetry/lib/python3.12/site-packages python -m pytest -q backend/tests/test_video_analysis_streaming.py backend/tests/test_youtube_video.py` | **27 aprovados** em 2,12 s |
+| `PYTHONPATH=/root/.local/share/pipx/venvs/poetry/lib/python3.12/site-packages make validate` | aprovado: **443 testes backend** em 72,81 s, compileall, 1 teste frontend, build (1.629 módulos) e ambos os lints |
+| `git diff --check` | aprovado, sem saída |
+
+O `PYTHONPATH` foi necessário porque `httpx` não está instalado no Python ativo, embora esteja declarado em `backend/requirements-dev.txt`; foi reutilizada a instalação do ambiente local do Poetry, sem alterar o repositório. Não foi possível produzir screenshot porque o contêiner não disponibiliza Chromium, Google Chrome, Playwright ou Puppeteer.

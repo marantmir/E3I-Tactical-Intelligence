@@ -14,6 +14,7 @@ from typing import Optional
 import tempfile
 
 from ..video_analysis.video_processor import VideoStreamProcessor, RealTimeGraphBuilder
+from ..youtube_video import YOUTUBE_HOSTS, download_youtube_video, normalize_youtube_url
 
 try:
     import requests
@@ -27,6 +28,7 @@ router = APIRouter(prefix="/api/videos", tags=["video-analysis"])
 
 # Armazenar processadores ativos
 active_processors: dict = {}
+MAX_VIDEO_BYTES = 300 * 1024 * 1024
 
 
 @router.post("/upload")
@@ -97,7 +99,7 @@ async def upload_video_from_url(
     """Upload de vídeo via URL para análise.
 
     Args:
-        video_url: URL do vídeo (MP4, AVI, MOV)
+        video_url: URL HTTPS de um vídeo do YouTube ou URL direta de vídeo
         filename: Nome do arquivo (opcional)
         team_names: JSON com nomes dos times {"0": "Flamengo", "1": "Botafogo"}
 
@@ -110,30 +112,47 @@ async def upload_video_from_url(
             "source": "url"
         }
     """
-    if not HAS_REQUESTS:
-        raise HTTPException(status_code=500, detail="requests library not installed")
-
     try:
         import urllib.parse
 
-        # Download vídeo
-        logger.info(f"Baixando vídeo de: {video_url}")
-        response = requests.get(video_url, timeout=300, stream=True)
-        response.raise_for_status()
+        temp_dir = Path(tempfile.gettempdir())
+        source = "url"
+        original_url = video_url.strip()
 
-        # Gerar nome do arquivo
-        if not filename:
-            parsed = urllib.parse.urlparse(video_url)
-            filename = os.path.basename(parsed.path) or "video.mp4"
+        parsed_url = urllib.parse.urlparse(original_url)
+        is_youtube_host = (parsed_url.hostname or "").lower() in YOUTUBE_HOSTS
+        youtube_url = normalize_youtube_url(original_url) if is_youtube_host else None
 
-        # Salvar arquivo temporário
-        temp_dir = tempfile.gettempdir()
-        video_path = os.path.join(temp_dir, filename)
+        if youtube_url:
+            logger.info("Baixando vídeo público do YouTube")
+            downloaded_path, youtube_source = download_youtube_video(
+                youtube_url, temp_dir, MAX_VIDEO_BYTES
+            )
+            video_path = str(downloaded_path)
+            filename = downloaded_path.name
+            source = "youtube"
+            original_url = youtube_source["url"]
+        else:
+            # Mantém compatibilidade com links diretos de arquivos de vídeo.
+            if not HAS_REQUESTS:
+                raise RuntimeError("requests library not installed")
+            logger.info("Baixando vídeo de URL direta")
+            response = requests.get(original_url, timeout=300, stream=True)
+            response.raise_for_status()
 
-        with open(video_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
+            if not filename:
+                parsed = urllib.parse.urlparse(original_url)
+                filename = os.path.basename(parsed.path) or "video.mp4"
+            video_path = str(temp_dir / filename)
+
+            size_bytes = 0
+            with open(video_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        size_bytes += len(chunk)
+                        if size_bytes > MAX_VIDEO_BYTES:
+                            raise ValueError("O vídeo excede o limite de 300MB.")
+                        f.write(chunk)
 
         # Obter metadados
         processor = VideoStreamProcessor()
@@ -157,8 +176,8 @@ async def upload_video_from_url(
             "processor": processor,
             "graph_builder": RealTimeGraphBuilder(),
             "team_names": team_mapping or {"0": "Team A", "1": "Team B"},
-            "source": "url",
-            "original_url": video_url,
+            "source": source,
+            "original_url": original_url,
         }
 
         return JSONResponse({
@@ -170,9 +189,12 @@ async def upload_video_from_url(
             "resolution": f"{metadata.width}x{metadata.height}",
             "total_frames": metadata.total_frames,
             "status": "uploaded",
-            "source": "url",
+            "source": source,
         })
 
+    except ValueError as e:
+        logger.warning(f"URL de vídeo rejeitada: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Erro no upload de URL: {e}")
         raise HTTPException(status_code=500, detail=str(e))
