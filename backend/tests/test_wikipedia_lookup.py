@@ -78,7 +78,7 @@ def test_fetch_summary_returns_none_on_network_error(monkeypatch):
     def fake_urlopen(*args, **kwargs):
         raise urllib.error.URLError("blocked")
 
-    monkeypatch.setattr(wikipedia_lookup.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(wikipedia_lookup, "safe_urlopen", fake_urlopen)
 
     assert wikipedia_lookup._fetch_summary("pt", "Flamengo") is None
 
@@ -94,7 +94,7 @@ def test_fetch_summary_parses_real_response_shape(monkeypatch):
         def read(self):
             return json.dumps(_summary_payload()).encode("utf-8")
 
-    monkeypatch.setattr(wikipedia_lookup.urllib.request, "urlopen", lambda *a, **k: _FakeResponse())
+    monkeypatch.setattr(wikipedia_lookup, "safe_urlopen", lambda *a, **k: _FakeResponse())
 
     data = wikipedia_lookup._fetch_summary("pt", "Flamengo")
 

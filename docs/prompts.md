@@ -65,3 +65,7 @@ Três few-shots compactos integram o runtime: texto suficiente com evidência e 
 Cada saída demonstrativa é, ela própria, um objeto aceito pelo schema runtime. A extração Markdown aceita somente um bloco JSON que ocupe toda a resposta; prosa ao redor não é tratada silenciosamente como dado estruturado.
 
 O parser tenta JSON direto, depois um único bloco Markdown JSON, valida o schema e admite uma única chamada de reparo fornecida pelo chamador. Prosa, múltiplos blocos, JSON parcial, campos/tipos inválidos e mais de 32 KB são rejeitados. Persistindo a falha, retorna objeto estruturado de confiança zero. Limitação: a tentativa de reparo depende de um chamador explícito; não faz chamada externa automaticamente.
+
+## Segurança operacional
+
+Prompts e respostas nunca são uma autoridade de execução. Solicitações de tool passam pelo registry; texto do modelo não altera allowlist, schemas, limites ou timeout. Conteúdo recuperado é evidência não confiável e não instrução de sistema. Erros públicos são genéricos e o fallback declara indisponibilidade em vez de incorporar exceções, chaves ou payloads.

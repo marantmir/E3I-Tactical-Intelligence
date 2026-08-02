@@ -2,6 +2,39 @@
 
 Aplicação web para inteligência tática de futebol. O fluxo prioriza vídeos de partidas, gera pré-análise visual, revisa evidências, visualiza grafos táticos, analisa movimentos e salva o dossiê no histórico local.
 
+## Guia de documentação
+
+- [Arquitetura as-built](docs/architecture.md)
+- [ADR 0001 — APIs diretas versus frameworks](docs/adr/0001-direct-provider-apis-vs-frameworks.md)
+- [Prompts e resposta estruturada](docs/prompts.md)
+- [Catálogo de tools](docs/tool-catalog.md)
+- [Capacidades dos provedores](docs/provider-capabilities.md)
+- [FinOps e fallback](docs/finops.md)
+- [Experimentos reproduzíveis](experiments/README.md)
+- [Evidências da avaliação](docs/evaluation-evidence.md)
+- [Agent log](docs/agent-log.md)
+- [Checklist de avaliação](docs/evaluation-checklist.md)
+- [Contexto Codex](docs/codex-context.md)
+
+## Status verificável
+
+**Funciona offline:** CRUD/local, grafos, otimização, CV heurística, fallback, tools, runner de experimentos, testes e build. **Experimental/heurístico:** tracking, bola/OCR, homografia, identificação, confiança e recomendações; exigem revisão humana. **Requer rede:** busca pública e ingestão YouTube. **Requer credencial e opt-in:** inferência OpenAI, Anthropic, Gemini ou Grok. Os formatos desses provedores foram testados somente com mocks; chamadas online não foram executadas nesta rodada.
+
+Copie `.env.example` para `.env` apenas localmente e preencha uma ou mais chaves. O fallback tenta a ordem configurada com retries limitados e termina no resultado determinístico; `.env` e a configuração privada não são versionados. Tools são chamadas apenas pelo registry permitido, com argumentos validados, limites, timeout e erros sanitizados.
+
+Comandos, sempre da raiz:
+
+```bash
+# backend
+python -m uvicorn app.main:app --app-dir backend --reload --host 127.0.0.1 --port 8000
+# frontend (outro terminal)
+npm --prefix frontend run dev
+# suíte, build, lint e verificações de segurança/dependências
+make validate
+# experimento hermético
+RUN_ONLINE_LLM_EXPERIMENTS=false python experiments/runners/run_offline.py
+```
+
 ## Funcionalidades
 
 - Seleção global de time ativo para consumir dados locais, fontes salvas e pendências de coleta nas telas.
@@ -193,7 +226,7 @@ flowchart LR
 
 `backend/app/llm_tool_orchestrator.py` implementa o loop independente de provedor. O máximo padrão é 4 iterações e somente valores entre 1 e 8 são aceitos. Chamadas JSON são normalizadas, validadas e executadas apenas pelo `ToolRegistry`; resultados retornam ao mesmo modelo correlacionados por `tool_call_id`. Timeout e limites de entrada/saída são individuais, erros internos são sanitizados e logs registram somente duração, tool, status e provedor — nunca o conteúdo integral dos argumentos. Falha ou loop sem resposta final termina no fallback determinístico.
 
-A prova offline inicial usa apenas `get_llm_status`, que não retorna a chave. **Esta etapa entrega o núcleo e o contrato de adaptador, não a integração nativa completa dos quatro provedores nem o catálogo tático.** Os fluxos textuais e multimodais existentes continuam preservados.
+A prova offline inicial usa `get_llm_status`; a suíte atual também cobre as seis tools táticas e os wire formats nativos dos quatro provedores com transporte mockado. Isso não equivale a validação online ou paga.
 
 ### Princípios do runtime
 
@@ -256,7 +289,7 @@ Para comparação reproduzível, use o protocolo e a planilha-modelo de `docs/ev
 - Buscas reais de Wikipedia/DuckDuckGo falharam em ambientes com egress bloqueado. Foram validadas com mocks e mantêm coleta guiada como fallback; isso não prova disponibilidade do serviço externo.
 - Tracking heurístico não identifica com segurança jogadores em oclusão ou camisa ilegível. O sistema mantém “não identificado” e solicita confirmação, em vez de completar nomes.
 - A tentativa de cobrir vídeo longo lendo apenas os primeiros `max_frames` enviesava a análise. A amostragem passou a distribuir seeks por toda a duração e ganhou testes para metadado ausente/incorreto.
-- O núcleo de tool calling e seis adapters táticos validados estão implementados e testados com modelo mockado. Os adapters nativos dos provedores de produção ainda não estão ligados; não se atribui autonomia multiprovedor ao estado atual.
+- O núcleo, seis tools táticas e quatro adaptadores de wire protocol são cobertos offline. Nenhum provedor foi exercitado online nesta rodada; compatibilidade e qualidade reais continuam não comprovadas sem credenciais.
 
 ## Tools táticas validadas
 

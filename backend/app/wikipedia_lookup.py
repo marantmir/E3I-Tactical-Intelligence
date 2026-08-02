@@ -14,6 +14,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from .safe_http import safe_urlopen
+
 
 USER_AGENT = "E3I-Tactical-Intelligence/0.4 tactical-video-intelligence"
 TIMEOUT_SECONDS = 5
@@ -28,7 +30,7 @@ def _fetch_summary(lang: str, title: str) -> dict | None:
         headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
     )
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+        with safe_urlopen(request, timeout=TIMEOUT_SECONDS) as response:
             return json.loads(response.read().decode("utf-8", errors="replace"))
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError):
         return None

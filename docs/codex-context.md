@@ -34,3 +34,7 @@ Os exemplos runtime permanecem compactos, mas agora incluem todos os campos obri
 - As fixtures sintéticas e fixas cobrem 10 comparações em 20 casos; os três relatórios em `experiments/results/latest.*` são versionados.
 - O runner usa somente a biblioteca padrão, normaliza duração/latência e recusa modo online para manter reprodutibilidade e hermeticidade.
 - Experimentos online: não executados.
+
+## Baseline as-built de segurança (2026-08-02)
+
+Execute comandos da raiz e `make validate` antes de commit. Não use rede/credenciais nos testes. Segredos pertencem ao ambiente; `.env.example` é apenas o contrato vazio. Toda nova URL de saída deve usar `safe_http`, validar redirects/DNS e continuar coberta por política de egress. Toda nova tool deve entrar explicitamente na allowlist, ter schema fechado, limites, timeout, proveniência e teste hermético. A decisão de manter APIs diretas e os gatilhos de reavaliação estão no ADR 0001.

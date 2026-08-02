@@ -12,3 +12,7 @@ Esta matriz descreve **o que os adaptadores locais conseguem representar**, não
 Parâmetros marcados como não suportados são omitidos, e não emulados. Texto e imagens base64 são preservados nos blocos nativos. As definições JSON Schema, solicitações e resultados de tools são normalizados na fronteira do provedor; o orquestrador continua o ciclo até texto final ou limite configurado.
 
 **Validação online dos provedores: não executada.** Os testes usam transportes mockados e nenhuma credencial real.
+
+## Estado de validação e segredo
+
+Os adaptadores diretos OpenAI, Anthropic, Gemini e Grok têm contratos e wire formats cobertos offline com transporte mockado. Chamadas reais exigem a variável correspondente documentada em `.env.example`; nenhuma foi executada nesta rodada. Chaves não pertencem a fixtures, logs ou relatórios. Mudanças de protocolo devem preservar timeout, retry limitado, sanitização, fallback e testes herméticos.

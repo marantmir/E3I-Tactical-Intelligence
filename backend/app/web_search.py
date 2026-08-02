@@ -19,6 +19,7 @@ import urllib.parse
 import urllib.request
 
 from .tactical_search.retry_policy import retry_with_backoff
+from .safe_http import safe_urlopen
 
 
 # Motores de busca bloqueiam user-agents "de script"; um UA de navegador comum
@@ -41,7 +42,7 @@ def fetch_page(url: str, timeout: int = TIMEOUT_SECONDS, user_agent: str = BROWS
             "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
         },
     )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with safe_urlopen(request, timeout=timeout) as response:
         return response.read(MAX_PAGE_BYTES).decode("utf-8", errors="replace")
 
 

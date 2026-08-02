@@ -1,83 +1,43 @@
-# Arquitetura
+# Arquitetura as-built
 
-## Visao Geral
+## Visão geral
 
-O E3I Tactical Intelligence e uma aplicacao full stack com frontend React, backend FastAPI e persistencia local em SQLite.
-
-```text
-Usuario
-  -> Frontend React/Vite
-  -> Cliente HTTP
-  -> Backend FastAPI
-  -> Busca publica Wikimedia
-  -> Data store JSON local
-  -> Modulo de grafos taticos
-  -> Modulo de leitura visual de videos
-  -> SQLite para historico
+```mermaid
+flowchart LR
+  UI[React 18 + Vite] -->|JSON, upload, SSE| API[FastAPI]
+  API --> DATA[JSON local + SQLite]
+  API --> CV[OpenCV / grafos / otimização]
+  API --> SEARCH[coletores públicos HTTPS]
+  API --> LLM[adaptadores HTTP diretos]
+  LLM --> REG[ToolRegistry]
+  REG --> SERVICES[serviços táticos existentes]
+  API -. sem rede/chave/erro .-> FALLBACK[fallback determinístico]
 ```
 
-## Backend
+O frontend é uma SPA com rotas carregadas sob demanda. O backend expõe CRUD, análise, busca, vídeo síncrono e jobs com progresso SSE. JSON versionado fornece o catálogo inicial; SQLite mantém histórico/configuração operacional local. Uploads e configuração privada são dados de runtime ignorados pelo Git.
 
-Arquivos principais em `backend/app`:
+## Fluxos implementados
 
-- `main.py`: inicializa FastAPI, CORS, rotas e frontend buildado.
-- `database.py`: cria e consulta historico em SQLite.
-- `data_store.py`: carrega dados locais em JSON.
-- `online_search.py`: busca publica e fallback de modo local.
-- `graph_analysis.py`: monta nos, arestas, metricas e insights de rede.
-- `video_vision.py`: monta mapa de calor, trilhas, frames e eventos de video.
-- `routes/teams.py`: endpoints de times, fontes, grafo, video e inteligencia publica.
-- `routes/analysis.py`: pre-analise, criacao de analise e historico.
-- `routes/reports.py`: relatorio final consolidado.
+1. **Dossiê:** time → fontes locais/públicas → métricas/grafo → pré-análise → relatório e histórico.
+2. **Vídeo:** upload ou URL YouTube permitida → amostragem distribuída → CV heurística → quadros anotados → síntese opcional multimodal → revisão humana.
+3. **LLM:** contexto estruturado → adaptador direto do provedor → chamada de tool normalizada → allowlist/schema/limite/timeout → resultado correlacionado → resposta estruturada. Falta de credencial, falha esgotada ou contrato inválido termina em fallback explícito.
+4. **Experimentos:** fixture fixa → runner offline sem socket → JSON/CSV/Markdown determinísticos.
 
-## Frontend
+## Fronteiras e segurança
 
-Principais telas:
+- `ToolRegistry` é a única fronteira de execução de tools: nomes permitidos, Pydantic com campos extras proibidos, limites de entrada/saída, timeout e erro público sanitizado.
+- Chamadas de coleta passam por HTTPS, resolução DNS de todos os endereços, bloqueio de IP não global e revalidação de no máximo três redirects. URLs de YouTube possuem allowlist própria. DNS e validação na aplicação reduzem SSRF, mas a barreira definitiva deve ser egress firewall/proxy.
+- Uploads têm tamanho/formato e rate limit; CORS é configurável; admin pode exigir token. Logs estruturados registram metadados e request ID, não payloads/chaves.
+- Credenciais vêm do ambiente ou de configuração local ignorada. `.env.example` contém somente nomes vazios.
+- CI valida suíte/build/lint/links, arquivos sensíveis, dependências e histórico com Gitleaks.
 
-- Dashboard
-- Nova analise
-- Busca de time
-- Dossie tatico
-- Formacoes com grafo visual
-- Elenco
-- Fontes, videos e leitura visual
-- Plano de jogo
-- Relatorio final
-- Historico
-- Inteligencia avancada
+## Estado e limites operacionais
 
-## Dados e Evidencias
+O modo offline é funcional e foi validado hermeticamente. Busca pública, downloads e quatro provedores dependem de rede; inferência real depende também de credencial e não foi validada nesta entrega. CV, OCR, identificação, confiança e recomendações são heurísticas revisáveis. SQLite, armazenamento local e rate limit em memória são adequados a uma instância, não a escala horizontal.
 
-Os dados locais ficam em `backend/data`. Eles sustentam a experiencia quando uma API externa nao esta disponivel e sao combinados com busca publica na pre-analise.
+## Decisões relacionadas
 
-A busca publica retorna fontes quando a rede permite. Quando a consulta externa falha, o backend retorna `local_fallback` com uma fonte publica sugerida e mantem o fluxo de analise ativo.
-
-## Deploy
-
-O `Dockerfile` cria o build React e serve os arquivos estaticos pelo FastAPI. Assim, um unico endpoint publico abre a interface e responde as rotas `/api`.
-
-## Extensoes
-
-As proximas evolucoes naturais sao:
-
-- Upload de video e extracao real de tracking.
-- Integracao com APIs esportivas premium.
-- Otimizacao numerica para formacao, estrategia e substituicoes.
-- Relatorios exportados em PDF com evidencias anexadas.
-
-## Orquestracao nativa de tools (nucleo)
-
-`llm_tool_orchestrator.py` separa o formato de cada provedor (`ProviderToolAdapter`) do loop seguro. Uma resposta normalizada pode encerrar com texto ou solicitar `NormalizedToolCall`; o orquestrador normaliza JSON, encaminha exclusivamente ao `ToolRegistry`, correlaciona `NormalizedToolResult` por `tool_call_id`, anexa ambos ao histórico e chama o mesmo adaptador novamente.
-
-O limite padrão é 4 iterações e a configuração aceita somente 1 a 8. Cada definição do registry conserva timeout e limites próprios de entrada/saída; o orquestrador também limita argumentos antes da validação. Tools desconhecidas nunca são resolvidas dinamicamente. Erros internos são convertidos em mensagens genéricas; logs contêm apenas provedor, nome, status e duração, sem payload integral.
-
-A allowlist registra `get_llm_status` e seis tools táticas. `tactical_tools.py` contém somente schemas, delegação e envelope de proveniência; busca/ranking, visão, grafo, otimização e dados continuam nos serviços de domínio. O catálogo e a matriz serviço/input/output/natureza estão em `docs/tool-catalog.md`. Os formatos nativos de tool calling dos quatro provedores **ainda não estão integrados**; o fluxo integrado usa adaptador mockado hermético.
-
-## Fronteira multiprovedor de tools
-
-`provider_tool_adapters.py` separa quatro codecs de wire format do `LLMToolOrchestrator`. O orquestrador mantém allowlist, validação e limites; adaptadores filtram parâmetros pela matriz central, fazem retry transitório e normalizam respostas. `FallbackProviderAdapter` seleciona apenas provedores configurados, preserva o histórico normalizado, registra a rota e encerra no fallback determinístico.
-
-## Respostas semânticas estruturadas
-
-`structured_llm.py` concentra prompt runtime, modelos Pydantic fechados e pipeline parse → extração Markdown controlada → validação → um reparo opcional → fallback estruturado. Referências de findings/recomendações precisam apontar para evidências existentes; confiança deve concordar com sua faixa; evidência vazia não pode sustentar certeza. `_system_with_preferences` injeta o contrato comum junto da instrução específica em todos os quatro caminhos HTTP de provedor, preservando os formatos consumidos pelo frontend existente.
-Conflitos multimodais declarados formam uma invariável adicional: devem conter fontes `image` e `metric` e manter score abaixo de `0.4`.
+- [ADR 0001 — APIs diretas de provedores versus frameworks](adr/0001-direct-provider-apis-vs-frameworks.md)
+- [Prompts e contrato estruturado](prompts.md)
+- [Catálogo de tools](tool-catalog.md)
+- [Capacidades dos provedores](provider-capabilities.md)
