@@ -149,3 +149,18 @@ A consulta externa para localizar e confirmar links públicos de exemplo não p�
 | `PYTHONPATH=/root/.local/share/pipx/venvs/poetry/lib/python3.12/site-packages make validate` | aprovado: **448 testes backend** em 67,97 s, compileall, 1 teste frontend, build (1.629 módulos) e ambos os lints |
 
 O `PYTHONPATH` reutiliza o `httpx` 0.28.1 já disponível no ambiente local do Poetry. A dependência continua declarada em `backend/requirements-dev.txt`; nenhuma dependência ou artefato externo foi adicionado ao repositório.
+
+## Execução atual — 2026-08-02 — adapters multiprovedor
+
+Ambiente: branch `fix/final-evaluation-compliance`, testes de provedores com transporte integralmente mockado.
+
+| Verificação | Resultado atual |
+|---|---|
+| `python -m pytest -q backend/tests/test_provider_tool_adapters.py backend/tests/test_llm_tool_orchestrator.py` | **71 passed** em 4,93 s |
+| `python -m pytest -q` | **não concluído**: coleta bloqueada pela ausência de `httpx` no ambiente |
+| `python -m pip install -r backend/requirements-dev.txt` | **não concluído**: proxy de rede respondeu 403 ao índice |
+| `python -m compileall -q backend/app` | **aprovado** |
+| `npm --prefix frontend run build` | **aprovado**, 1629 módulos transformados |
+| `PYTHONPATH=/root/.local/share/pipx/venvs/poetry/lib/python3.12/site-packages make validate` | **aprovado**: 504 testes backend em 123,04 s, compileall, teste e build frontend e ambos os lints |
+
+Todos os testes novos usam `MockTransport`; nenhuma chamada real ou paga foi realizada. **Validação online dos provedores: não executada.**
