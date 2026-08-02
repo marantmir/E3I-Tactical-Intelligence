@@ -204,6 +204,28 @@ export const api = {
       connect();
     });
   },
+  analyzeYouTubeVideoWithProgress: async (teamRef, videoUrl, options = {}, onProgress) => {
+    const payload = {
+      url: videoUrl,
+      team_name: options.teamName,
+      max_frames: options.maxFrames || 240,
+      sample_every: options.sampleEvery || 3,
+      team_filter: options.teamFilter || "auto"
+    };
+    const startPath = /^\d+$/.test(String(teamRef))
+      ? `/api/teams/${teamRef}/video-vision/youtube-jobs`
+      : "/api/teams/video-vision/youtube-jobs";
+    const startResponse = await fetch(`${API_BASE}${startPath}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!startResponse.ok) {
+      throw new Error(await readErrorMessage(startResponse, "Falha ao iniciar a análise do YouTube"));
+    }
+    const { job_id: jobId } = await startResponse.json();
+    return waitForVideoVisionJob(jobId, onProgress);
+  },
   collectSources: (payload) =>
     request("/api/teams/sources/collect", {
       method: "POST",
@@ -266,6 +288,31 @@ export const api = {
   adminDelete: (collection, id) =>
     request(`/api/admin/collections/${collection}/${id}`, { method: "DELETE", headers: adminHeaders() })
 };
+
+function waitForVideoVisionJob(jobId, onProgress) {
+  return new Promise((resolve, reject) => {
+    const source = new EventSource(`${API_BASE}/api/teams/video-vision/jobs/${jobId}/events`);
+    source.onmessage = (event) => {
+      let payload;
+      try {
+        payload = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      if (payload.status === "processing") {
+        onProgress?.(payload);
+      } else {
+        source.close();
+        if (payload.status === "done") resolve(payload.result);
+        else reject(new Error(payload.message || "Falha ao processar o vídeo."));
+      }
+    };
+    source.onerror = () => {
+      source.close();
+      reject(new Error("Conexão de progresso do processamento foi perdida. Tente novamente."));
+    };
+  });
+}
 
 // Em deploys com E3I_ADMIN_TOKEN definido no backend, o token informado pelo
 // administrador fica no localStorage e segue em todas as chamadas de admin.

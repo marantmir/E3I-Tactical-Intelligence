@@ -1,5 +1,23 @@
 # Evidências de avaliação
 
+## Ingestão de vídeo do YouTube — 2026-08-01 (UTC)
+
+Resultados produzidos nesta execução, a partir da raiz do repositório:
+
+| Comando | Resultado corrente |
+|---|---|
+| `python -m pytest -q backend/tests/test_youtube_video.py` | **7 aprovados em 0,14 s** |
+| `npm --prefix frontend test` | **1 aprovado** |
+| `npm --prefix frontend run lint` | aprovado; 43 arquivos verificados |
+| `python scripts/lint.py` | aprovado; 80 arquivos Python e 82 arquivos de texto verificados |
+| `python -m compileall -q backend/app` | aprovado, sem saída |
+| `npm --prefix frontend run build` | aprovado; 1.629 módulos transformados em 3,85 s |
+| `make validate` | interrompido na coleta: `httpx` não está instalado no Python ativo |
+| `python -m pip install -r backend/requirements-dev.txt` | não concluído: índice Python bloqueado pelo proxy (HTTP 403) ao buscar `yt-dlp` |
+| `git diff --check` | aprovado, sem saída |
+
+Os testes novos são herméticos e validam a allowlist HTTPS e os formatos aceitos de links do YouTube sem baixar vídeos nem acessar a rede. A suíte completa não é declarada aprovada: a limitação ambiental ocorreu durante a coleta dos testes de rota. Não foi possível produzir screenshot porque o contêiner não disponibiliza Chromium, Google Chrome ou Playwright; o build de produção da alteração visual foi concluído.
+
 ## Núcleo nativo de tool calling — 2026-08-01 (UTC)
 
 - **Branch:** `fix/final-evaluation-compliance`
