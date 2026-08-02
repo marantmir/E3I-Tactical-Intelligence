@@ -27,3 +27,4 @@ Há codecs mockáveis para OpenAI Responses, Anthropic Messages, Google Gemini e
 ## Estado: prompting e schema runtime
 
 `structured_llm.py` é a fonte real do contrato comum e dos três few-shots. O schema rejeita extras, incoerência de confiança, referências órfãs e certeza sem evidência. O reparo é opcional e ocorre uma vez; falha termina em resposta válida de confiança zero. Nunca registrar prompt do usuário, conteúdo de tool ou segredo nos documentos/evidências.
+Os exemplos runtime permanecem compactos, mas agora incluem todos os campos obrigatórios; fences Markdown com texto externo são inválidas.

@@ -101,5 +101,6 @@ Antes de comparar modelos, defina o limiar: zero alucinações graves, JSON vál
 - [x] Três few-shots compactos no runtime; terceiro demonstra solicitação, retorno e uso fundamentado de tool.
 - [x] Schemas internos estritos e compatíveis com JSON: finding, evidence, confidence, limitation e recommendation.
 - [x] Parsing direto, bloco Markdown único, uma tentativa de reparo e fallback estruturado.
+- [x] Few-shots validam contra o mesmo schema; prosa fora do fence e conflito multimodal sem ambas as fontes são rejeitados.
 - [x] Casos válido, parcial, ausente, tipo, tamanho, insuficiência, conflito, reparos e quatro adaptadores cobertos offline.
 - [ ] Qualidade semântica online com provedores reais (requer credenciais e não pertence à suíte hermética).

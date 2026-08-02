@@ -178,3 +178,16 @@ Escopo: contrato runtime, três few-shots, schemas Pydantic, parsing/reparo/fall
 | `PYTHONPATH=/root/.local/share/pipx/venvs/poetry/lib/python3.12/site-packages make validate` | **aprovado**: 520 testes backend em 68,50 s, compileall, 1 teste frontend, build (1.629 módulos em 5,37 s) e ambos os lints |
 
 O `PYTHONPATH` reutilizou o `httpx 0.28.1` já presente no ambiente Poetry, como nas execuções anteriores; nenhuma dependência foi copiada para o repositório. Uma execução intermediária do quality gate identificou e permitiu corrigir uma regressão de ordem no system prompt do Anthropic; o resultado da tabela é da repetição completa após a correção. Validação semântica online não foi executada porque exigiria credenciais e não seria hermética.
+## Revalidação do prompt estruturado — 2026-08-02 (UTC)
+
+Escopo: few-shots compatíveis com o schema, extração Markdown estrita e semântica de conflito imagem/métrica. Resultados produzidos nesta execução:
+
+| Comando | Resultado |
+|---|---|
+| `python -m pytest -q backend/tests/test_structured_llm.py` | **18 aprovados** em 1,83 s |
+| `python -m compileall -q backend/app` | **Aprovado** |
+| `npm --prefix frontend run build` | **Aprovado** (Vite, 1629 módulos) |
+| `python -m pytest -q` / `make validate` | **Limitado pelo ambiente**: coleta interrompida porque `httpx` não está instalado |
+| `python -m pip install -r backend/requirements-dev.txt` | **Limitado pelo ambiente**: proxy retornou 403 ao índice; dependências ausentes não puderam ser instaladas |
+
+O teste focal é hermético e cobre os casos de parsing, reparo, fallback, few-shots, conflito e os quatro adaptadores. A qualidade completa não é declarada aprovada porque `make validate` não passou da coleta, embora compilação e build tenham sido executados separadamente.

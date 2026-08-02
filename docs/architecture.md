@@ -80,3 +80,4 @@ A allowlist registra `get_llm_status` e seis tools táticas. `tactical_tools.py`
 ## Respostas semânticas estruturadas
 
 `structured_llm.py` concentra prompt runtime, modelos Pydantic fechados e pipeline parse → extração Markdown controlada → validação → um reparo opcional → fallback estruturado. Referências de findings/recomendações precisam apontar para evidências existentes; confiança deve concordar com sua faixa; evidência vazia não pode sustentar certeza. `_system_with_preferences` injeta o contrato comum junto da instrução específica em todos os quatro caminhos HTTP de provedor, preservando os formatos consumidos pelo frontend existente.
+Conflitos multimodais declarados formam uma invariável adicional: devem conter fontes `image` e `metric` e manter score abaixo de `0.4`.

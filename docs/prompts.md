@@ -62,4 +62,6 @@ O prompt realmente anexado por `_system_with_preferences` está em `structured_l
 
 Três few-shots compactos integram o runtime: texto suficiente com evidência e limitação; imagem versus métrica com conflito explícito e confiança baixa; e falta de dado → solicitação de tool → resultado retornado → resposta fundamentada. O terceiro proíbe simular resultado. O contrato completo exige `summary`, `findings`, `evidence`, `confidence`, `limitations` e `recommendations`; esta documentação descreve a estrutura, sem publicar configurações secretas.
 
+Cada saída demonstrativa é, ela própria, um objeto aceito pelo schema runtime. A extração Markdown aceita somente um bloco JSON que ocupe toda a resposta; prosa ao redor não é tratada silenciosamente como dado estruturado.
+
 O parser tenta JSON direto, depois um único bloco Markdown JSON, valida o schema e admite uma única chamada de reparo fornecida pelo chamador. Prosa, múltiplos blocos, JSON parcial, campos/tipos inválidos e mais de 32 KB são rejeitados. Persistindo a falha, retorna objeto estruturado de confiança zero. Limitação: a tentativa de reparo depende de um chamador explícito; não faz chamada externa automaticamente.
