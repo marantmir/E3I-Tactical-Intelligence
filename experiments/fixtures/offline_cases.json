@@ -1,0 +1,45 @@
+{
+  "fixture_version": "1.0.0",
+  "generated_at": "2026-08-02T00:00:00Z",
+  "commit_base": "44c2cbc",
+  "configuration": {
+    "online_experiments": false,
+    "seed": 20260802,
+    "mock_model": "deterministic-tactical-mock-v1",
+    "fallback": "local-rule-v1"
+  },
+  "shared_input": {
+    "text": "Avalie a progressão pelo corredor direito somente com as evidências fornecidas.",
+    "metrics": {"right_progressions": 7, "left_progressions": 3, "tracked_frames": 120},
+    "frames": [
+      {"id": "frame-0042", "second": 14, "observation": "lateral recebe aberto à direita"},
+      {"id": "frame-0088", "second": 29, "observation": "passe progride pelo corredor direito"}
+    ],
+    "tools": {
+      "metric_lookup": {"right_progressions": 7},
+      "frame_lookup": {"frame_id": "frame-0088", "observation": "progressão à direita"}
+    }
+  },
+  "cases": [
+    {"id":"few-shot-off","scenario":"few_shot","variant":"without","expected":{"valid":true,"schema":true,"grounded":false,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":false,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false}},
+    {"id":"few-shot-on","scenario":"few_shot","variant":"with","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false}},
+    {"id":"schema-off","scenario":"schema","variant":"without","expected":{"valid":true,"schema":false,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":false,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false}},
+    {"id":"schema-on","scenario":"schema","variant":"with","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false}},
+    {"id":"tool-off","scenario":"tool_usage","variant":"without","expected":{"valid":true,"schema":true,"grounded":false,"tool_correct":true,"fallback":false,"iterations":1,"complete":false,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":false,"tool_correct":true,"fallback":false,"iterations":1,"complete":false,"conflict_signaled":false}},
+    {"id":"tool-on","scenario":"tool_usage","variant":"with","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":2,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":2,"complete":true,"conflict_signaled":false}},
+    {"id":"one-tool","scenario":"tool_sequence","variant":"one","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":2,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":2,"complete":true,"conflict_signaled":false}},
+    {"id":"two-tools","scenario":"tool_sequence","variant":"two_sequential","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":3,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":3,"complete":true,"conflict_signaled":false}},
+    {"id":"evidence-insufficient","scenario":"evidence","variant":"insufficient","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":true,"iterations":1,"complete":false,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":true,"iterations":1,"complete":false,"conflict_signaled":false}},
+    {"id":"evidence-sufficient","scenario":"evidence","variant":"sufficient","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false}},
+    {"id":"response-normal","scenario":"timeout","variant":"normal","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false}},
+    {"id":"response-timeout","scenario":"timeout","variant":"timeout","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":true,"iterations":1,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":true,"iterations":1,"complete":true,"conflict_signaled":false}},
+    {"id":"local-fallback","scenario":"engine","variant":"local","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":true,"iterations":1,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":true,"iterations":1,"complete":true,"conflict_signaled":false}},
+    {"id":"mock-model","scenario":"engine","variant":"mock","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false}},
+    {"id":"config-conservative","scenario":"configuration","variant":"conservative","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false}},
+    {"id":"config-creative","scenario":"configuration","variant":"creative","expected":{"valid":true,"schema":true,"grounded":false,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":false,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":false}},
+    {"id":"tool-valid","scenario":"tool_validity","variant":"valid","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":2,"complete":true,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":2,"complete":true,"conflict_signaled":false}},
+    {"id":"tool-missing","scenario":"tool_validity","variant":"missing","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":false,"fallback":true,"iterations":2,"complete":false,"conflict_signaled":false},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":false,"fallback":true,"iterations":2,"complete":false,"conflict_signaled":false}},
+    {"id":"response-complete","scenario":"semantic_completeness","variant":"complete","expected":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":true},"obtained":{"valid":true,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":true,"conflict_signaled":true}},
+    {"id":"response-incomplete","scenario":"semantic_completeness","variant":"incomplete","expected":{"valid":false,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":false,"conflict_signaled":false},"obtained":{"valid":false,"schema":true,"grounded":true,"tool_correct":true,"fallback":false,"iterations":1,"complete":false,"conflict_signaled":false}}
+  ]
+}

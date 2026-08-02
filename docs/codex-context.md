@@ -28,3 +28,9 @@ Há codecs mockáveis para OpenAI Responses, Anthropic Messages, Google Gemini e
 
 `structured_llm.py` é a fonte real do contrato comum e dos três few-shots. O schema rejeita extras, incoerência de confiança, referências órfãs e certeza sem evidência. O reparo é opcional e ocorre uma vez; falha termina em resposta válida de confiança zero. Nunca registrar prompt do usuário, conteúdo de tool ou segredo nos documentos/evidências.
 Os exemplos runtime permanecem compactos, mas agora incluem todos os campos obrigatórios; fences Markdown com texto externo são inválidas.
+# Contexto atual — experimentos offline (2026-08-02)
+
+- O comando oficial é `RUN_ONLINE_LLM_EXPERIMENTS=false python experiments/runners/run_offline.py` a partir da raiz.
+- As fixtures sintéticas e fixas cobrem 10 comparações em 20 casos; os três relatórios em `experiments/results/latest.*` são versionados.
+- O runner usa somente a biblioteca padrão, normaliza duração/latência e recusa modo online para manter reprodutibilidade e hermeticidade.
+- Experimentos online: não executados.
