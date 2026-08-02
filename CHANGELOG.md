@@ -11,6 +11,8 @@
 
 ### Added
 
+- Added a deterministic 20-case offline evaluation package with synthetic text, metrics, frames and tools; documented metrics; JSON/CSV/Markdown reports; output schema; and hermetic reproducibility/network-isolation tests.
+
 - Added a provider-neutral native tool-calling orchestrator with normalized calls/results, correlated history, a bounded model loop, safe registry execution, sanitized failures, and deterministic fallback.
 - Added an offline end-to-end mock-provider test suite proving the initial `get_llm_status` flow and its safety limits.
 - Added six allowlisted tactical tools with strict Pydantic inputs, bounded execution, sanitized serializable outputs, explicit provenance, a service catalog, and hermetic unit/orchestrator tests.

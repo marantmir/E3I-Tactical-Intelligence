@@ -52,6 +52,12 @@
 
 ## Experimento LLM reproduzível
 
+- [x] Pacote offline com 20 casos fixos, IDs estáveis e resultados esperados documentados.
+- [x] Comparações de few-shot, schema, tools, evidência, timeout, fallback, configuração e completude.
+- [x] Relatórios determinísticos JSON, CSV e Markdown validados por testes herméticos.
+- [x] Métricas offline documentadas e calculadas sem credenciais ou rede.
+- [ ] Experimentos online (intencionalmente não executados).
+
 Use o mesmo vídeo, `visual_key_frames` e JSON de métricas em todas as execuções. Não misture partidas nem altere prompt entre células. Execute cada célula três vezes e preserve as respostas (sem chaves) em um artefato datado.
 
 | Execução | Provedor/modelo | Temperatura | Top P | JSON válido | Afirmações sustentadas / total | Alucinações | Latência (ms) | Tokens/custo |

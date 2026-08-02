@@ -135,3 +135,8 @@ O agente evoluiu o E3I Tactical Intelligence para uma plataforma de inteligencia
 - Implementado parsing JSON/Markdown, reparo único injetável e fallback estruturado de confiança zero.
 - Endurecida a entrega final: few-shots completos e validáveis, fence Markdown exclusivo e invariável de conflito imagem/métrica com confiança reduzida.
 - Criados testes herméticos do contrato e serialização pelos quatro adaptadores; nenhuma credencial ou rede utilizada.
+# 2026-08-02 — pacote de experimentos offline
+
+- Criados fixture estável, runner determinístico, schema e relatórios JSON/CSV/Markdown para 20 casos em dez comparações.
+- Adicionados testes de execução, formatos, contrato, métricas, mínimo de cenários, isolamento de rede, reprodutibilidade, fixture inválida e recusa do modo online.
+- `RUN_ONLINE_LLM_EXPERIMENTS=false`; experimentos online: não executados.

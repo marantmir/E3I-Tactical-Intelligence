@@ -53,6 +53,16 @@ npm --prefix frontend run build
 make lint
 ```
 
+### Avaliação offline reproduzível
+
+O pacote em `experiments/` executa 20 casos determinísticos para comparar few-shot, schema, tools, evidência, timeout, fallback, configurações e completude sem qualquer chamada externa. Ele gera relatórios JSON, CSV e Markdown:
+
+```bash
+RUN_ONLINE_LLM_EXPERIMENTS=false python experiments/runners/run_offline.py
+```
+
+Metodologia, fórmulas e limitações estão em `experiments/README.md`. Experimentos online: não executados.
+
 O pytest usa a configuração raiz em `pyproject.toml`; não é necessário definir `PYTHONPATH` nem mudar para `backend`. Os testes usam dados temporários, desabilitam credenciais LLM e não dependem de chamadas externas ou pagas. O mesmo processo é executado por `.github/workflows/ci.yml`.
 
 Backend:

@@ -1,5 +1,21 @@
 # Evidências de avaliação
 
+## Pacote de experimentos offline reproduzíveis — 2026-08-02 (UTC)
+
+- **Branch:** `fix/final-evaluation-compliance`; **commit base:** `44c2cbc`.
+- **Escopo:** 20 casos fixos em dez comparações, com texto, métricas, frames e tools sintéticos. O runner não importou clientes HTTP e recusou explicitamente o modo online.
+- **Resultado offline real:** resposta válida 0,95; schema 0,95; grounding 0,85; tool correta 0,95; fallback 0,20; 1,3 iterações médias; conclusão 0,80; conflitos corretamente sinalizados 1,00; zero divergências entre esperado e obtido nos dez cenários. A latência lógica foi normalizada em 0 ms para que os artefatos sejam reproduzíveis.
+
+| Comando | Resultado produzido nesta execução |
+|---|---|
+| `python experiments/runners/run_offline.py` | **20 casos concluídos**; JSON, CSV e Markdown gerados e conferidos manualmente |
+| `python -m pytest -q` | não concluído no Python ativo: `httpx` ausente durante a coleta |
+| `python -m compileall -q backend/app` | aprovado, sem saída |
+| `npm --prefix frontend run build` | aprovado; 1.629 módulos transformados em 5,47 s na execução obrigatória isolada |
+| `PYTHONPATH=/root/.local/share/pipx/venvs/poetry/lib/python3.12/site-packages make validate` | **aprovado**: 527 testes backend em 72,23 s, compileall, 1 teste frontend, build em 5,32 s e ambos os lints |
+
+O `PYTHONPATH` reutilizou o `httpx` 0.28.1 já existente no ambiente Poetry; não houve instalação, credencial, API paga ou acesso de rede nos experimentos. **Experimentos online: não executados.**
+
 ## Revalidação do registro de tools táticas — 2026-08-02 (UTC)
 
 Esta execução confirmou no histórico o commit `5974b64` (`feat: expose tactical services as validated tools`) e revalidou, a partir da raiz, as seis tools táticas e o fluxo integrado do orquestrador. Os testes específicos permanecem herméticos: serviços externos são substituídos por mocks e nenhum download, credencial ou API paga é usado.
